@@ -6,14 +6,15 @@ import akka.persistence._
 import fun.cqrs.akka.AggregateActor._
 import fun.cqrs.{Aggregate, Behavior, DomainCommand, DomainEvent}
 
-abstract class AggregateActor[A <: Aggregate](behaviorFactory: String => Behavior[A])
+abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavior[A])
   extends PersistentActor with ActorLogging {
 
   import context.dispatcher
 
   type Protocol = A#Protocol
 
-  val behavior = behaviorFactory(persistenceId)
+  // persistenceId is always defined as the Aggregate.Identifier
+  val persistenceId = identifier.value
 
   /** The aggregate root instance if initialized, None otherwise */
   private var aggregateRootOpt: Option[A] = None

@@ -139,6 +139,7 @@ object BehaviorDsl {
       build
     }
 
+
     private def build: Behavior[A] = {
 
       new Behavior[A] {

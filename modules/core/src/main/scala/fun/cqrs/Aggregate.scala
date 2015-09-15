@@ -16,9 +16,11 @@ trait Aggregate {
 trait AggregateIdentifier {
 
   def value: String
+
 }
 
 trait AggregateUUID extends AggregateIdentifier {
+
   def uuid: UUID
 
   final def value = uuid.toString

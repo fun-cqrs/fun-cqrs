@@ -56,6 +56,19 @@ object Contract {
 
   def behavior(number: ContractNumber): Behavior[Contract] = {
     behaviorFor[Contract].whenConstructing { it =>
+
+      it.yieldsEvent {
+        case cmd: AddNewContract =>
+          NewContractAdded(
+            cmd.title,
+            cmd.hourlyRate,
+            cmd.customerId,
+            cmd.startDate,
+            cmd.number,
+            metadata(number, cmd)
+          )
+      }
+
       it.acceptsEvents {
         case e: NewContractAdded => Contract(e.title, e.hourlyRate, e.customerId, e.startDate, e.number)
       }

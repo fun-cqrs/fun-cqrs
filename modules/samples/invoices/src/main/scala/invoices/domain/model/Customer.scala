@@ -90,8 +90,7 @@ object Customer {
   def behavior(id: CustomerId = CustomerId())(implicit ec: ExecutionContext): Behavior[Customer] = {
     import CustomerProtocol._
 
-    behaviorFor[Customer]
-      .whenConstructing { it =>
+    behaviorFor[Customer].whenConstructing { it =>
       it.yieldsEvent {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.address, cmd.vatNumber, metadata(id, cmd))
@@ -102,6 +101,7 @@ object Customer {
           Customer(e.name, e.address, e.vatNumber, id)
       }
     }.whenUpdating { it =>
+
       it.yieldsSingleEvent {
 
         case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))

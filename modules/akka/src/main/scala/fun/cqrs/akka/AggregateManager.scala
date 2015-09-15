@@ -2,7 +2,7 @@ package fun.cqrs.akka
 
 
 import akka.actor._
-import fun.cqrs.DomainCommand
+import fun.cqrs.{Aggregate, DomainCommand}
 import fun.cqrs.akka.AggregateActor.KillAggregate
 
 object AggregateManager {
