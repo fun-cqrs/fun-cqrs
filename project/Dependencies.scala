@@ -9,7 +9,7 @@ object Dependencies {
   val macwireRuntime    =   "com.softwaremill.macwire"    %% "runtime"                          % macwireVersion
 
   val akkaVersion       =   "2.3.13"
-  
+
   val akkaPersistence   =   "com.typesafe.akka"           %%  "akka-persistence-experimental"   % akkaVersion
   val akkaTestKit       =   "com.typesafe.akka"           %%  "akka-testkit"                    % akkaVersion     % "test"
 
@@ -24,9 +24,10 @@ object Dependencies {
     libraryDependencies ++= Seq(akkaPersistence, akkaTestKit)
   )
 
-  val macwireDeps = Seq (
-    libraryDependencies ++= Seq(macwireRuntime, macwireMacros)
-  )
+  val playSampleDeps = Seq(
+    libraryDependencies += macwireRuntime,
+    libraryDependencies += macwireMacros
+  ) ++ mainDeps ++ akkaDeps
 
 }
 // /@formatter:on

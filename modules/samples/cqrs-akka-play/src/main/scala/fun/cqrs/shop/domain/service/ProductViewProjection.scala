@@ -1,18 +1,16 @@
 package fun.cqrs.shop.domain.service
 
-import java.util.UUID
-
 import fun.cqrs.shop.domain.model.ProductProtocol.{NameChanged, PriceChanged, ProductCreated, ProductUpdateEvent}
 import fun.cqrs.shop.domain.model.{ProductId, ProductProtocol, ProductView}
-import fun.cqrs.{AggregateIdentifier, HandleEvent, Projection}
-import scala.concurrent.ExecutionContext.Implicits.global
+import fun.cqrs.{HandleEvent, Projection}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ProductViewProjection(repo: ProductViewRepo) extends Projection {
 
   def receiveEvent: HandleEvent = {
-    case e: ProductCreated => create(e)
+    case e: ProductCreated                     => create(e)
     case e: ProductProtocol.ProductUpdateEvent => update(e)
   }
 
@@ -32,7 +30,7 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection {
 
   private def updateFunc(view: ProductView, evt: ProductUpdateEvent): ProductView = {
     evt match {
-      case e: NameChanged => view.copy(name = e.newName)
+      case e: NameChanged  => view.copy(name = e.newName)
       case e: PriceChanged => view.copy(price = e.newPrice)
     }
   }

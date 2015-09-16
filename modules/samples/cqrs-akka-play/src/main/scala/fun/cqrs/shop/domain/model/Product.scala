@@ -2,7 +2,10 @@ package fun.cqrs.shop.domain.model
 
 import java.util.UUID
 
-import play.api.libs.json.Json
+
+import fun.cqrs.shop.json.TypedJson.TypeHintFormat
+import fun.cqrs.shop.json.TypedJson._
+import play.api.libs.json.{Reads, Json}
 import fun.cqrs.dsl.BehaviorDsl
 import BehaviorDsl._
 import fun.cqrs._
@@ -20,6 +23,11 @@ case class Product(name: String, description: String, price: Double, identifier:
 case class ProductId(uuid: UUID = UUID.randomUUID) extends AggregateUUID
 
 object ProductId {
+
+  def fromString(aggregateId: String): ProductId = {
+    ProductId(UUID.fromString(aggregateId))
+  }
+
   def fromAggregateId(aggregateId: AggregateIdentifier): ProductId = {
     ProductId(UUID.fromString(aggregateId.value))
   }
@@ -27,13 +35,15 @@ object ProductId {
 
 object ProductProtocol extends ProtocolDef.Protocol {
 
+  sealed trait ProductCommand extends DomainCommand
+
   // Creation Command
-  case class CreateProduct(name: String, description: String, price: Double) extends CreateCmd
+  case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand with CreateCmd
 
   // Update Commands
-  case class ChangeName(name: String) extends UpdateCmd
+  case class ChangeName(name: String) extends ProductCommand with UpdateCmd
 
-  case class ChangePrice(price: Double) extends UpdateCmd
+  case class ChangePrice(price: Double) extends ProductCommand with UpdateCmd
 
 
   // Creation Event
@@ -50,15 +60,16 @@ object ProductProtocol extends ProtocolDef.Protocol {
 
   case class PriceChanged(newPrice: Double, metadata: Metadata) extends ProductUpdateEvent
 
-
   // play-json formats for commands
-  implicit val formatChangeName = Json.format[ChangeName]
-  implicit val formatCreateProduct = Json.format[CreateProduct]
-  implicit val formatChangePrice = Json.format[ChangePrice]
+  implicit val commandsFormat = TypeHintFormat[ProductCommand](
+    Json.format[CreateProduct].withTypeHint("Product.Create"),
+    Json.format[ChangeName].withTypeHint("Product.ChangeName"),
+    Json.format[ChangePrice].withTypeHint("Product.ChangePrice")
+  )
+
 }
 
 object Product {
-
 
   def behavior(id: ProductId = ProductId())(implicit ec: ExecutionContext): Behavior[Product] = {
 
@@ -107,7 +118,7 @@ object Product {
       }
 
       it.acceptsEvents {
-        case (product, e: NameChanged) => product.copy(name = e.newName)
+        case (product, e: NameChanged)  => product.copy(name = e.newName)
         case (product, e: PriceChanged) => product.copy(price = e.newPrice)
       }
       //---------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 package fun.cqrs.shop.domain.service
 
 import fun.cqrs.InMemoryRepository
-import fun.cqrs.shop.domain.model.{ProductView, ProductId, Product}
+import fun.cqrs.shop.domain.model.{ProductId, ProductView}
 
 class ProductViewRepo extends InMemoryRepository {
 
@@ -9,5 +9,5 @@ class ProductViewRepo extends InMemoryRepository {
   type Model = ProductView
 
   /** Extract id van Model */
-  def $id(model: ProductView): ProductId = ???
+  def $id(model: ProductView): ProductId = model.identifier
 }

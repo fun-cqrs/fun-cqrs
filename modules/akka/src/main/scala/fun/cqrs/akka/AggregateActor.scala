@@ -6,7 +6,9 @@ import akka.persistence._
 import fun.cqrs.akka.AggregateActor._
 import fun.cqrs.{Aggregate, Behavior, DomainCommand, DomainEvent}
 
-abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavior[A])
+import scala.util.control.NonFatal
+
+class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavior[A])
   extends PersistentActor with ActorLogging {
 
   import context.dispatcher
@@ -46,6 +48,10 @@ abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior
 
       asyncResult.map { res =>
         CompletedCreationCmd(res, origSender)
+      } recover {
+        case NonFatal(cause) =>
+          log.error(cause, s"Error while processing creational command: $cmd")
+          FailedCommand(cause, origSender)
       } pipeTo self
 
       changeState(Busy)
@@ -70,16 +76,30 @@ abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior
 
       asyncResult.map { res =>
         CompletedUpdateCmd(res, origSender)
+      } recover {
+        case NonFatal(cause) =>
+          log.error(cause, s"Error while processing update command: $cmd")
+          FailedCommand(cause, origSender)
       } pipeTo self
 
       changeState(Busy)
   }
 
+  def handleFailure(failedCmd: FailedCommand): Unit = {
+    failedCmd.origSender ! Status.Failure(failedCmd.cause)
+    changeState(Available)
+  }
+
   private def busy: Receive = {
     case GetState => respond()
+
     case result: CompletedCreationCmd => onSuccessfulCreation(result)
-    case result: CompletedUpdateCmd => handleUpdate(result)
-    case _ => stash()
+    case result: CompletedUpdateCmd   => handleUpdate(result)
+    case failedCmd: FailedCommand     => handleFailure(failedCmd)
+
+    case anyOther =>
+      log.debug(s"received $anyOther while processing another command")
+      stash()
   }
 
   protected def defaultReceive: Receive = {
@@ -115,7 +135,7 @@ abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior
   protected def respond(replyTo: ActorRef = context.sender()): Unit = {
     aggregateRootOpt match {
       case Some(data) => replyTo ! data
-      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case None       => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -261,6 +281,8 @@ abstract class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior
    * Internal representation of a completed update command.
    */
   private case class CompletedUpdateCmd(events: Seq[Protocol#UpdateEvent], origSender: ActorRef)
+
+  private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 
 }
 
