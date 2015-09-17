@@ -22,6 +22,7 @@ case class Customer(name: String,
 case class CustomerId(uuid: UUID = UUID.randomUUID()) extends AggregateUUID
 
 object CustomerId {
+
   def fromIdentifier(id: AggregateIdentifier): CustomerId = CustomerId(UUID.fromString(id.value))
 }
 
@@ -86,14 +87,19 @@ object CustomerProtocol extends ProtocolDef.Protocol {
 
 object Customer {
 
+  val tag = Tags.aggregateTag("customer")
 
   def behavior(id: CustomerId = CustomerId())(implicit ec: ExecutionContext): Behavior[Customer] = {
     import CustomerProtocol._
 
+
+    val metadata = Metadata.metadata(tag)
+
+
     behaviorFor[Customer].whenConstructing { it =>
       it.yieldsEvent {
         case cmd: CreateCustomer =>
-          CustomerCreated(cmd.name, cmd.address, cmd.vatNumber, metadata(id, cmd))
+          CustomerCreated(cmd.name, cmd.address, cmd.vatNumber, metadata(id))
       }
 
       it.acceptsEvents {
@@ -104,27 +110,27 @@ object Customer {
 
       it.yieldsSingleEvent {
 
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
-        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
+        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id))
+        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id))
 
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
-          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
+          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id))
 
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber => VatNumberAdded(cmd.vat, metadata(id, cmd))
-        case (customer, cmd: RemoveVatNumber) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd))
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber    => VatNumberAdded(cmd.vat, metadata(id))
+        case (customer, cmd: RemoveVatNumber) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id))
 
       }
 
       it.acceptsEvents {
         case (customer, e: NameChanged) => customer.copy(name = e.name)
 
-        case (customer, e: AddressStreetChanged) => customer.copy(address = customer.address.copy(street = e.street))
-        case (customer, e: AddressCityChanged) => customer.copy(address = customer.address.copy(city = e.city))
+        case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.copy(street = e.street))
+        case (customer, e: AddressCityChanged)    => customer.copy(address = customer.address.copy(city = e.city))
         case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.copy(country = e.country))
 
-        case (customer, e: VatNumberAdded) => customer.copy(vatNumber = Some(e.vat))
+        case (customer, e: VatNumberAdded)    => customer.copy(vatNumber = Some(e.vat))
         case (customer, e: VatNumberReplaced) => customer.copy(vatNumber = Some(e.vat))
-        case (customer, _: VatNumberRemoved) => customer.copy(vatNumber = None)
+        case (customer, _: VatNumberRemoved)  => customer.copy(vatNumber = None)
       }
     }
   }

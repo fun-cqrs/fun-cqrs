@@ -10,8 +10,8 @@ class CustomerTest extends FunSuite with Matchers {
     new CustomerFixture {
 
       val view =
-        createCustomer("abc", Address(Street("as"), City("Rio"), Country("Brazil")))
-          .changeName("another name")
+        createCustomer("João", Address(Street("Rua Conde de Bonfim"), City("Rio"), Country("Brazil")))
+          .changeName("Paulo")
           .changeStreet(Street("Av. Viera Souto"))
           .view
 

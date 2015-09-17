@@ -52,9 +52,15 @@ object ContractProtocol extends ProtocolDef.Protocol {
 
 object Contract {
 
+
   import ContractProtocol._
 
+  val tag = Tags.aggregateTag("contract")
+
   def behavior(number: ContractNumber): Behavior[Contract] = {
+
+    val metadata = Metadata.metadata(tag)
+
     behaviorFor[Contract].whenConstructing { it =>
 
       it.yieldsEvent {
@@ -65,7 +71,7 @@ object Contract {
             cmd.customerId,
             cmd.startDate,
             cmd.number,
-            metadata(number, cmd)
+            metadata(number)
           )
       }
 

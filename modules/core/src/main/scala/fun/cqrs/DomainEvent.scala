@@ -3,6 +3,7 @@ package fun.cqrs
 import java.time.OffsetDateTime
 import java.util.UUID
 
+
 trait DomainEvent {
 
   def metadata: Metadata
@@ -19,18 +20,31 @@ case class EventId(value: UUID = UUID.randomUUID())
   * - event date
   */
 case class Metadata(aggregateId: AggregateIdentifier,
-                    cmdId: CommandId,
                     eventId: EventId,
                     date: OffsetDateTime,
-                    tags: Seq[Tag])
+                    tags: Set[Tag]) {
 
-
-case class Tag(key: String, value: String)
+  def withTags(tags: Tag*): Metadata = {
+    val tagSet = tags.toSet
+    this.copy(tags = this.tags ++ tagSet)
+  }
+}
 
 
 object Metadata {
 
-  def metadata(aggregateId: AggregateIdentifier, cmdId: CommandId, tags: Tag*): Metadata =
-    Metadata(aggregateId, cmdId, EventId(), OffsetDateTime.now(), tags)
+  def metadata(tag: Tag): AggregateIdentifier => Metadata = { aggregateId =>
+    Metadata(aggregateId, EventId(), OffsetDateTime.now(), Set(tag))
+  }
 }
+
+
+case class Tag(key: String, value: String)
+
+object Tags {
+
+  def aggregateTag(value: String) = Tag("aggregateType", value)
+}
+
+
 

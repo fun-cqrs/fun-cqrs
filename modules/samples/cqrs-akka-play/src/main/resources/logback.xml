@@ -12,9 +12,13 @@
       The logger name is typically the Java/Scala package name.
       This configures the log level to log at for a package and its children packages.
     -->
-    <logger name="play" level="DEBUG"/>
-    <logger name="application" level="DEBUG"/>
+    <logger name="play" level="INFO"/>
+    <logger name="application" level="INFO"/>
 
+
+    <logger name="akka" level="INFO" />
+    <logger name="fun.cqrs" level="DEBUG"/>
+    
     <root level="DEBUG">
         <appender-ref ref="STDOUT"/>
     </root>

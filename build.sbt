@@ -59,6 +59,7 @@ lazy val playApp = Project(
   .dependsOn(funCqrsAkka % "compile->compile;test->test")
 //================================================
 
+addCommandAlias("runPlaySample", "fun-cqrs-akka-play-sample/run")
 
 // contains examples used on the docs, not intended to be released
 lazy val invoiceSample = Project(

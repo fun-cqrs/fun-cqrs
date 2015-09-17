@@ -1,10 +1,8 @@
 package fun.cqrs.dsl
 
-import java.time.OffsetDateTime
+import fun.cqrs.{Aggregate, _}
 
-import fun.cqrs.Aggregate
-import fun.cqrs._
-
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -72,10 +70,10 @@ object BehaviorDsl {
     type UpdateCmdToEvent = PartialFunction[(A, Protocol#UpdateCmd), Protocol#UpdateEvent]
 
     // from Aggregate + Cmd to Future[Seq[UpdateEvent]]
-    type UpdateCmdToEventsFuture = PartialFunction[(A, Protocol#UpdateCmd), Future[Seq[Protocol#UpdateEvent]]]
+    type UpdateCmdToEventsFuture = PartialFunction[(A, Protocol#UpdateCmd), Future[immutable.Seq[Protocol#UpdateEvent]]]
 
     // from Aggregate + Cmd to Seq[UpdateEvent]
-    type UpdateCmdToEvents = PartialFunction[(A, Protocol#UpdateCmd), Seq[Protocol#UpdateEvent]]
+    type UpdateCmdToEvents = PartialFunction[(A, Protocol#UpdateCmd), immutable.Seq[Protocol#UpdateEvent]]
 
     // from Aggregate + Cmd to Exception
     type UpdateCmdToFailure = PartialFunction[(A, Protocol#UpdateCmd), CommandException]
@@ -158,7 +156,7 @@ object BehaviorDsl {
             .getOrElse(Future.failed(refuseCreationalCmds(cmd)))
         }
 
-        def validate(aggregate: A, cmd: Protocol#UpdateCmd)(implicit ec: ExecutionContext): Future[Seq[Protocol#UpdateEvent]] = {
+        def validate(aggregate: A, cmd: Protocol#UpdateCmd)(implicit ec: ExecutionContext): Future[immutable.Seq[Protocol#UpdateEvent]] = {
           acceptUpdateCmds
             .lift(aggregate, cmd)
             .getOrElse(Future.failed(refuseUpdateCmds(aggregate, cmd)))
@@ -180,24 +178,19 @@ object BehaviorDsl {
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
 
 
-  def metadata(aggregateId: AggregateIdentifier, command: DomainCommand, tags: Tag*): Metadata = {
-    Metadata(aggregateId, command.id, EventId(), OffsetDateTime.now(), tags)
-  }
-
-
-  private def mapSeq[A, B](pf: PartialFunction[A, Future[B]])(implicit ec: ExecutionContext): PartialFunction[A, Future[Seq[B]]] = {
-    case e if pf.isDefinedAt(e) => pf(e).map { value => Seq(value) }
+  private def mapSeq[A, B](pf: PartialFunction[A, Future[B]])(implicit ec: ExecutionContext): PartialFunction[A, Future[immutable.Seq[B]]] = {
+    case e if pf.isDefinedAt(e) => pf(e).map { value => immutable.Seq(value) }
   }
 
   private def liftFuture[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Future[B]] = {
     case e if pf.isDefinedAt(e) => Future.fromTry(Try(pf(e)))
   }
 
-  private def liftSeq[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Seq[B]] = {
-    case e if pf.isDefinedAt(e) => Seq(pf(e))
+  private def liftSeq[A, B](pf: PartialFunction[A, B]): PartialFunction[A, immutable.Seq[B]] = {
+    case e if pf.isDefinedAt(e) => immutable.Seq(pf(e))
   }
 
-  private def liftSeqFuture[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Future[Seq[B]]] = liftFuture(liftSeq(pf))
+  private def liftSeqFuture[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Future[immutable.Seq[B]]] = liftFuture(liftSeq(pf))
 
 
 }

@@ -9,5 +9,5 @@ class ProductViewRepo extends InMemoryRepository {
   type Model = ProductView
 
   /** Extract id van Model */
-  def $id(model: ProductView): ProductId = model.identifier
+  protected def $id(model: ProductView): ProductId = model.identifier
 }

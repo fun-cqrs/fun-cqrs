@@ -5,6 +5,7 @@ import akka.pattern.pipe
 import akka.persistence._
 import fun.cqrs.akka.AggregateActor._
 import fun.cqrs.{Aggregate, Behavior, DomainCommand, DomainEvent}
+import scala.collection.immutable
 
 import scala.util.control.NonFatal
 
@@ -173,10 +174,6 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
    * should not perform actions that may fail, such as interacting with external services,
    * for example.
    *
-   * If recovery fails, the actor will be stopped. This can be customized by
-   * handling [[RecoveryFailure]].
-   *
-   * @see [[Recover]]
    */
   override val receiveRecover: Receive = {
 
@@ -190,9 +187,6 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
     case RecoveryCompleted =>
       log.debug(s"aggregate '$persistenceId' has recovered, state = '$state'")
-
-    case RecoveryFailure(t) =>
-      throw new RuntimeException("Recovery failed, will be retried", t)
 
     case event: DomainEvent => onEvent(event)
 
@@ -246,7 +240,9 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
    * - notify the original sender
    */
   private def onSuccessfulCreation(result: CompletedCreationCmd): Unit = {
-    handleEvent(result.event)
+    persist(result.event) { evt =>
+      afterEventPersisted(evt)
+    }
     result.origSender ! SuccessfulCommand(Seq(result.event))
     changeState(Available)
   }
@@ -259,7 +255,9 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
    * - notify the original sender
    */
   private def handleUpdate(result: CompletedUpdateCmd): Unit = {
-    result.events foreach handleEvent
+    persistAll(result.events) { evt =>
+      afterEventPersisted(evt)
+    }
     result.origSender ! SuccessfulCommand(result.events)
     changeState(Available)
   }
@@ -280,7 +278,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
   /**
    * Internal representation of a completed update command.
    */
-  private case class CompletedUpdateCmd(events: Seq[Protocol#UpdateEvent], origSender: ActorRef)
+  private case class CompletedUpdateCmd(events: immutable.Seq[Protocol#UpdateEvent], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 

@@ -12,4 +12,6 @@ trait Repository {
   def save(model: Model)(implicit ec: ExecutionContext): Future[Unit]
 
   def updateById(id: Identifier)(updateFunc: Model => Model)(implicit ec: ExecutionContext): Future[Model]
+
+  def fetchAll(implicit ec: ExecutionContext): Future[Seq[Model]]
 }

@@ -1,5 +1,6 @@
 package fun.cqrs
 
+import scala.collection.immutable
 import scala.concurrent.{Future, ExecutionContext}
 
 trait Behavior[A <: Aggregate] {
@@ -8,7 +9,7 @@ trait Behavior[A <: Aggregate] {
 
   def validate(cmd: Protocol#CreateCmd)(implicit ec: ExecutionContext): Future[Protocol#CreateEvent]
 
-  def validate(aggregate: A, cmd: Protocol#UpdateCmd)(implicit ec: ExecutionContext): Future[Seq[Protocol#UpdateEvent]]
+  def validate(aggregate: A, cmd: Protocol#UpdateCmd)(implicit ec: ExecutionContext): Future[immutable.Seq[Protocol#UpdateEvent]]
 
   def applyEvent(evt: Protocol#CreateEvent): A
 
@@ -22,7 +23,7 @@ trait Behavior[A <: Aggregate] {
    * Apply a list of events to a Aggregate
    * @return the updated Aggregate
    */
-  private final def update(model: A, updateEvents: Seq[Protocol#UpdateEvent]): A =
+  private final def update(model: A, updateEvents: immutable.Seq[Protocol#UpdateEvent]): A =
     updateEvents.foldLeft(model)(applyEvent)
 
 

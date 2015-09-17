@@ -18,7 +18,6 @@ trait InMemoryRepository extends Repository {
 
 
   def updateById(id: Identifier)(updateFunc: (Model) => Model)(implicit ec: ExecutionContext): Future[Model] = {
-
     for {
       model <- find(id)
       updated = updateFunc(model)
@@ -26,6 +25,12 @@ trait InMemoryRepository extends Repository {
     } yield updated
   }
 
+
+  def fetchAll(implicit ec: ExecutionContext): Future[Seq[Model]] = {
+    Future.successful(store.values.toSeq)
+  }
+
   /** Extract id van Model */
-  def $id(model: Model): Identifier
+  protected def $id(model: Model): Identifier
+
 }

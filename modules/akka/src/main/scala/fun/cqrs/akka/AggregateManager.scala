@@ -88,12 +88,15 @@ trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
     val maybeChild = context child aggregateId.value
 
     maybeChild match {
+
       case Some(child) if childrenBeingTerminated contains child =>
         log.debug("Received command for aggregate currently being killed. Adding command to cache.")
         pendingCommands :+= PendingCommand(sender(), aggregateId, command)
-      case Some(child)                                           =>
+
+      case Some(child) =>
         child forward command
-      case None                                                  =>
+
+      case None =>
         val child = create(aggregateId)
         child forward command
     }

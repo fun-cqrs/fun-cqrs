@@ -7,22 +7,18 @@ import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.routing.Router
 import router.Routes
-
-import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 
 class AppApplicationLoader extends ApplicationLoader {
 
   def load(context: Context) = {
     val app = new BuiltInComponentsFromContext(context) with AppComponents
-    app.applicationLifecycle.addStopHook {
-      () => Future.successful(
-      {
-        app.actorSystem.shutdown()
-        app.actorSystem.awaitTermination(10 seconds)
-      }
-      )
+    app.applicationLifecycle.addStopHook { () =>
+      for {
+        _ <- app.actorSystem.terminate()
+        _ <- app.actorSystem.whenTerminated
+      } yield ()
     }
     app.application
   }

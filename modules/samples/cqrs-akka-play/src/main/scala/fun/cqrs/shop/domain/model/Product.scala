@@ -2,13 +2,10 @@ package fun.cqrs.shop.domain.model
 
 import java.util.UUID
 
-
-import fun.cqrs.shop.json.TypedJson.TypeHintFormat
-import fun.cqrs.shop.json.TypedJson._
-import play.api.libs.json.{Reads, Json}
-import fun.cqrs.dsl.BehaviorDsl
-import BehaviorDsl._
 import fun.cqrs._
+import fun.cqrs.dsl.BehaviorDsl._
+import fun.cqrs.shop.json.TypedJson.{TypeHintFormat, _}
+import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
 
@@ -24,6 +21,8 @@ case class ProductId(uuid: UUID = UUID.randomUUID) extends AggregateUUID
 
 object ProductId {
 
+  implicit val format = Json.writes[ProductId]
+
   def fromString(aggregateId: String): ProductId = {
     ProductId(UUID.fromString(aggregateId))
   }
@@ -32,6 +31,7 @@ object ProductId {
     ProductId(UUID.fromString(aggregateId.value))
   }
 }
+
 
 object ProductProtocol extends ProtocolDef.Protocol {
 
@@ -71,9 +71,13 @@ object ProductProtocol extends ProtocolDef.Protocol {
 
 object Product {
 
+  def tag = Tags.aggregateTag("product")
+
   def behavior(id: ProductId = ProductId())(implicit ec: ExecutionContext): Behavior[Product] = {
 
     import ProductProtocol._
+
+    val metadata = Metadata.metadata(tag)
 
     behaviorFor[Product].whenConstructing { it =>
       //---------------------------------------------------------------------------------
@@ -85,7 +89,7 @@ object Product {
             cmd.name,
             cmd.description,
             cmd.price,
-            metadata(id, cmd)
+            metadata(id)
           )
       }
 
@@ -104,12 +108,12 @@ object Product {
       // Update Commands and Events
       it.yieldsSingleEvent {
         // update name
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
+        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id))
       }
 
       it.yieldsSingleEvent {
         // update price
-        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd))
+        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id))
 
       }
 
