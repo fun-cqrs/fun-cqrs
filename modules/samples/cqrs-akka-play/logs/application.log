@@ -1,2 +1,0 @@
-2015-09-18 12:00:22,867 [INFO] from play.core.server.NettyServer in pool-8-thread-9 - Listening for HTTP on /0:0:0:0:0:0:0:0:9000
-2015-09-18 12:00:50,117 [INFO] from play.api.Play in ForkJoinPool-1-worker-1 - Application started (Dev)
