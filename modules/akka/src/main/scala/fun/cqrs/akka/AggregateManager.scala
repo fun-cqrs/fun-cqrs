@@ -2,7 +2,7 @@ package fun.cqrs.akka
 
 import akka.actor._
 import fun.cqrs.akka.AggregateActor.KillAggregate
-import fun.cqrs.{Aggregate, AggregateIdentifier, DomainCommand}
+import fun.cqrs.{Aggregate, AggregateIdentifier, Behavior, DomainCommand}
 
 object AggregateManager {
 
@@ -122,10 +122,14 @@ trait AggregateManager extends Actor with ActorLogging {
     agg
   }
 
+  def behavior(id: AggregateType#Identifier): Behavior[AggregateType]
+
   /**
    * Build Props for a new Aggregate Actor with the passed Id
    */
-  def aggregateActorProps(id: AggregateType#Identifier): Props
+  def aggregateActorProps(id: AggregateType#Identifier): Props = {
+    Props(classOf[AggregateActor[AggregateType]], id, behavior(id))
+  }
 
   private def killChildrenIfNecessary() = {
     val childrenCount = context.children.size - childrenBeingTerminated.size

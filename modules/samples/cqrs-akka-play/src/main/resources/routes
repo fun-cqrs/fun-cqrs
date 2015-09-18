@@ -2,11 +2,19 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-# Home page
-PUT     /product/:id                        fun.cqrs.shop.api.ProductController.create(id:String)
-PATCH   /product/:id                        fun.cqrs.shop.api.ProductController.update(id:String)
-GET     /product/:id                        fun.cqrs.shop.api.ProductController.get(id:String)
-GET     /products                           fun.cqrs.shop.api.ProductController.list
+#==============================================================================================
+# PRODUCT
+
+# WRITE actions on Aggregate side
+PUT     /product/:id                        shop.api.ProductController.create(id:String)
+PATCH   /product/:id                        shop.api.ProductController.update(id:String)
+
+# READ actions on View Model side
+GET     /product/:id                        shop.api.ProductViewController.get(id:String)
+GET     /products                           shop.api.ProductViewController.list
+#===============================================================================================
+
+
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

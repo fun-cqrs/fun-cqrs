@@ -58,7 +58,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
       changeState(Busy)
 
     case cmd: Protocol#UpdateCmd =>
-      sender() ! Status.Failure(new IllegalArgumentException("Not accepting updates, aggregate not yet created"))
+      sender() ! Status.Failure(new NoSuchElementException("Not accepting updates, aggregate not yet created"))
   }
 
 
