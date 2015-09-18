@@ -24,7 +24,7 @@ trait AssignedId {
           .mapTo[SuccessfulCommand]
           .map { result =>
           Created.withHeaders("Location" -> location(result.events.head.metadata.aggregateId.value))
-        }.recover(recoverRest)
+        }
       case e: JsError        => Future.successful(BadRequest(JsError.toJson(e)))
     }
   }

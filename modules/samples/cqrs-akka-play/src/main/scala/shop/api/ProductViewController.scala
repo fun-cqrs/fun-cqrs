@@ -5,7 +5,7 @@ import play.api.mvc.Controller
 import shop.domain.model.{ProductNumber, ProductView}
 import shop.domain.service.ProductViewRepo
 
-class ProductViewController(val viewRepo: ProductViewRepo) extends ViewController with Controller with RestRecovery {
+class ProductViewController(val viewRepo: ProductViewRepo) extends ViewController with Controller {
 
   type ViewRepo = ProductViewRepo
 

@@ -13,7 +13,7 @@ import scala.language.postfixOps
 
 import scala.concurrent.duration._
 
-trait AggregateController extends Controller with RestRecovery {
+trait AggregateController extends Controller {
 
   implicit def timeout: Timeout = Timeout(300 millis)
 
@@ -36,8 +36,9 @@ trait AggregateController extends Controller with RestRecovery {
           .mapTo[SuccessfulCommand]
           .map { _ =>
           Ok("done")
-        }.recover(recoverRest)
-      case e: JsError        => Future.successful(BadRequest(JsError.toJson(e)))
+        }
+
+      case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
     }
 
   }

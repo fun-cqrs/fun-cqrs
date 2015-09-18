@@ -7,7 +7,7 @@ import play.api.mvc.{Action, Controller}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 trait ViewController {
-  this: Controller with RestRecovery =>
+  this: Controller =>
 
   type ViewRepo <: Repository
 
@@ -21,7 +21,7 @@ trait ViewController {
     val viewFuture = viewRepo.find(toAggregateId(id))
     viewFuture.map { view =>
       Ok(Json.toJson(view))
-    }.recover(recoverRest)
+    }
   }
 
   def list = Action.async {

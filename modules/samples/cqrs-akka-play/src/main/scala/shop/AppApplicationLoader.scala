@@ -3,6 +3,7 @@ package shop
 import _root_.controllers.Assets
 import com.softwaremill.macwire.MacwireMacros._
 import shop.api.{ApiModule, AkkaModule}
+import shop.app.RestHttpErrorHandler
 import shop.domain.service.{ServiceModule, ProductModule}
 import play.api.ApplicationLoader.Context
 import play.api._
@@ -31,6 +32,7 @@ trait AppComponents extends BuiltInComponents with ApiModule with ServiceModule 
   lazy val assets: Assets = wire[Assets]
   lazy val router: Router = wire[Routes] withPrefix "/"
 
+  override lazy val httpErrorHandler = new RestHttpErrorHandler
 }
 
 

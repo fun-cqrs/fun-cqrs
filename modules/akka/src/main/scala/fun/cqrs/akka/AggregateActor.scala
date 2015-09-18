@@ -58,7 +58,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
       changeState(Busy)
 
     case cmd: Protocol#UpdateCmd =>
-      sender() ! Status.Failure(new NoSuchElementException("Not accepting updates, aggregate not yet created"))
+      sender() ! Status.Failure(new NoSuchElementException(s"Nothing found for id: $persistenceId"))
   }
 
 
@@ -88,7 +88,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
       changeState(Busy)
 
     case cmd: Protocol#CreateCmd =>
-      sender() ! Status.Failure(new IllegalArgumentException(s"Aggregate already created! ($persistenceId)"))
+      sender() ! Status.Failure(new IllegalArgumentException(s"Aggregate $persistenceId exists already!"))
   }
 
   def handleFailure(failedCmd: FailedCommand): Unit = {
