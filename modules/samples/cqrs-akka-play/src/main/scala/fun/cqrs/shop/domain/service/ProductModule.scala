@@ -2,7 +2,7 @@ package fun.cqrs.shop.domain.service
 
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
-import fun.cqrs.shop.api.AkkaModule
+import fun.cqrs.shop.api.{ProductController, AkkaModule}
 import fun.cqrs.shop.domain.model.Product
 
 
@@ -24,4 +24,7 @@ trait ProductModule {
     actorSystem
       .actorOf(Props(classOf[ProductViewProjectionActor], productViewProjection), "productViewProjectionActor")
   }
+
+
+  val productController = wire[ProductController]
 }

@@ -1,15 +1,16 @@
 package fun.cqrs.shop.domain.service
 
-import com.typesafe.scalalogging.LazyLogging
 import fun.cqrs.shop.domain.model.ProductProtocol.{NameChanged, PriceChanged, ProductCreated, ProductUpdateEvent}
-import fun.cqrs.shop.domain.model.{ProductId, ProductProtocol, ProductView}
+import fun.cqrs.shop.domain.model.{ProductNumber, ProductProtocol, ProductView}
 import fun.cqrs.{HandleEvent, Projection}
+import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyLogging {
+class ProductViewProjection(repo: ProductViewRepo) extends Projection {
 
+  val logger = Logger("cqrs.projection.productView")
 
   def receiveEvent: HandleEvent = {
     case e: ProductCreated                     => create(e)
@@ -18,12 +19,12 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyL
 
   def create(e: ProductCreated): Future[Unit] = {
     logger.debug(s"Creating product $e")
-    val id = ProductId.fromAggregateId(e.metadata.aggregateId)
+    val id = ProductNumber.fromAggregateId(e.metadata.aggregateId)
     repo.save(ProductView(e.name, e.description, e.price, id))
   }
 
   def update(e: ProductUpdateEvent): Future[Unit] = {
-    val id = ProductId.fromAggregateId(e.metadata.aggregateId)
+    val id = ProductNumber.fromAggregateId(e.metadata.aggregateId)
     logger.debug(s"Updating product $e")
 
     repo.updateById(id) { prod =>

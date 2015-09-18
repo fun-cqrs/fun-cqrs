@@ -11,7 +11,7 @@ class ProductTest extends FlatSpec with Matchers with FutureTry with TryValues {
 
   behavior of "A Product.Behavior"
 
-  val productBehavior = Product.behavior(ProductId())
+  val productBehavior = Product.behavior(ProductNumber())
 
   it should "produce a ProductCreated event when validating a valid CreateProduct command" in {
 

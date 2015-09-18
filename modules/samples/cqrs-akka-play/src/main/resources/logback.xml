@@ -1,26 +1,42 @@
+<!--
+  ~ Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
+  -->
+<!-- The default logback configuration that Play uses if no other configuration is provided -->
 <configuration>
 
     <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel"/>
 
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>target/logs/application.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ALL</level>
+        </filter>
         <encoder>
-            <pattern>%coloredLevel - %logger - %message%n%xException</pattern>
+            <pattern>[%level] %date - %logger{15} in %thread{10} - %message%n%xException</pattern>
         </encoder>
     </appender>
 
-    <!--
-      The logger name is typically the Java/Scala package name.
-      This configures the log level to log at for a package and its children packages.
-    -->
-    <logger name="play" level="INFO"/>
-    <logger name="application" level="INFO"/>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%coloredLevel %logger{15} - %message%n%xException{10}</pattern>
+        </encoder>
+    </appender>
 
+    <appender name="ASYNCFILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+    </appender>
 
-    <logger name="akka" level="INFO" />
-    <logger name="fun.cqrs" level="DEBUG"/>
-    
-    <root level="DEBUG">
+    <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
         <appender-ref ref="STDOUT"/>
+    </appender>
+
+    <logger name="play" level="INFO"/>
+    <logger name="application" level="DEBUG"/>
+    <logger name="fun.cqrs" level="DEBUG"/>
+
+    <root level="WARN">
+        <appender-ref ref="ASYNCFILE"/>
+        <appender-ref ref="ASYNCSTDOUT"/>
     </root>
 
 </configuration>

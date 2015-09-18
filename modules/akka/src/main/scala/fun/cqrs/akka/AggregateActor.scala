@@ -57,6 +57,8 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
       changeState(Busy)
 
+    case cmd: Protocol#UpdateCmd =>
+      sender() ! Status.Failure(new IllegalArgumentException("Not accepting updates, aggregate not yet created"))
   }
 
 
@@ -84,6 +86,9 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
       } pipeTo self
 
       changeState(Busy)
+
+    case cmd: Protocol#CreateCmd =>
+      sender() ! Status.Failure(new IllegalArgumentException(s"Aggregate already created! ($persistenceId)"))
   }
 
   def handleFailure(failedCmd: FailedCommand): Unit = {

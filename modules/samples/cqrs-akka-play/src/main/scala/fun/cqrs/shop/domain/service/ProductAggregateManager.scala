@@ -1,23 +1,24 @@
 package fun.cqrs.shop.domain.service
 
 import akka.actor.Props
-import fun.cqrs.akka.{AggregateActor, AggregateManager}
-import fun.cqrs.shop.domain.model.{Product, ProductId}
+import fun.cqrs.akka.{AssignedAggregateId, AggregateActor, AggregateManager}
+import fun.cqrs.shop.domain.model.{Product, ProductNumber}
 
-class ProductAggregateManager extends AggregateManager[Product] {
+class ProductAggregateManager extends AggregateManager with AssignedAggregateId {
 
-  def generateId: ProductId = ProductId()
+  type AggregateType = Product
 
   /**
    * Build Props for a new Aggregate Actor with the passed Id
    */
-  def aggregateActorProps(id: ProductId): Props = {
+  def aggregateActorProps(id: ProductNumber): Props = {
 
     // NOTE: behavior needs a ExecutionContext and we don't want to pass context.dispatcher
     import scala.concurrent.ExecutionContext.Implicits.global
 
     Props(classOf[AggregateActor[Product]], id, Product.behavior(id))
   }
+
 
 }
 

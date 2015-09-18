@@ -3,7 +3,7 @@ package fun.cqrs.shop.api
 import akka.actor.ActorRef
 import akka.util.Timeout
 import com.softwaremill.macwire._
-import fun.cqrs.shop.domain.model.{Product, ProductId, ProductProtocol}
+import fun.cqrs.shop.domain.model.{ProductNumber, Product, ProductProtocol}
 import fun.cqrs.shop.domain.service.ProductViewRepo
 import play.api.libs.json.{Json, JsValue}
 import play.api.mvc.Action
@@ -13,7 +13,10 @@ import scala.language.postfixOps
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ProductController(val aggregateManager: ActorRef @@ Product.type, productViewRepo: ProductViewRepo)
-  extends AggregateController[Product] {
+  extends AggregateController with AssignedId {
+
+  type AggregateType = Product
+
 
   implicit def timeout: Timeout = Timeout(300 millis)
 
@@ -23,10 +26,10 @@ class ProductController(val aggregateManager: ActorRef @@ Product.type, productV
 
   def location(id: String): String = s"/product/$id"
 
-  def toAggregateId(id: String): ProductId = ProductId.fromString(id)
+  def toAggregateId(id: String): ProductNumber = ProductNumber.fromString(id)
 
   def get(id: String) = Action.async {
-    val productViewRes = productViewRepo.find(ProductId.fromString(id))
+    val productViewRes = productViewRepo.find(ProductNumber.fromString(id))
     productViewRes.map { productView =>
       Ok(Json.toJson(productView))
     }

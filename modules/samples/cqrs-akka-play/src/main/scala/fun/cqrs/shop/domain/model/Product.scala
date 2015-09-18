@@ -9,26 +9,30 @@ import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
 
-case class Product(name: String, description: String, price: Double, identifier: ProductId) extends Aggregate {
+case class Product(name: String, description: String, price: Double, identifier: ProductNumber) extends Aggregate {
 
-  type Identifier = ProductId
+  type Identifier = ProductNumber
 
   type Protocol = ProductProtocol.type
 
 }
 
-case class ProductId(uuid: UUID = UUID.randomUUID) extends AggregateUUID
+case class ProductNumber(number: String) extends AggregateIdentifier {
 
-object ProductId {
+  val value = number
+}
 
-  implicit val format = Json.writes[ProductId]
+object ProductNumber {
 
-  def fromString(aggregateId: String): ProductId = {
-    ProductId(UUID.fromString(aggregateId))
+
+  implicit val format = Json.writes[ProductNumber]
+
+  def fromAggregateId(aggregateId: AggregateIdentifier) = {
+    ProductNumber(aggregateId.value)
   }
 
-  def fromAggregateId(aggregateId: AggregateIdentifier): ProductId = {
-    ProductId(UUID.fromString(aggregateId.value))
+  def fromString(aggregateId: String): ProductNumber = {
+    ProductNumber(aggregateId)
   }
 }
 
@@ -73,7 +77,7 @@ object Product {
 
   def tag = Tags.aggregateTag("product")
 
-  def behavior(id: ProductId = ProductId())(implicit ec: ExecutionContext): Behavior[Product] = {
+  def behavior(id: ProductNumber)(implicit ec: ExecutionContext): Behavior[Product] = {
 
     import ProductProtocol._
 

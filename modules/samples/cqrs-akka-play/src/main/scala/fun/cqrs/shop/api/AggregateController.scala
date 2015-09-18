@@ -12,33 +12,18 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 
 
-trait AggregateController[A <: Aggregate] extends Controller {
+trait AggregateController extends Controller {
 
   implicit def timeout: Timeout
+
+  type AggregateType <: Aggregate
 
   def aggregateManager: ActorRef
 
   def toCommand(jsValue: JsValue): JsResult[DomainCommand]
 
-  def location(id: String): String
+  def toAggregateId(id: String): AggregateType#Identifier
 
-  def toAggregateId(id: String): A#Identifier
-
-  def create = Action.async(parse.json) { request =>
-
-    val createCmd = toCommand(request.body)
-
-    createCmd match {
-      case JsSuccess(cmd, _) =>
-        (aggregateManager ? cmd)
-          .mapTo[SuccessfulCommand]
-          .map { result =>
-          Created.withHeaders("Location" -> location(result.events.head.metadata.aggregateId.value))
-        }
-      case e: JsError        => Future.successful(BadRequest(JsError.toJson(e)))
-    }
-
-  }
 
   def update(id: String) = Action.async(parse.json) { request =>
 

@@ -19,14 +19,15 @@ object AggregateManager {
  * Handles communication between client and aggregate.
  * It is also capable of aggregates creation and removal.
  */
-trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
+trait AggregateManager extends Actor with ActorLogging {
 
   import AggregateManager._
 
   import scala.collection.immutable._
 
+  type AggregateType <: Aggregate
 
-  case class PendingCommand(sender: ActorRef, targetProcessorId: A#Identifier, command: DomainCommand)
+  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Identifier, command: DomainCommand)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
@@ -39,18 +40,23 @@ trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
    */
   def processCommand: Receive = PartialFunction.empty
 
-  override def receive: PartialFunction[Any, Unit] = processCommand orElse defaultProcessCommand
+  override def receive: PartialFunction[Any, Unit] = {
+    processCommand orElse
+      processCreation orElse
+      processUpdate orElse
+      defaultProcessCommand
+  }
 
-  def generateId: A#Identifier
+  def processCreation: Receive
 
+  def processUpdate: Receive = {
+    case (id: AggregateType#Identifier@unchecked, cmd: AggregateType#Protocol#UpdateCmd) => processAggregateCommand(id, cmd)
+  }
 
   private def defaultProcessCommand: Receive = {
 
     case Terminated(actor)             => handleTermination(actor)
     case AggregateManager.GetState(id) => getState(id.value)
-
-    case cmd: A#Protocol#CreateCmd                               => processAggregateCommand(generateId, cmd)
-    case (id: A#Identifier@unchecked, cmd: A#Protocol#UpdateCmd) => processAggregateCommand(id, cmd)
 
     case x => sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
@@ -83,7 +89,7 @@ trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
    * @param aggregateId Aggregate id
    * @param command DomainCommand that should be passed to aggregate
    */
-  def processAggregateCommand(aggregateId: A#Identifier, command: DomainCommand): Unit = {
+  def processAggregateCommand(aggregateId: AggregateType#Identifier, command: DomainCommand): Unit = {
 
     val maybeChild = context child aggregateId.value
 
@@ -102,13 +108,13 @@ trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
     }
   }
 
-  protected def findOrCreate(id: A#Identifier): ActorRef =
+  protected def findOrCreate(id: AggregateType#Identifier): ActorRef =
     context.child(id.value) getOrElse {
       log.debug(s"creating $id")
       create(id)
     }
 
-  protected def create(id: A#Identifier): ActorRef = {
+  protected def create(id: AggregateType#Identifier): ActorRef = {
     killChildrenIfNecessary()
     log.debug(s"creating $id")
     val agg = context.actorOf(aggregateActorProps(id), id.value)
@@ -119,7 +125,7 @@ trait AggregateManager[A <: Aggregate] extends Actor with ActorLogging {
   /**
    * Build Props for a new Aggregate Actor with the passed Id
    */
-  def aggregateActorProps(id: A#Identifier): Props
+  def aggregateActorProps(id: AggregateType#Identifier): Props
 
   private def killChildrenIfNecessary() = {
     val childrenCount = context.children.size - childrenBeingTerminated.size
