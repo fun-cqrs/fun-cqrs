@@ -6,8 +6,7 @@ import play.api.mvc.{Action, Controller}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-trait ViewController {
-  this: Controller =>
+trait QueryController extends Controller {
 
   type ViewRepo <: Repository
 

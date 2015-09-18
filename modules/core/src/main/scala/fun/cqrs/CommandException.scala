@@ -1,3 +1,3 @@
 package fun.cqrs
 
-class CommandException(msg: String) extends IllegalArgumentException(msg)
+class CommandException(msg: String) extends RuntimeException(msg)

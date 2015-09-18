@@ -13,7 +13,7 @@ import scala.language.postfixOps
 
 import scala.concurrent.duration._
 
-trait AggregateController extends Controller {
+trait CommandController extends Controller {
 
   implicit def timeout: Timeout = Timeout(300 millis)
 

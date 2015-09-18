@@ -8,8 +8,8 @@ import shop.domain.model.{Product, ProductNumber, ProductProtocol}
 
 import scala.language.postfixOps
 
-class ProductController(val aggregateManager: ActorRef @@ Product.type)
-  extends AggregateController with AssignedId {
+class ProductCmdController(val aggregateManager: ActorRef @@ Product.type)
+  extends CommandController with AssignedId {
 
   type AggregateType = Product
 

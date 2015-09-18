@@ -5,6 +5,11 @@ import shop.domain.service.ServiceModule
 
 trait ApiModule extends ServiceModule {
 
-  val productController = wire[ProductController]
-  val productViewController = wire[ProductViewController]
+  val productCmdController = wire[ProductCmdController]
+  val productQueryController = wire[ProductQueryController]
+
+  val customerCmdController = wire[CustomerCmdController]
+  val customerQueryController = wire[CustomerQueryController]
+
+  val orderCmdController = wire[OrderCmdController]
 }

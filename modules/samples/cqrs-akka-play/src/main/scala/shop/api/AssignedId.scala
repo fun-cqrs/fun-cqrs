@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import akka.pattern._
 
 trait AssignedId {
-  this: AggregateController =>
+  this: CommandController =>
 
 
   def location(id: String): String

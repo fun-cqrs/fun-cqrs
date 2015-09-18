@@ -24,8 +24,7 @@ case class ProductNumber(number: String) extends AggregateIdentifier {
 
 object ProductNumber {
 
-
-  implicit val format = Json.writes[ProductNumber]
+  implicit val format = Json.format[ProductNumber]
 
   def fromAggregateId(aggregateId: AggregateIdentifier) = {
     ProductNumber(aggregateId.value)
@@ -65,17 +64,19 @@ object ProductProtocol extends ProtocolDef.Protocol {
   case class PriceChanged(newPrice: Double, metadata: Metadata) extends ProductUpdateEvent
 
   // play-json formats for commands
-  implicit val commandsFormat = TypeHintFormat[ProductCommand](
-    Json.format[CreateProduct].withTypeHint("Product.Create"),
-    Json.format[ChangeName].withTypeHint("Product.ChangeName"),
-    Json.format[ChangePrice].withTypeHint("Product.ChangePrice")
-  )
+  implicit val commandsFormat = {
+    TypeHintFormat[ProductCommand](
+      Json.format[CreateProduct].withTypeHint("Product.Create"),
+      Json.format[ChangeName].withTypeHint("Product.ChangeName"),
+      Json.format[ChangePrice].withTypeHint("Product.ChangePrice")
+    )
+  }
 
 }
 
 object Product {
 
-  def tag = Tags.aggregateTag("product")
+  val tag = Tags.aggregateTag("product")
 
   def behavior(id: ProductNumber)(implicit ec: ExecutionContext): Behavior[Product] = {
 

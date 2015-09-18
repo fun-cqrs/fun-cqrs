@@ -5,7 +5,7 @@ import play.api.mvc.Controller
 import shop.domain.model.{ProductNumber, ProductView}
 import shop.domain.service.ProductViewRepo
 
-class ProductViewController(val viewRepo: ProductViewRepo) extends ViewController with Controller {
+class ProductQueryController(val viewRepo: ProductViewRepo) extends QueryController with Controller {
 
   type ViewRepo = ProductViewRepo
 

@@ -3,11 +3,14 @@ package shop.domain.model
 import java.util.UUID
 import fun.cqrs._
 import fun.cqrs.dsl.BehaviorDsl._
-
+import fun.cqrs.json.TypedJson.TypeHintFormat
+import fun.cqrs.json.TypedJson._
+import play.api.libs.json.Json
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 
 case class Customer(name: String,
-                    address: Address,
+                    address: Option[Address],
                     vatNumber: Option[VAT],
                     identifier: CustomerId) extends Aggregate {
 
@@ -23,46 +26,97 @@ case class CustomerId(uuid: UUID = UUID.randomUUID()) extends AggregateUUID
 
 object CustomerId {
 
-  def fromIdentifier(id: AggregateIdentifier): CustomerId = CustomerId(UUID.fromString(id.value))
+  implicit val formatCustomerId = Json.format[CustomerId]
+
+  def fromIdentifier(id: AggregateIdentifier): CustomerId = CustomerId.fromString(id.value)
+
+  def fromString(aggregateId: String): CustomerId = {
+    CustomerId(UUID.fromString(aggregateId))
+  }
 }
 
 // needs validation checks
-case class VAT(number: String) extends AnyVal
+case class VAT(number: String)
+
+object VAT {
+  implicit val formatVAT = Json.format[VAT]
+}
+
+case class Street(name: String)
+
+object Street {
+
+  implicit val formatStreet = Json.format[Street]
+
+}
+
+case class City(name: String)
+
+object City {
+  implicit val formatCity = Json.format[City]
+}
+
+case class Country(name: String)
+
+object Country {
+  implicit val formatCountry = Json.format[Country]
+}
 
 case class Address(street: Street, city: City, country: Country)
 
-case class Street(name: String) extends AnyVal
+object Address {
+  implicit val formatAddress = Json.format[Address]
+}
 
-case class City(name: String) extends AnyVal
-
-case class Country(name: String) extends AnyVal
 
 object CustomerProtocol extends ProtocolDef.Protocol {
 
+
+  sealed trait CustomerCommand extends DomainCommand
+
   // Creation Commands
-  case class CreateCustomer(name: String, address: Address, vatNumber: Option[VAT] = None) extends CreateCmd
+  case class CreateCustomer(name: String, vatNumber: Option[VAT] = None) extends CustomerCommand with CreateCmd
 
 
   // Update Commands
-  case class ChangeName(name: String) extends UpdateCmd
+  case class ChangeName(name: String) extends CustomerCommand with UpdateCmd
 
-  case class ChangeAddressStreet(street: Street) extends UpdateCmd
+  case class AddAddress(address: Address) extends CustomerCommand with UpdateCmd
 
-  case class ChangeAddressCity(city: City) extends UpdateCmd
+  case class ChangeAddressStreet(street: Street) extends CustomerCommand with UpdateCmd
 
-  case class ChangeAddressCountry(country: Country) extends UpdateCmd
+  case class ChangeAddressCity(city: City) extends CustomerCommand with UpdateCmd
 
-  case class AddVatNumber(vat: VAT) extends UpdateCmd
+  case class ChangeAddressCountry(country: Country) extends CustomerCommand with UpdateCmd
 
-  case class RemoveVatNumber(override val id: CommandId = CommandId()) extends UpdateCmd
+  case class AddVatNumber(vat: VAT) extends CustomerCommand with UpdateCmd
 
-  case class ReplaceVatNumber(vat: VAT) extends UpdateCmd
+  case class RemoveVatNumber(bool: Boolean = true) extends CustomerCommand with UpdateCmd
+
+  case class ReplaceVatNumber(vat: VAT) extends CustomerCommand with UpdateCmd
+
+  val commandsFormat = {
+
+    implicit val formatCommandId = Json.format[CommandId]
+
+
+    TypeHintFormat[CustomerCommand](
+      Json.format[CreateCustomer].withTypeHint("Customer.Create"),
+      Json.format[ChangeName].withTypeHint("Customer.ChangeName"),
+      Json.format[AddAddress].withTypeHint("Customer.AddAddress"),
+      Json.format[ChangeAddressStreet].withTypeHint("Customer.ChangeAddressStreet"),
+      Json.format[ChangeAddressCity].withTypeHint("Customer.ChangeAddressCity"),
+      Json.format[AddVatNumber].withTypeHint("Customer.AddVatNumber"),
+      Json.format[RemoveVatNumber].withTypeHint("Customer.RemoveVatNumber"),
+      Json.format[ReplaceVatNumber].withTypeHint("Customer.ReplaceVatNumber")
+    )
+  }
+
 
   // Creation Event
   sealed trait CustomerCreateEvent extends CreateEvent
 
   case class CustomerCreated(name: String,
-                             address: Address,
                              vatNumber: Option[VAT],
                              metadata: Metadata) extends CustomerCreateEvent
 
@@ -98,12 +152,12 @@ object Customer {
     behaviorFor[Customer].whenConstructing { it =>
       it.yieldsEvent {
         case cmd: CreateCustomer =>
-          CustomerCreated(cmd.name, cmd.address, cmd.vatNumber, metadata(id))
+          CustomerCreated(cmd.name, cmd.vatNumber, metadata(id))
       }
 
       it.acceptsEvents {
         case e: CustomerCreated =>
-          Customer(e.name, e.address, e.vatNumber, id)
+          Customer(e.name, address = None, e.vatNumber, id)
       }
 
     }.whenUpdating { it =>
@@ -121,12 +175,21 @@ object Customer {
 
       }
 
+      it.yieldsManyEvents {
+        case (_, cmd: AddAddress) =>
+          immutable.Seq(
+            AddressStreetChanged(cmd.address.street, metadata(id)),
+            AddressCityChanged(cmd.address.city, metadata(id)),
+            AddressCountryChanged(cmd.address.country, metadata(id))
+          )
+      }
+
       it.acceptsEvents {
         case (customer, e: NameChanged) => customer.copy(name = e.name)
 
-        case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.copy(street = e.street))
-        case (customer, e: AddressCityChanged)    => customer.copy(address = customer.address.copy(city = e.city))
-        case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.copy(country = e.country))
+        case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.map(_.copy(street = e.street)))
+        case (customer, e: AddressCityChanged)    => customer.copy(address = customer.address.map(_.copy(city = e.city)))
+        case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.map(_.copy(country = e.country)))
 
         case (customer, e: VatNumberAdded)    => customer.copy(vatNumber = Some(e.vat))
         case (customer, e: VatNumberReplaced) => customer.copy(vatNumber = Some(e.vat))

@@ -15,9 +15,12 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
 
 
   def receiveEvent = {
-    case evt: CustomerCreated      => createView(evt)
-    case evt: AddressStreetChanged => updateById(evt)(_.copy(street = evt.street))
-    case evt: NameChanged          => updateById(evt)(_.copy(name = evt.name))
+    case evt: CustomerCreated       => createView(evt)
+    case evt: AddVatNumber          => updateById(evt)(_.copy(vatNumber = Some(evt.vat)))
+    case evt: AddressStreetChanged  => updateById(evt)(_.copy(street = Some(evt.street)))
+    case evt: AddressCityChanged    => updateById(evt)(_.copy(city = Some(evt.city)))
+    case evt: AddressCountryChanged => updateById(evt)(_.copy(country = Some(evt.country)))
+    case evt: NameChanged           => updateById(evt)(_.copy(name = evt.name))
   }
 
   private def updateById(evt: DomainEvent)(updateFunc: CustomerView => CustomerView): Future[Unit] = {
@@ -29,9 +32,9 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
     customerViewRepo.save(
       CustomerView(
         name = customerCreated.name,
-        street = customerCreated.address.street,
-        city = customerCreated.address.city,
-        country = customerCreated.address.country,
+        street = None,
+        city = None,
+        country = None,
         vatNumber = customerCreated.vatNumber,
         identifier = customerId(customerCreated)
       )
