@@ -1,14 +1,15 @@
 
 
-shop.order.Get() {
+get.Order() {
   shop.api.get order/$1
 }
 
-shop.order.List() {
+
+list.Orders() {
   shop.api.get orders
 }
 
-shop.order.Create() {
+create.Order() {
 	cat << EOF > last.json
 {
   "customerId": { "uuid" : "$1" },
@@ -18,7 +19,7 @@ EOF
     shop.api.post order
 }
 
-shop.order.AddProduct() {
+order.AddProduct() {
 cat << EOF > last.json
 {
   "productNumber": { "number": "$2" },
@@ -29,7 +30,7 @@ EOF
   shop.api.patch order/$1
 }
 
-shop.order.RemoveProduct() {
+order.RemoveProduct() {
 cat << EOF > last.json
 {
   "productNumber": { "number": "$2" },

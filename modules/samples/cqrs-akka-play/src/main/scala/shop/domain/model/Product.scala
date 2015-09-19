@@ -1,7 +1,5 @@
 package shop.domain.model
 
-import java.util.UUID
-
 import fun.cqrs._
 import fun.cqrs.dsl.BehaviorDsl._
 import fun.cqrs.json.TypedJson.{TypeHintFormat, _}
@@ -9,18 +7,21 @@ import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
 
-case class Product(name: String, description: String, price: Double, identifier: ProductNumber) extends Aggregate {
+// tag::prod[]
+case class Product(name: String, 
+                   description: String, 
+                   price: Double, 
+                   identifier: ProductNumber) extends Aggregate {
 
   type Identifier = ProductNumber
-
   type Protocol = ProductProtocol.type
 
 }
 
 case class ProductNumber(number: String) extends AggregateIdentifier {
-
   val value = number
 }
+// end::prod[]
 
 object ProductNumber {
 
@@ -35,7 +36,7 @@ object ProductNumber {
   }
 }
 
-
+//tag::protocol[]
 object ProductProtocol extends ProtocolDef.Protocol {
 
   sealed trait ProductCommand extends DomainCommand
@@ -49,20 +50,19 @@ object ProductProtocol extends ProtocolDef.Protocol {
   case class ChangePrice(price: Double) extends ProductCommand with UpdateCmd
 
 
-  // Creation Event
-  sealed trait ProductCreateEvent extends CreateEvent
+  sealed trait ProductEvent extends DomainEvent
 
   case class ProductCreated(name: String, description: String, price: Double,
-                            metadata: Metadata) extends ProductCreateEvent
-
+                            metadata: Metadata) extends ProductEvent with CreateEvent
 
   // Update Events
-  sealed trait ProductUpdateEvent extends UpdateEvent
+  sealed trait ProductUpdateEvent extends ProductEvent with UpdateEvent
 
   case class NameChanged(newName: String, metadata: Metadata) extends ProductUpdateEvent
 
   case class PriceChanged(newPrice: Double, metadata: Metadata) extends ProductUpdateEvent
-
+//end::protocol[]
+ 
   // play-json formats for commands
   implicit val commandsFormat = {
     TypeHintFormat[ProductCommand](
@@ -73,7 +73,6 @@ object ProductProtocol extends ProtocolDef.Protocol {
   }
 
 }
-
 object Product {
 
   val tag = Tags.aggregateTag("product")
@@ -82,7 +81,7 @@ object Product {
 
     import ProductProtocol._
 
-    val metadata = Metadata.metadata(tag)
+    val metadata = Metadata.metadata(tag, Order.dependentView)
 
     behaviorFor[Product].whenConstructing { it =>
       //---------------------------------------------------------------------------------

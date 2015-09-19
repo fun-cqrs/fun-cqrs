@@ -113,15 +113,17 @@ object CustomerProtocol extends ProtocolDef.Protocol {
   }
 
 
+  sealed trait CustomerEvent extends DomainEvent
+
   // Creation Event
-  sealed trait CustomerCreateEvent extends CreateEvent
+  sealed trait CustomerCreateEvent extends CustomerEvent with CreateEvent
 
   case class CustomerCreated(name: String,
                              vatNumber: Option[VAT],
                              metadata: Metadata) extends CustomerCreateEvent
 
   // Update Events
-  sealed trait CustomerUpdateEvent extends UpdateEvent
+  sealed trait CustomerUpdateEvent extends CustomerEvent with UpdateEvent
 
   case class NameChanged(name: String, metadata: Metadata) extends CustomerUpdateEvent
 
@@ -147,7 +149,7 @@ object Customer {
     import CustomerProtocol._
 
 
-    val metadata = Metadata.metadata(tag)
+    val metadata = Metadata.metadata(tag, Order.dependentView)
 
     behaviorFor[Customer].whenConstructing { it =>
       it.yieldsEvent {

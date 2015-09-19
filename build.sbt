@@ -20,7 +20,7 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   )
-) aggregate(funCqrs, funCqrsAkka, invoiceSample, playApp)
+) aggregate(funCqrs, funCqrsAkka, playApp)
 
 
 // Core ==========================================
@@ -60,16 +60,6 @@ lazy val playApp = Project(
 //================================================
 
 addCommandAlias("runPlaySample", "fun-cqrs-akka-play-sample/run")
-
-// contains examples used on the docs, not intended to be released
-lazy val invoiceSample = Project(
-  id = "fun-cqrs-invoices-sample",
-  base = file("modules/samples/invoices"),
-  settings = Seq(
-    publishArtifact := false
-  ) ++ mainDeps
-) dependsOn (funCqrs % "compile->compile;test->test")
-//================================================
 
 
 //@formatter:on

@@ -12,4 +12,5 @@ trait ApiModule extends ServiceModule {
   val customerQueryController = wire[CustomerQueryController]
 
   val orderCmdController = wire[OrderCmdController]
+  val orderQueryController = wire[OrderQueryController]
 }

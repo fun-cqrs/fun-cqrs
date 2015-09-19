@@ -1,5 +1,8 @@
 package fun.cqrs
 
+import com.typesafe.scalalogging.LazyLogging
+import org.slf4j.LoggerFactory
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -7,11 +10,14 @@ trait InMemoryRepository extends Repository {
 
   private var store: Map[Identifier, Model] = Map()
 
+  val logger = LoggerFactory.getLogger(classOf[InMemoryRepository])
+
   def find(id: Identifier)(implicit ec: ExecutionContext): Future[Model] = {
     Future.fromTry(Try(store(id)))
   }
 
   def save(model: Model)(implicit ec: ExecutionContext): Future[Unit] = {
+    logger.debug(s"saving $model")
     store = store + ($id(model) -> model)
     Future.successful(())
   }
@@ -22,11 +28,16 @@ trait InMemoryRepository extends Repository {
       model <- find(id)
       updated = updateFunc(model)
       _ <- save(updated)
-    } yield updated
+    } yield {
+      logger.debug(s"updated $updated")
+      updated
+    }
   }
 
 
   def fetchAll(implicit ec: ExecutionContext): Future[Seq[Model]] = {
+    val all = store.values.toSeq
+    all.foreach { s => logger.debug(s"found item $s") }
     Future.successful(store.values.toSeq)
   }
 

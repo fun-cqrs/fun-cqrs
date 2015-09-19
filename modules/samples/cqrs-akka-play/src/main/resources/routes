@@ -36,8 +36,8 @@ POST    /order                              shop.api.OrderCmdController.create
 PATCH   /order/:id                          shop.api.OrderCmdController.update(id:String)
 
 # READ actions on View Model side
-#GET     /customer/:id                        shop.api.CustomerQueryController.get(id:String)
-#GET     /customers                           shop.api.CustomerQueryController.list
+GET     /order/:id                          shop.api.OrderQueryController.get(id:String)
+GET     /orders                             shop.api.OrderQueryController.list
 #===============================================================================================
 
 # Map static resources from the /public folder to the /assets URL path

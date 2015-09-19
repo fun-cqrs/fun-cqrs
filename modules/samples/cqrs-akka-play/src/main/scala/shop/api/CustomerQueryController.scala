@@ -3,8 +3,9 @@ package shop.api
 import play.api.libs.json.Writes
 import shop.domain.model.{CustomerView, CustomerId}
 import shop.domain.service.CustomerViewRepo
+import com.softwaremill.macwire._
 
-class CustomerQueryController(val viewRepo: CustomerViewRepo) extends QueryController {
+class CustomerQueryController(val viewRepo: CustomerViewRepo @@ CustomerView.type) extends QueryController {
 
   type ViewRepo = CustomerViewRepo
 

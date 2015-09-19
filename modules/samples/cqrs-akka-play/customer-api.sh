@@ -1,14 +1,14 @@
 
 
-shop.customer.Get() {
+get.Customer() {
   shop.api.get customer/$1
 }
 
-shop.customer.List() {
+list.Customers() {
   shop.api.get customers
 }
 
-shop.customer.Create() {
+create.Customer() {
 	cat << EOF > last.json
 {
   "name": "$1",
@@ -18,7 +18,7 @@ EOF
     shop.api.post customer
 }
 
-shop.customer.AddVatNumber() {
+customer.AddVatNumber() {
 cat << EOF > last.json
 {
   "vat": { "number" : "$2" },
@@ -29,7 +29,7 @@ EOF
   shop.api.patch customer/$1
 }
 
-shop.customer.AddAddress() {
+customer.AddAddress() {
 cat << EOF > last.json
 {
   "address" : {

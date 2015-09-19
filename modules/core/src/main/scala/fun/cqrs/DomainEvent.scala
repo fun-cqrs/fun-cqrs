@@ -33,8 +33,8 @@ case class Metadata(aggregateId: AggregateIdentifier,
 
 object Metadata {
 
-  def metadata(tag: Tag): AggregateIdentifier => Metadata = { aggregateId =>
-    Metadata(aggregateId, EventId(), OffsetDateTime.now(), Set(tag))
+  def metadata(tags: Tag*): AggregateIdentifier => Metadata = { aggregateId =>
+    Metadata(aggregateId, EventId(), OffsetDateTime.now(), tags.toSet)
   }
 }
 
@@ -44,6 +44,8 @@ case class Tag(key: String, value: String)
 object Tags {
 
   def aggregateTag(value: String) = Tag("aggregateType", value)
+
+  def dependentViews(value: String) = Tag("dependentViews", value)
 }
 
 

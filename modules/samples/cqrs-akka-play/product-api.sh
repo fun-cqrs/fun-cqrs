@@ -1,14 +1,14 @@
 
 
-shop.product.Get() {
+get.Product() {
   shop.api.get product/$1
 }
 
-shop.product.List() {
+list.Products() {
   shop.api.get products
 }
 
-shop.product.Create() {
+create.Product() {
 	cat << EOF > last.json
 {
   "name": "$2",
@@ -20,7 +20,7 @@ EOF
     shop.api.put product/$1
 }
 
-shop.product.ChangeName() {
+product.ChangeName() {
 cat << EOF > last.json
 {
   "name": "$2",
@@ -31,7 +31,7 @@ EOF
   shop.api.patch product/$1
 }
 
-shop.product.ChangePrice() {
+product.ChangePrice() {
 cat << EOF > last.json
 {
   "price": $2,

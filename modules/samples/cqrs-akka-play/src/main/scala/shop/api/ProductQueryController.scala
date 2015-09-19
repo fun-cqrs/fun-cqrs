@@ -4,8 +4,9 @@ import play.api.libs.json.Writes
 import play.api.mvc.Controller
 import shop.domain.model.{ProductNumber, ProductView}
 import shop.domain.service.ProductViewRepo
+import com.softwaremill.macwire._
 
-class ProductQueryController(val viewRepo: ProductViewRepo) extends QueryController with Controller {
+class ProductQueryController(val viewRepo: ProductViewRepo @@ ProductView.type) extends QueryController with Controller {
 
   type ViewRepo = ProductViewRepo
 

@@ -60,14 +60,20 @@ case class Quantity(num: Int) {
   def minusOne = Quantity(num - 1)
 }
 
+object Quantity {
+  implicit val format = Json.format[Quantity]
+}
+
 object Order {
 
   val tag = Tags.aggregateTag("order")
+  val dependentView = Tags.dependentViews("OrderView")
+
 
   def behavior(orderNum: OrderNumber): Behavior[Order] = {
 
     import OrderProtocol._
-    val metadata = Metadata.metadata(tag)
+    val metadata = Metadata.metadata(tag, dependentView)
 
     behaviorFor[Order].whenConstructing { it =>
 
@@ -132,6 +138,8 @@ object Order {
 case class OrderNumber(uuid: UUID = UUID.randomUUID()) extends AggregateUUID
 
 object OrderNumber {
+  implicit val format = Json.format[OrderNumber]
+  def fromAggregateId(aggregateId: AggregateIdentifier) = OrderNumber.fromString(aggregateId.value)
   def fromString(id: String) = OrderNumber(UUID.fromString(id))
 }
 

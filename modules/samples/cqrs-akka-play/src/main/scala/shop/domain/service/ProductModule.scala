@@ -6,7 +6,7 @@ import fun.cqrs.Tag
 import fun.cqrs.akka.{ProjectionActor, AggregateManager, AssignedAggregateId}
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
-import shop.domain.model.{Product, ProductNumber}
+import shop.domain.model.{ProductView, Product, ProductNumber}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 
@@ -22,7 +22,7 @@ trait ProductModule {
 
   //----------------------------------------------------------------------
   // READ side wiring
-  val productViewRepo = wire[ProductViewRepo]
+  val productViewRepo = wire[ProductViewRepo].taggedWith[ProductView.type]
   val productViewProjectionActor: ActorRef =
     actorSystem
       .actorOf(Props(classOf[ProductViewProjectionActor], wire[ProductViewProjection]), "productViewProjectionActor")
