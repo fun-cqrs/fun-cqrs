@@ -41,3 +41,25 @@ EOF
   shop.api.patch order/$1
 }
 
+order.Cancel() {
+cat << EOF > last.json
+{
+  "bool": true,
+  "_type": "Order.Cancel"
+}
+EOF
+
+  shop.api.patch order/$1
+}
+
+
+order.Execute() {
+cat << EOF > last.json
+{
+  "bool": true,
+  "_type": "Order.Execute"
+}
+EOF
+
+  shop.api.patch order/$1
+}

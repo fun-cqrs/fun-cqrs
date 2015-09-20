@@ -4,12 +4,11 @@ import org.slf4j.LoggerFactory
 import play.api.Logger
 import shop.domain.model.{CustomerView, CustomerId}
 import shop.domain.model.CustomerProtocol._
-import fun.cqrs.{DomainEvent, Projection}
+import fun.cqrs.{Logging, DomainEvent, Projection}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import shop.app.Logging
 
-class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Projection with Logging  {
+class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Projection with Logging {
 
 
   private def customerId(evt: DomainEvent): CustomerId = {
@@ -32,8 +31,9 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
 
 
   def createView(customerCreated: CustomerCreated): Future[Unit] = {
-    
+
     logger.debug(s"creating customer ${customerCreated.name}")
+    
     customerViewRepo.save(
       CustomerView(
         name = customerCreated.name,

@@ -1,15 +1,9 @@
 package shop.domain.service
 
 import fun.cqrs.InMemoryRepository
-import shop.domain.model.{ProductNumber, OrderNumber, OrderView}
+import shop.domain.model.{OrderNumber, OrderView}
 
 class OrderViewRepo extends InMemoryRepository {
-
-
-  def findByProduct(number: ProductNumber) = {
-    ???
-  }
-
 
   type Identifier = OrderNumber
   type Model = OrderView

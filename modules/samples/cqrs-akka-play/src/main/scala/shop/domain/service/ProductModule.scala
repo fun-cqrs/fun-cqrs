@@ -2,7 +2,7 @@ package shop.domain.service
 
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
-import fun.cqrs.Tag
+import fun.cqrs.{Behavior, Tag}
 import fun.cqrs.akka.{ProjectionActor, AggregateManager, AssignedAggregateId}
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
@@ -31,7 +31,7 @@ trait ProductModule {
 
 class ProductAggregateManager extends AggregateManager with AssignedAggregateId {
   type AggregateType = Product
-  def behavior(id: ProductNumber) = Product.behavior(id)
+  def behavior(id: ProductNumber): Behavior[Product] = Product.behavior(id)
 }
 
 class ProductViewProjectionActor(val projection: ProductViewProjection) extends ProjectionActor with LevelDbProjectionSource {

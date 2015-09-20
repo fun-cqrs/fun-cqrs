@@ -1,16 +1,14 @@
 package shop.domain.service
 
+import fun.cqrs.{Logging, HandleEvent, Projection}
 import shop.domain.model.ProductProtocol.{NameChanged, PriceChanged, ProductCreated, ProductUpdateEvent}
 import shop.domain.model.{ProductNumber, ProductProtocol, ProductView}
-import fun.cqrs.{HandleEvent, Projection}
-import play.api.Logger
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class ProductViewProjection(repo: ProductViewRepo) extends Projection {
+class ProductViewProjection(repo: ProductViewRepo) extends Projection with Logging {
 
-  val logger = Logger("cqrs.projection.productView")
 
   def receiveEvent: HandleEvent = {
     case e: ProductCreated                     => create(e)

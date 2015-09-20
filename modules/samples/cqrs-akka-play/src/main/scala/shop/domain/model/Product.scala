@@ -73,6 +73,8 @@ object ProductProtocol extends ProtocolDef.Protocol {
   }
 
 }
+
+
 object Product {
 
   val tag = Tags.aggregateTag("product")
@@ -83,7 +85,8 @@ object Product {
 
     val metadata = Metadata.metadata(tag, Order.dependentView)
 
-    behaviorFor[Product].whenConstructing { it =>
+    behaviorFor[Product]
+    .whenConstructing { it =>
       //---------------------------------------------------------------------------------
       // Creational Commands and Events
       it.yieldsEvent {
@@ -108,6 +111,7 @@ object Product {
       }
 
     }.whenUpdating { it =>
+
       //---------------------------------------------------------------------------------
       // Update Commands and Events
       it.yieldsSingleEvent {

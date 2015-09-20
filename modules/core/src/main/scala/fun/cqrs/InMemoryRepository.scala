@@ -1,16 +1,11 @@
 package fun.cqrs
 
-import com.typesafe.scalalogging.LazyLogging
-import org.slf4j.LoggerFactory
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-trait InMemoryRepository extends Repository {
+trait InMemoryRepository extends Repository with Logging {
 
   private var store: Map[Identifier, Model] = Map()
-
-  val logger = LoggerFactory.getLogger(classOf[InMemoryRepository])
 
   def find(id: Identifier)(implicit ec: ExecutionContext): Future[Model] = {
     Future.fromTry(Try(store(id)))
