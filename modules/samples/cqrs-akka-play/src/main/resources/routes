@@ -19,7 +19,7 @@ GET     /products                           shop.api.ProductQueryController.list
 # CUSTOMER
 
 # WRITE actions on Aggregate side
-POST    /customer                           shop.api.CustomerCmdController.create
+PUT     /customer/:id                       shop.api.CustomerCmdController.create(id:String)
 PATCH   /customer/:id                       shop.api.CustomerCmdController.update(id:String)
 
 # READ actions on View Model side
@@ -32,8 +32,8 @@ GET     /customers                          shop.api.CustomerQueryController.lis
 # ORDER
 
 # WRITE actions on Aggregate side
-POST    /order                              shop.api.OrderCmdController.create
-PATCH   /order/:id                          shop.api.OrderCmdController.update(id:String)
+PUT    /order/:id                           shop.api.OrderCmdController.create(id:String)
+PATCH  /order/:id                           shop.api.OrderCmdController.update(id:String)
 
 # READ actions on View Model side
 GET     /order/:id                          shop.api.OrderQueryController.get(id:String)

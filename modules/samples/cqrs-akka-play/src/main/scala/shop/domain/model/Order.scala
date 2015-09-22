@@ -1,14 +1,11 @@
 package shop.domain.model
 
 import java.time.OffsetDateTime
-import java.util.UUID
 
 import fun.cqrs._
-import fun.cqrs.json.TypedJson.TypeHintFormat
-import fun.cqrs.json.TypedJson._
-import play.api.libs.json.Json
-
 import fun.cqrs.dsl.BehaviorDsl._
+import fun.cqrs.json.TypedJson.{TypeHintFormat, _}
+import play.api.libs.json.Json
 
 sealed trait Status
 
@@ -135,12 +132,12 @@ object Order {
   }
 }
 
-case class OrderNumber(uuid: UUID = UUID.randomUUID()) extends AggregateUUID
+case class OrderNumber(value: String) extends AggregateIdentifier
 
 object OrderNumber {
   implicit val format = Json.format[OrderNumber]
   def fromAggregateId(aggregateId: AggregateIdentifier) = OrderNumber.fromString(aggregateId.value)
-  def fromString(id: String) = OrderNumber(UUID.fromString(id))
+  def fromString(id: String) = OrderNumber(id)
 }
 
 object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {

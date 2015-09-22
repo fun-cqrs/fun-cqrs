@@ -19,6 +19,6 @@ trait LoggingSuffix {
   def suffix: String
   override val logger = {
     val cls = getClass.getName
-    Logger("application." + cls + ".suffix")
+    Logger("application." + cls + s".$suffix")
   }
 }

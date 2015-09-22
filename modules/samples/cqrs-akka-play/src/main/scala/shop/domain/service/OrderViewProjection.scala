@@ -1,8 +1,8 @@
 package shop.domain.service
 
 import com.softwaremill.macwire._
-import fun.cqrs.{LoggingSuffix, Logging, HandleEvent, Projection}
-import shop.domain.model.OrderProtocol._
+import fun.cqrs.{HandleEvent, Logging, LoggingSuffix, Projection}
+import shop.domain.model.OrderProtocol.{OrderCreated, ProductAdded, ProductRemoved}
 import shop.domain.model._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -22,7 +22,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
   val customerProjection = new CustomerViewProjection(customerRepo) with LoggingSuffix {
     val suffix = "OrderView"
   }
-  
+
 
   def receiveEvent: HandleEvent = {
 
@@ -37,8 +37,9 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
     case e: OrderProtocol.OrderCreated   => create(e)
     case e: OrderProtocol.ProductAdded   => addProduct(e)
     case e: OrderProtocol.ProductRemoved => removeProduct(e)
-    case e: OrderProtocol.OrderExecuted  => execute(e)
-    case e: OrderProtocol.OrderCancelled => cancel(e)
+
+    case e: OrderProtocol.OrderExecuted  => changeStatus(number(e), Executed)
+    case e: OrderProtocol.OrderCancelled => changeStatus(number(e), Cancelled)
 
   }
 
@@ -53,25 +54,15 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
     }
   }
 
-  def execute(evt: OrderExecuted): Future[Unit] = {
-    val num = number(evt)
-    logger.debug(s"executing: $num")
+  def changeStatus(num: OrderNumber, status: Status): Future[Unit] = {
+    logger.debug(s"order [$num] status updated to $status ")
     for {
       order <- orderRepo.find(num)
-      updatedOrder = order.copy(status = Executed)
+      updatedOrder = order.copy(status = status)
       _ <- orderRepo.save(updatedOrder)
     } yield ()
   }
 
-  def cancel(evt: OrderCancelled): Future[Unit] = {
-    val num = number(evt)
-    logger.debug(s"cancelling: $num")
-    for {
-      order <- orderRepo.find(num)
-      _ <- orderRepo.save(order.copy(status = Cancelled))
-
-    } yield ()
-  }
 
   def addProduct(evt: ProductAdded): Future[Unit] = {
 

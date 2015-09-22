@@ -11,11 +11,11 @@ list.Customers() {
 create.Customer() {
 	cat << EOF > last.json
 {
-  "name": "$1",
+  "name": "$2",
   "_type": "Customer.Create"
 }
 EOF
-    shop.api.post customer
+    shop.api.put customer/$1
 }
 
 customer.AddVatNumber() {

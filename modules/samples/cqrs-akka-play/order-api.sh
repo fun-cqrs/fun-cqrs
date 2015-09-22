@@ -12,11 +12,11 @@ list.Orders() {
 create.Order() {
 	cat << EOF > last.json
 {
-  "customerId": { "uuid" : "$1" },
+  "customerId": { "value" : "$2" },
   "_type": "Order.Create"
 }
 EOF
-    shop.api.post order
+    shop.api.put order/$1
 }
 
 order.AddProduct() {

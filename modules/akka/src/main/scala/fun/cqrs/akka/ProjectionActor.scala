@@ -1,15 +1,16 @@
 package fun.cqrs.akka
 
 import akka.actor._
+import akka.pattern._
 import akka.stream.ActorMaterializer
 import akka.stream.actor.ActorSubscriberMessage.{OnError, OnNext}
 import akka.stream.actor.{ActorSubscriber, RequestStrategy, WatermarkRequestStrategy}
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.Sink
 import akka.util.Timeout
 import fun.cqrs.{DomainEvent, Projection}
-import akka.pattern._
-import scala.language.postfixOps
+
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 abstract class ProjectionActor extends Actor with ActorLogging with Stash {
   this: ProjectionSource =>
@@ -29,22 +30,21 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
 
   def receive: Receive = handlingEvents
 
-  def handlingEvents: Receive = {
-
-    case OnNext(evt: DomainEvent) =>
-      log.debug(s"ProjectionActor: Received event $evt")
-
-      projection.onEvent(evt).map(_ => ProjectionActor.Done).pipeTo(self)
-      context become processingEvents
-
-  }
-
   def processingEvents: Receive = {
     case OnNext(evt: DomainEvent) => stash()
     case ProjectionActor.Done     =>
       unstashAll()
       context become handlingEvents
   }
+
+  def handlingEvents: Receive = {
+    case OnNext(evt: DomainEvent) =>
+      log.debug(s"Received event $evt")
+
+      projection.onEvent(evt).map(_ => ProjectionActor.Done).pipeTo(self)
+      context become processingEvents
+  }
+
 }
 
 object ProjectionActor {
@@ -52,6 +52,7 @@ object ProjectionActor {
   case object Done
 
 }
+
 
 class ForwardingActorSubscriber(target: ActorRef, val requestStrategy: RequestStrategy) extends ActorSubscriber {
 

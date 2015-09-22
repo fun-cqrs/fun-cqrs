@@ -1,5 +1,6 @@
 package shop.api
 
+import fun.cqrs.AggregateIdentifier
 import shop.domain.model.ProductNumber
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -14,13 +15,15 @@ trait AssignedId {
   this: CommandController =>
 
 
+  def aggregateId(id: String): AggregateType#Identifier
+
   def location(id: String): String
 
   def create(id: String) = Action.async(parse.json) { request =>
     val createCmd = toCommand(request.body)
     createCmd match {
       case JsSuccess(cmd, _) =>
-        (aggregateManager ?(ProductNumber(id), cmd))
+        (aggregateManager ?(aggregateId(id), cmd))
           .mapTo[SuccessfulCommand]
           .map { result =>
           Created.withHeaders("Location" -> location(result.events.head.metadata.aggregateId.value))

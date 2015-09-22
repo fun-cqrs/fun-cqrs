@@ -1,11 +1,10 @@
 package shop.domain.model
 
-import java.util.UUID
 import fun.cqrs._
 import fun.cqrs.dsl.BehaviorDsl._
-import fun.cqrs.json.TypedJson.TypeHintFormat
-import fun.cqrs.json.TypedJson._
+import fun.cqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
+
 import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 
@@ -22,7 +21,7 @@ case class Customer(name: String,
   def hasVatNumber = vatNumber.nonEmpty
 }
 
-case class CustomerId(uuid: UUID = UUID.randomUUID()) extends AggregateUUID
+case class CustomerId(value: String) extends AggregateIdentifier
 
 object CustomerId {
 
@@ -31,7 +30,7 @@ object CustomerId {
   def fromIdentifier(id: AggregateIdentifier): CustomerId = CustomerId.fromString(id.value)
 
   def fromString(aggregateId: String): CustomerId = {
-    CustomerId(UUID.fromString(aggregateId))
+    CustomerId(aggregateId)
   }
 }
 
@@ -145,7 +144,7 @@ object Customer {
 
   val tag = Tags.aggregateTag("customer")
 
-  def behavior(id: CustomerId = CustomerId())(implicit ec: ExecutionContext): Behavior[Customer] = {
+  def behavior(id: CustomerId)(implicit ec: ExecutionContext): Behavior[Customer] = {
     import CustomerProtocol._
 
 
