@@ -17,15 +17,22 @@ trait CustomerFixture extends EventBusSupport {
 
     def projection = new CustomerViewProjection(inMemoryCustomerViewRepo)
 
-    val behavior = Customer.behavior()
+    val behavior = Customer.behavior(CustomerId("cust-test"))
   }
 
-  def createCustomer(name: String, address: Address): Future[Customer] = {
-    val cmd = CreateCustomer(name, address)
+  def createCustomer(name: String): Future[Customer] = {
+    val cmd = CreateCustomer(name)
     fixture(cmd)
   }
 
   implicit class CustomerOps(customerResult: Future[Customer]) {
+
+    def addAddress(address: Address) = {
+      customerResult.flatMap { cust =>
+        val cmd = AddAddress(address)
+        fixture(cust, cmd)
+      }
+    }
 
     def changeName(name: String) = {
       customerResult.flatMap { cust =>
