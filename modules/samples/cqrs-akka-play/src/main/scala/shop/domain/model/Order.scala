@@ -75,7 +75,7 @@ object Order {
     behaviorFor[Order].whenConstructing { it =>
 
       it.emitsEvent {
-        case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum))
+        case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd.id))
       }
 
       it.acceptsEvents {
@@ -87,16 +87,16 @@ object Order {
       it.emitsSingleEvent {
 
         case (order, cmd: AddProduct) if order.status == Open =>
-          ProductAdded(cmd.productNumber, metadata(orderNum))
+          ProductAdded(cmd.productNumber, metadata(orderNum, cmd.id))
 
         case (order, cmd: RemoveProduct) if order.status == Open =>
-          ProductRemoved(cmd.productNumber, metadata(orderNum))
+          ProductRemoved(cmd.productNumber, metadata(orderNum, cmd.id))
 
         case (order, cmd: Execute.type) if order.status == Open =>
-          OrderExecuted(OffsetDateTime.now(), metadata(orderNum))
+          OrderExecuted(OffsetDateTime.now(), metadata(orderNum, cmd.id))
 
         case (order, cmd: Cancel.type) if order.status == Open =>
-          OrderCancelled(OffsetDateTime.now(), metadata(orderNum))
+          OrderCancelled(OffsetDateTime.now(), metadata(orderNum, cmd.id))
       }
 
       it.rejectsCommands {

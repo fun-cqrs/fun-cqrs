@@ -95,7 +95,7 @@ object Product {
             cmd.name,
             cmd.description,
             cmd.price,
-            metadata(id)
+            metadata(id, cmd.id)
           )
       }
 
@@ -115,12 +115,12 @@ object Product {
       // Update Commands and Events
       it.emitsSingleEvent {
         // update name
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id))
+        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd.id))
       }
 
       it.emitsSingleEvent {
         // update price
-        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id))
+        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd.id))
 
       }
 

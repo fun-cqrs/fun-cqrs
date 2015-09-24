@@ -8,8 +8,10 @@ import java.time.OffsetDateTime
   * - command id
   * - event id
   * - event date
+  * - tags
   */
 case class Metadata(aggregateId: AggregateIdentifier,
+                    commandId: CommandId,
                     eventId: EventId,
                     date: OffsetDateTime,
                     tags: Set[Tag]) {
@@ -23,8 +25,8 @@ case class Metadata(aggregateId: AggregateIdentifier,
 
 object Metadata {
 
-  def metadata(tags: Tag*): AggregateIdentifier => Metadata = { aggregateId =>
-    Metadata(aggregateId, EventId(), OffsetDateTime.now(), tags.toSet)
+  def metadata(tags: Tag*): (AggregateIdentifier, CommandId) => Metadata = { (aggregateId, cmdId) =>
+    Metadata(aggregateId, cmdId, EventId(), OffsetDateTime.now(), tags.toSet)
   }
 }
 

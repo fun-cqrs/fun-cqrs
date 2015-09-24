@@ -4,9 +4,7 @@ import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
-
 import scala.collection.immutable
-import scala.concurrent.ExecutionContext
 
 case class Customer(name: String,
                     address: Option[Address],
@@ -90,7 +88,7 @@ object CustomerProtocol extends ProtocolDef.Protocol {
 
   case class AddVatNumber(vat: VAT) extends CustomerCommand
 
-  case class RemoveVatNumber(bool: Boolean = true) extends CustomerCommand
+  case object RemoveVatNumber extends CustomerCommand
 
   case class ReplaceVatNumber(vat: VAT) extends CustomerCommand
 
@@ -106,7 +104,7 @@ object CustomerProtocol extends ProtocolDef.Protocol {
       Json.format[ChangeAddressStreet].withTypeHint("Customer.ChangeAddressStreet"),
       Json.format[ChangeAddressCity].withTypeHint("Customer.ChangeAddressCity"),
       Json.format[AddVatNumber].withTypeHint("Customer.AddVatNumber"),
-      Json.format[RemoveVatNumber].withTypeHint("Customer.RemoveVatNumber"),
+      hintedObject(RemoveVatNumber, "Customer.RemoveVatNumber"),
       Json.format[ReplaceVatNumber].withTypeHint("Customer.ReplaceVatNumber")
     )
   }
@@ -150,7 +148,7 @@ object Customer {
     behaviorFor[Customer].whenConstructing { it =>
       it.emitsEvent {
         case cmd: CreateCustomer =>
-          CustomerCreated(cmd.name, cmd.vatNumber, metadata(id))
+          CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd.id))
       }
 
       it.acceptsEvents {
@@ -162,23 +160,23 @@ object Customer {
 
       it.emitsSingleEvent {
 
-        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id))
-        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id))
+        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd.id))
+        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd.id))
 
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
-          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id))
+          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd.id))
 
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber    => VatNumberAdded(cmd.vat, metadata(id))
-        case (customer, cmd: RemoveVatNumber) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id))
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber         => VatNumberAdded(cmd.vat, metadata(id, cmd.id))
+        case (customer, cmd: RemoveVatNumber.type) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd.id))
 
       }
 
       it.emitsManyEvents {
         case (_, cmd: AddAddress) =>
           immutable.Seq(
-            AddressStreetChanged(cmd.address.street, metadata(id)),
-            AddressCityChanged(cmd.address.city, metadata(id)),
-            AddressCountryChanged(cmd.address.country, metadata(id))
+            AddressStreetChanged(cmd.address.street, metadata(id, cmd.id)),
+            AddressCityChanged(cmd.address.city, metadata(id, cmd.id)),
+            AddressCountryChanged(cmd.address.country, metadata(id, cmd.id))
           )
       }
 
