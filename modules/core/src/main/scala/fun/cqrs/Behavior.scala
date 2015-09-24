@@ -4,35 +4,62 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait Behavior[A <: Aggregate] {
 
-  type Protocol = A#Protocol
-
-  type Events = Seq[Protocol#ProtocolEvent]
-
-  def validate(cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[Protocol#ProtocolEvent]
-
-  def validate(aggregate: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[Events]
-
-  def applyEvent(evt: Protocol#ProtocolEvent): A
-
-  def applyEvent(model: A, evt: Protocol#ProtocolEvent): A
-
-  final def create(event: Protocol#ProtocolEvent): A = applyEvent(event)
-
-  final def update(model: A, event: Protocol#ProtocolEvent): A = applyEvent(model, event)
-
-  /**
-   * Apply a list of events to a Aggregate
-   * @return the updated Aggregate
-   */
-  private final def update(model: A, events: Events): A =
-    events.foldLeft(model)(applyEvent)
+  type AggregateType = A
+  type Command = A#Protocol#ProtocolCommand
+  type Event = A#Protocol#ProtocolEvent
+  type Events = Seq[Event]
 
 
-  def applyCommand(cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[(Protocol#ProtocolEvent, A)] = {
-    validate(cmd).map { event => (event, create(event)) }
+  def executionContext: ExecutionContext = {
+    scala.concurrent.ExecutionContext.global
   }
 
-  def applyCommand(aggregate: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[(Events, A)] = {
-    validate(aggregate, cmd).map { events => (events, update(aggregate, events)) }
+  def applyEvent(event: Event): AggregateType
+
+  def applyEvent(event: Event, aggregate: AggregateType): AggregateType
+
+  /**
+   * Apply a list of events to an Aggregate
+   * @return the updated Aggregate
+   */
+  final def applyEvents(events: Events, aggregate: AggregateType): AggregateType = {
+    events.foldLeft(aggregate) { (aggregate, event) =>
+      applyEvent(event, aggregate)
+    }
+  }
+
+  def validate(cmd: Command): Future[Event] = {
+    validateAsync(cmd)(executionContext)
+  }
+
+  def validate(aggregate: AggregateType, cmd: Command): Future[Events] = {
+    validateAsync(aggregate, cmd)(executionContext)
+  }
+
+  def applyCommand(cmd: Command): Future[(Event, AggregateType)] = {
+    applyAsyncCommand(cmd)(executionContext)
+  }
+
+  def applyCommand(aggregate: AggregateType, cmd: Command): Future[(Events, AggregateType)] = {
+    applyAsyncCommand(aggregate, cmd)(executionContext)
+  }
+
+
+  // async behavior
+  protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event]
+
+  protected def validateAsync(aggregate: AggregateType, cmd: Command)(implicit ec: ExecutionContext): Future[Events]
+
+
+  protected def applyAsyncCommand(cmd: Command)(implicit ec: ExecutionContext): Future[(Event, AggregateType)] = {
+    validateAsync(cmd).map { event =>
+      (event, applyEvent(event))
+    }
+  }
+
+  protected def applyAsyncCommand(aggregate: AggregateType, cmd: Command)(implicit ec: ExecutionContext): Future[(Events, AggregateType)] = {
+    validateAsync(aggregate, cmd).map { events =>
+      (events, applyEvents(events, aggregate))
+    }
   }
 }

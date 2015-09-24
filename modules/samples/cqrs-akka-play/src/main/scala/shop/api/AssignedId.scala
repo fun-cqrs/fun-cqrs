@@ -1,15 +1,12 @@
 package shop.api
 
-import fun.cqrs.AggregateIdentifier
-import shop.domain.model.ProductNumber
-
-import scala.concurrent.ExecutionContext.Implicits.global
+import akka.pattern._
 import fun.cqrs.akka.AggregateActor.SuccessfulCommand
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc.Action
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import akka.pattern._
 
 trait AssignedId {
   this: CommandController =>

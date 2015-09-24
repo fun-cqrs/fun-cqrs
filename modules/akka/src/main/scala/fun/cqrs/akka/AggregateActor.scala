@@ -157,7 +157,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
       case (None, evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(evt))
 
       // Update events are applied on current state
-      case (Some(root), evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(root, evt))
+      case (Some(root), evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(evt, root))
 
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)

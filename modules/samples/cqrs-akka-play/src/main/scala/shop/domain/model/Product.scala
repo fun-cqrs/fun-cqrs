@@ -77,7 +77,7 @@ object Product {
 
   val tag = Tags.aggregateTag("product")
 
-  def behavior(id: ProductNumber)(implicit ec: ExecutionContext): Behavior[Product] = {
+  def behavior(id: ProductNumber): Behavior[Product] = {
 
     import ProductProtocol._
 

@@ -44,7 +44,6 @@ EOF
 order.Cancel() {
 cat << EOF > last.json
 {
-  "bool": true,
   "_type": "Order.Cancel"
 }
 EOF
@@ -56,7 +55,6 @@ EOF
 order.Execute() {
 cat << EOF > last.json
 {
-  "bool": true,
   "_type": "Order.Execute"
 }
 EOF

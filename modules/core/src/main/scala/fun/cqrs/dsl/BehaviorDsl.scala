@@ -150,23 +150,23 @@ object BehaviorDsl {
         private val refuseCommands = updates.rejectFunction
         private val handleEvents = updates.handleEventFunction
 
-        def validate(cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[Protocol#ProtocolEvent] = {
+        def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
           acceptCreationalCmds
             .lift(cmd)
             .getOrElse(Future.failed(refuseCreationalCmds(cmd)))
         }
 
-        def validate(aggregate: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[immutable.Seq[Protocol#ProtocolEvent]] = {
+        def validateAsync(aggregate: A, cmd: Command)(implicit ec: ExecutionContext): Future[Events] = {
           acceptCommands
             .lift(aggregate, cmd)
             .getOrElse(Future.failed(refuseCommands(aggregate, cmd)))
         }
 
-        def applyEvent(evt: Protocol#ProtocolEvent): A = {
+        def applyEvent(evt: Event): A = {
           handleCreationalEvents(evt)
         }
 
-        def applyEvent(aggregate: A, evt: Protocol#ProtocolEvent): A = {
+        def applyEvent(evt: Event, aggregate: A): A = {
           handleEvents.lift(aggregate, evt).getOrElse(aggregate)
         }
       }

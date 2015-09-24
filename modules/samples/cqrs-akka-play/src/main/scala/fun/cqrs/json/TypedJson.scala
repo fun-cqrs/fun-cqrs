@@ -26,6 +26,15 @@ object TypedJson {
 
   }
 
+  def hintedObject[T](obj: T, typeHint: String)(implicit classTag: ClassTag[T]): TypeHint[T] = {
+    val format = new Format[T] {
+      def reads(json: JsValue): JsResult[T] = {
+        JsSuccess(obj)
+      }
+      def writes(o: T): JsValue = JsArray()
+    }
+    format.withTypeHint(typeHint)
+  }
 
   /**
    * A decorator for a regular Format that can add a type hint to the serialised json.

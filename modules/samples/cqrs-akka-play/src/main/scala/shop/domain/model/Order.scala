@@ -5,7 +5,7 @@ import java.time.OffsetDateTime
 import fun.cqrs._
 import fun.cqrs.dsl.BehaviorDsl._
 import fun.cqrs.json.TypedJson.{TypeHintFormat, _}
-import play.api.libs.json.Json
+import play.api.libs.json._
 
 sealed trait Status
 
@@ -92,22 +92,22 @@ object Order {
         case (order, cmd: RemoveProduct) if order.status == Open =>
           ProductRemoved(cmd.productNumber, metadata(orderNum))
 
-        case (order, cmd: Execute) if order.status == Open =>
+        case (order, cmd: Execute.type) if order.status == Open =>
           OrderExecuted(OffsetDateTime.now(), metadata(orderNum))
 
-        case (order, cmd: Cancel) if order.status == Open =>
+        case (order, cmd: Cancel.type) if order.status == Open =>
           OrderCancelled(OffsetDateTime.now(), metadata(orderNum))
       }
 
       it.rejectsCommands {
 
-        case (order, cmd: Execute) if order.status == Executed =>
+        case (order, cmd: Execute.type) if order.status == Executed =>
           new CommandException(s"Order is already executed")
 
-        case (order, cmd: Execute) if order.status == Cancelled =>
+        case (order, cmd: Execute.type) if order.status == Cancelled =>
           new CommandException(s"Can't execute a cancelled order")
 
-        case (order, cmd: Cancel) if order.status == Executed =>
+        case (order, cmd: Cancel.type) if order.status == Executed =>
           new CommandException(s"Can't cancel an executed order")
 
         case (order, _) if order.status == Executed =>
@@ -150,19 +150,21 @@ object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
 
   case class RemoveProduct(productNumber: ProductNumber) extends OrderCommand
 
-  case class Execute(bool: Boolean = true) extends OrderCommand
+  case object Execute extends OrderCommand
 
-  case class Cancel(bool: Boolean = true) extends OrderCommand
+  case object Cancel extends OrderCommand
 
   implicit val commandFormats = {
     TypeHintFormat[OrderCommand](
       Json.format[CreateOrder].withTypeHint("Order.Create"),
       Json.format[AddProduct].withTypeHint("Order.AddProduct"),
       Json.format[RemoveProduct].withTypeHint("Order.RemoveProduct"),
-      Json.format[Execute].withTypeHint("Order.Execute"),
-      Json.format[Cancel].withTypeHint("Order.Cancel")
+      hintedObject(Execute, "Order.Execute"),
+      hintedObject(Cancel, "Order.Cancel")
     )
+
   }
+
 
   sealed trait OrderEvent extends ProtocolEvent with MetadataFacet
 

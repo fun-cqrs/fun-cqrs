@@ -141,7 +141,7 @@ object Customer {
 
   val tag = Tags.aggregateTag("customer")
 
-  def behavior(id: CustomerId)(implicit ec: ExecutionContext): Behavior[Customer] = {
+  def behavior(id: CustomerId): Behavior[Customer] = {
     import CustomerProtocol._
 
 
