@@ -74,7 +74,7 @@ object Order {
 
     behaviorFor[Order].whenConstructing { it =>
 
-      it.yieldsEvent {
+      it.emitsEvent {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum))
       }
 
@@ -84,7 +84,7 @@ object Order {
 
     }.whenUpdating { it =>
 
-      it.yieldsSingleEvent {
+      it.emitsSingleEvent {
 
         case (order, cmd: AddProduct) if order.status == Open =>
           ProductAdded(cmd.productNumber, metadata(orderNum))
@@ -142,17 +142,17 @@ object OrderNumber {
 
 object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
 
-  sealed trait OrderCommand extends DomainCommand
+  sealed trait OrderCommand extends ProtocolCommand
 
-  case class CreateOrder(customerId: CustomerId) extends OrderCommand with CreateCmd
+  case class CreateOrder(customerId: CustomerId) extends OrderCommand
 
-  case class AddProduct(productNumber: ProductNumber) extends OrderCommand with UpdateCmd
+  case class AddProduct(productNumber: ProductNumber) extends OrderCommand
 
-  case class RemoveProduct(productNumber: ProductNumber) extends OrderCommand with UpdateCmd
+  case class RemoveProduct(productNumber: ProductNumber) extends OrderCommand
 
-  case class Execute(bool: Boolean = true) extends OrderCommand with UpdateCmd
+  case class Execute(bool: Boolean = true) extends OrderCommand
 
-  case class Cancel(bool: Boolean = true) extends OrderCommand with UpdateCmd
+  case class Cancel(bool: Boolean = true) extends OrderCommand
 
   implicit val commandFormats = {
     TypeHintFormat[OrderCommand](
@@ -164,16 +164,16 @@ object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
     )
   }
 
-  sealed trait OrderEvent extends DomainEvent
+  sealed trait OrderEvent extends ProtocolEvent with MetadataFacet
 
-  case class OrderCreated(customerId: CustomerId, metadata: Metadata) extends OrderEvent with CreateEvent
+  case class OrderCreated(customerId: CustomerId, metadata: Metadata) extends OrderEvent
 
-  case class ProductAdded(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent with UpdateEvent
+  case class ProductAdded(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent
 
-  case class ProductRemoved(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent with UpdateEvent
+  case class ProductRemoved(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent
 
-  case class OrderExecuted(date: OffsetDateTime, metadata: Metadata) extends OrderEvent with UpdateEvent
+  case class OrderExecuted(date: OffsetDateTime, metadata: Metadata) extends OrderEvent
 
-  case class OrderCancelled(date: OffsetDateTime, metadata: Metadata) extends OrderEvent with UpdateEvent
+  case class OrderCancelled(date: OffsetDateTime, metadata: Metadata) extends OrderEvent
 
 }

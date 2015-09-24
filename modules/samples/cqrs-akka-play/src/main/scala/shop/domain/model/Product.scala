@@ -8,9 +8,9 @@ import play.api.libs.json.Json
 import scala.concurrent.ExecutionContext
 
 // tag::prod[]
-case class Product(name: String, 
-                   description: String, 
-                   price: Double, 
+case class Product(name: String,
+                   description: String,
+                   price: Double,
                    identifier: ProductNumber) extends Aggregate {
 
   type Identifier = ProductNumber
@@ -36,33 +36,31 @@ object ProductNumber {
   }
 }
 
-//tag::protocol[]
 object ProductProtocol extends ProtocolDef.Protocol {
 
-  sealed trait ProductCommand extends DomainCommand
+  sealed trait ProductCommand extends ProtocolCommand
 
   // Creation Command
-  case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand with CreateCmd
+  case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand
 
   // Update Commands
-  case class ChangeName(name: String) extends ProductCommand with UpdateCmd
+  case class ChangeName(name: String) extends ProductCommand
 
-  case class ChangePrice(price: Double) extends ProductCommand with UpdateCmd
+  case class ChangePrice(price: Double) extends ProductCommand
 
 
-  sealed trait ProductEvent extends DomainEvent
+  sealed trait ProductEvent extends ProtocolEvent with MetadataFacet
 
   case class ProductCreated(name: String, description: String, price: Double,
-                            metadata: Metadata) extends ProductEvent with CreateEvent
+                            metadata: Metadata) extends ProductEvent
 
+  sealed trait ProductUpdateEvent extends ProductEvent
   // Update Events
-  sealed trait ProductUpdateEvent extends ProductEvent with UpdateEvent
-
   case class NameChanged(newName: String, metadata: Metadata) extends ProductUpdateEvent
 
   case class PriceChanged(newPrice: Double, metadata: Metadata) extends ProductUpdateEvent
-//end::protocol[]
- 
+
+
   // play-json formats for commands
   implicit val commandsFormat = {
     TypeHintFormat[ProductCommand](
@@ -86,10 +84,11 @@ object Product {
     val metadata = Metadata.metadata(tag, Order.dependentView)
 
     behaviorFor[Product]
-    .whenConstructing { it =>
+      .whenConstructing { it =>
+
       //---------------------------------------------------------------------------------
       // Creational Commands and Events
-      it.yieldsEvent {
+      it.emitsEvent {
         // only accept creation if price is valid
         case cmd: CreateProduct if cmd.price > 0 =>
           ProductCreated(
@@ -114,12 +113,12 @@ object Product {
 
       //---------------------------------------------------------------------------------
       // Update Commands and Events
-      it.yieldsSingleEvent {
+      it.emitsSingleEvent {
         // update name
         case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id))
       }
 
-      it.yieldsSingleEvent {
+      it.emitsSingleEvent {
         // update price
         case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id))
 

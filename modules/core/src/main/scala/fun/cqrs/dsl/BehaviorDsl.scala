@@ -12,27 +12,27 @@ object BehaviorDsl {
 
     type Protocol = A#Protocol
 
-    // from Cmd to Future[CreateEvent]
-    type CreateCmdToEventFuture = PartialFunction[Protocol#CreateCmd, Future[Protocol#CreateEvent]]
+    // from Cmd to Future[Event]
+    type CommandToEventFuture = PartialFunction[Protocol#ProtocolCommand, Future[Protocol#ProtocolEvent]]
 
-    // from Cmd to CreateEvent
-    type CreateCmdToEvent = PartialFunction[Protocol#CreateCmd, Protocol#CreateEvent]
+    // from Cmd to Event
+    type CommandToEvent = PartialFunction[Protocol#ProtocolCommand, Protocol#ProtocolEvent]
 
     // from Cmd to Exception
-    type CreateCmdToFailure = PartialFunction[Protocol#CreateCmd, CommandException]
+    type CommandToFailure = PartialFunction[Protocol#ProtocolCommand, CommandException]
 
     // from Event to new Aggregate
-    type CreateEventToAggregate = PartialFunction[Protocol#CreateEvent, A]
+    type EventToAggregate = PartialFunction[Protocol#ProtocolEvent, A]
 
     // Creation ------------------------------------------------------
-    private var _acceptFunction: CreateCmdToEventFuture = PartialFunction.empty
-    private var _rejectFunction: CreateCmdToFailure = PartialFunction.empty
-    private var _handleEventFunction: CreateEventToAggregate = PartialFunction.empty
+    private var _acceptFunction: CommandToEventFuture = PartialFunction.empty
+    private var _rejectFunction: CommandToFailure = PartialFunction.empty
+    private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
     private[BehaviorDsl] def acceptFunction = _acceptFunction
 
     private[BehaviorDsl] def rejectFunction = {
-      val refuseCreateFallback: CreateCmdToFailure = {
+      val refuseCreateFallback: CommandToFailure = {
         case cmd => new CommandException(s"Invalid command $cmd")
       }
       _rejectFunction orElse refuseCreateFallback
@@ -40,21 +40,21 @@ object BehaviorDsl {
 
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
 
-    def yieldsAsyncEvent(pf: CreateCmdToEventFuture): Unit = {
+    def emitsAsyncEvent(pf: CommandToEventFuture): Unit = {
       _acceptFunction = _acceptFunction orElse pf
     }
 
-    def yieldsEvent(pf: CreateCmdToEvent): Unit = {
-      yieldsAsyncEvent(liftFuture(pf))
+    def emitsEvent(pf: CommandToEvent): Unit = {
+      emitsAsyncEvent(liftFuture(pf))
     }
 
 
-    def rejectsCommands(pf: CreateCmdToFailure): Unit = {
+    def rejectsCommands(pf: CommandToFailure): Unit = {
       _rejectFunction = _rejectFunction orElse pf
     }
 
 
-    def acceptsEvents(pf: CreateEventToAggregate): Unit = {
+    def acceptsEvents(pf: EventToAggregate): Unit = {
       _handleEventFunction = _handleEventFunction orElse pf
     }
 
@@ -64,32 +64,32 @@ object BehaviorDsl {
 
     type Protocol = A#Protocol
 
-    // from Aggregate + Cmd to Future[UpdateEvent]
-    type UpdateCmdToEventFuture = PartialFunction[(A, Protocol#UpdateCmd), Future[Protocol#UpdateEvent]]
-    // from Aggregate + Cmd to UpdateEvent
-    type UpdateCmdToEvent = PartialFunction[(A, Protocol#UpdateCmd), Protocol#UpdateEvent]
+    // from Aggregate + Cmd to Future[Event]
+    type CommandToEventFuture = PartialFunction[(A, Protocol#ProtocolCommand), Future[Protocol#ProtocolEvent]]
+    // from Aggregate + Cmd to Event
+    type CommandToEvent = PartialFunction[(A, Protocol#ProtocolCommand), Protocol#ProtocolEvent]
 
-    // from Aggregate + Cmd to Future[Seq[UpdateEvent]]
-    type UpdateCmdToEventsFuture = PartialFunction[(A, Protocol#UpdateCmd), Future[immutable.Seq[Protocol#UpdateEvent]]]
+    // from Aggregate + Cmd to Future[Seq[Event]]
+    type CommandToEventsFuture = PartialFunction[(A, Protocol#ProtocolCommand), Future[immutable.Seq[Protocol#ProtocolEvent]]]
 
-    // from Aggregate + Cmd to Seq[UpdateEvent]
-    type UpdateCmdToEvents = PartialFunction[(A, Protocol#UpdateCmd), immutable.Seq[Protocol#UpdateEvent]]
+    // from Aggregate + Cmd to Seq[Event]
+    type CommandToEvents = PartialFunction[(A, Protocol#ProtocolCommand), immutable.Seq[Protocol#ProtocolEvent]]
 
     // from Aggregate + Cmd to Exception
-    type UpdateCmdToFailure = PartialFunction[(A, Protocol#UpdateCmd), CommandException]
+    type CommandToFailure = PartialFunction[(A, Protocol#ProtocolCommand), CommandException]
 
-    type UpdateEventToAggregate = PartialFunction[(A, Protocol#UpdateEvent), A]
+    type EventToAggregate = PartialFunction[(A, Protocol#ProtocolEvent), A]
 
     // Updates --------------------------------------------------------
-    private var _acceptFunction: UpdateCmdToEventsFuture = PartialFunction.empty
-    private var _rejectFunction: UpdateCmdToFailure = PartialFunction.empty
-    private var _handleEventFunction: UpdateEventToAggregate = PartialFunction.empty
+    private var _acceptFunction: CommandToEventsFuture = PartialFunction.empty
+    private var _rejectFunction: CommandToFailure = PartialFunction.empty
+    private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
 
     private[BehaviorDsl] def acceptFunction = _acceptFunction
 
     private[BehaviorDsl] def rejectFunction = {
-      val refuseUpdateFallback: UpdateCmdToFailure = {
+      val refuseUpdateFallback: CommandToFailure = {
         case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.identifier}")
       }
       _rejectFunction orElse refuseUpdateFallback
@@ -98,27 +98,27 @@ object BehaviorDsl {
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
 
 
-    def yieldsManyEventsAsync(pf: UpdateCmdToEventsFuture): Unit = {
+    def emitsManyEventsAsync(pf: CommandToEventsFuture): Unit = {
       _acceptFunction = _acceptFunction orElse pf
     }
 
-    def yieldsSingleEventAsync(pf: UpdateCmdToEventFuture)(implicit ec: ExecutionContext): Unit = {
-      yieldsManyEventsAsync(mapSeq(pf))
+    def emitsSingleEventAsync(pf: CommandToEventFuture)(implicit ec: ExecutionContext): Unit = {
+      emitsManyEventsAsync(mapSeq(pf))
     }
 
-    def yieldsSingleEvent(pf: UpdateCmdToEvent): Unit = {
-      yieldsManyEvents(liftSeq(pf))
+    def emitsSingleEvent(pf: CommandToEvent): Unit = {
+      emitsManyEvents(liftSeq(pf))
     }
 
-    def yieldsManyEvents(pf: UpdateCmdToEvents): Unit = {
-      yieldsManyEventsAsync(liftFuture(pf))
+    def emitsManyEvents(pf: CommandToEvents): Unit = {
+      emitsManyEventsAsync(liftFuture(pf))
     }
 
-    def rejectsCommands(pf: UpdateCmdToFailure): Unit = {
+    def rejectsCommands(pf: CommandToFailure): Unit = {
       _rejectFunction = _rejectFunction orElse pf
     }
 
-    def acceptsEvents(pf: UpdateEventToAggregate): Unit = {
+    def acceptsEvents(pf: EventToAggregate): Unit = {
       _handleEventFunction = _handleEventFunction orElse pf
     }
 
@@ -146,28 +146,28 @@ object BehaviorDsl {
         private val refuseCreationalCmds = creation.rejectFunction
         private val handleCreationalEvents = creation.handleEventFunction
 
-        private val acceptUpdateCmds = updates.acceptFunction
-        private val refuseUpdateCmds = updates.rejectFunction
-        private val handleUpdateEvents = updates.handleEventFunction
+        private val acceptCommands = updates.acceptFunction
+        private val refuseCommands = updates.rejectFunction
+        private val handleEvents = updates.handleEventFunction
 
-        def validate(cmd: Protocol#CreateCmd)(implicit ec: ExecutionContext): Future[Protocol#CreateEvent] = {
+        def validate(cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[Protocol#ProtocolEvent] = {
           acceptCreationalCmds
             .lift(cmd)
             .getOrElse(Future.failed(refuseCreationalCmds(cmd)))
         }
 
-        def validate(aggregate: A, cmd: Protocol#UpdateCmd)(implicit ec: ExecutionContext): Future[immutable.Seq[Protocol#UpdateEvent]] = {
-          acceptUpdateCmds
+        def validate(aggregate: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[immutable.Seq[Protocol#ProtocolEvent]] = {
+          acceptCommands
             .lift(aggregate, cmd)
-            .getOrElse(Future.failed(refuseUpdateCmds(aggregate, cmd)))
+            .getOrElse(Future.failed(refuseCommands(aggregate, cmd)))
         }
 
-        def applyEvent(evt: Protocol#CreateEvent): A = {
+        def applyEvent(evt: Protocol#ProtocolEvent): A = {
           handleCreationalEvents(evt)
         }
 
-        def applyEvent(aggregate: A, evt: Protocol#UpdateEvent): A = {
-          handleUpdateEvents.lift(aggregate, evt).getOrElse(aggregate)
+        def applyEvent(aggregate: A, evt: Protocol#ProtocolEvent): A = {
+          handleEvents.lift(aggregate, evt).getOrElse(aggregate)
         }
       }
     }

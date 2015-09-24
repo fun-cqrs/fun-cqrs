@@ -1,6 +1,6 @@
 package fun.cqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 trait Projection {
 

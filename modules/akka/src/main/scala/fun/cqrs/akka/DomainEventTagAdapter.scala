@@ -1,7 +1,7 @@
 package fun.cqrs.akka
 
 import akka.persistence.journal.{Tagged, WriteEventAdapter}
-import fun.cqrs.DomainEvent
+import fun.cqrs.{MetadataFacet, DomainEvent}
 
 class DomainEventTagAdapter extends WriteEventAdapter {
 
@@ -10,7 +10,7 @@ class DomainEventTagAdapter extends WriteEventAdapter {
   def toJournal(event: Any): Any = {
     event match {
 
-      case evt: DomainEvent =>
+      case evt: DomainEvent with MetadataFacet =>
         if (evt.metadata.tags.nonEmpty) tag(evt)
         else evt
 
@@ -18,7 +18,7 @@ class DomainEventTagAdapter extends WriteEventAdapter {
     }
   }
 
-  private def tag(evt: DomainEvent): Tagged = {
+  private def tag(evt: DomainEvent with MetadataFacet): Tagged = {
     val tags = evt.metadata.tags.map(_.value)
     Tagged(evt, tags)
   }

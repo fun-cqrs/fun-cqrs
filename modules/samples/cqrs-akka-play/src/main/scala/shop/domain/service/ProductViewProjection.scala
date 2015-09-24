@@ -1,8 +1,8 @@
 package shop.domain.service
 
-import fun.cqrs.{Logging, HandleEvent, Projection}
-import shop.domain.model.ProductProtocol.{NameChanged, PriceChanged, ProductCreated, ProductUpdateEvent}
-import shop.domain.model.{ProductNumber, ProductProtocol, ProductView}
+import fun.cqrs.{HandleEvent, Logging, Projection}
+import shop.domain.model.ProductProtocol._
+import shop.domain.model.{ProductNumber, ProductView}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -11,8 +11,8 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection with Loggi
 
 
   def receiveEvent: HandleEvent = {
-    case e: ProductCreated                     => create(e)
-    case e: ProductProtocol.ProductUpdateEvent => update(e)
+    case e: ProductCreated     => create(e)
+    case e: ProductUpdateEvent => update(e)
   }
 
   def create(e: ProductCreated): Future[Unit] = {
@@ -22,7 +22,7 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection with Loggi
   }
 
   def update(e: ProductUpdateEvent): Future[Unit] = {
-    val id = ProductNumber.fromAggregateId(e.metadata.aggregateId)
+    val id = ProductNumber.fromAggregateId(e.aggregateId)
     logger.debug(s"Updating product $e")
 
     repo.updateById(id) { prod =>

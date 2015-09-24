@@ -2,7 +2,7 @@ package fun.cqrs.akka
 
 import akka.actor._
 import fun.cqrs.akka.AggregateActor.KillAggregate
-import fun.cqrs.{Aggregate, AggregateIdentifier, Behavior, DomainCommand}
+import fun.cqrs.{Aggregate, AggregateIdentifier, Behavior}
 
 object AggregateManager {
 
@@ -27,7 +27,7 @@ trait AggregateManager extends Actor with ActorLogging {
 
   type AggregateType <: Aggregate
 
-  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Identifier, command: DomainCommand)
+  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Identifier, command: AggregateType#Protocol#ProtocolCommand)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
@@ -50,7 +50,7 @@ trait AggregateManager extends Actor with ActorLogging {
   def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (id: AggregateType#Identifier@unchecked, cmd: AggregateType#Protocol#UpdateCmd) => processAggregateCommand(id, cmd)
+    case (id: AggregateType#Identifier@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
   }
 
   private def defaultProcessCommand: Receive = {
@@ -89,7 +89,7 @@ trait AggregateManager extends Actor with ActorLogging {
    * @param aggregateId Aggregate id
    * @param command DomainCommand that should be passed to aggregate
    */
-  def processAggregateCommand(aggregateId: AggregateType#Identifier, command: DomainCommand): Unit = {
+  def processAggregateCommand(aggregateId: AggregateType#Identifier, command: AggregateType#Protocol#ProtocolCommand): Unit = {
 
     val maybeChild = context child aggregateId.value
 

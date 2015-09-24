@@ -44,7 +44,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
   }
 
   private def number(evt: OrderProtocol.OrderEvent) = {
-    OrderNumber.fromAggregateId(evt.metadata.aggregateId)
+    OrderNumber.fromAggregateId(evt.aggregateId)
   }
 
   def create(evt: OrderCreated): Future[Unit] = {

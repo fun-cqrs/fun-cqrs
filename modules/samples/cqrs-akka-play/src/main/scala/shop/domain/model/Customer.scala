@@ -71,28 +71,28 @@ object Address {
 object CustomerProtocol extends ProtocolDef.Protocol {
 
 
-  sealed trait CustomerCommand extends DomainCommand
+  sealed trait CustomerCommand extends ProtocolCommand
 
   // Creation Commands
-  case class CreateCustomer(name: String, vatNumber: Option[VAT] = None) extends CustomerCommand with CreateCmd
+  case class CreateCustomer(name: String, vatNumber: Option[VAT] = None) extends CustomerCommand
 
 
   // Update Commands
-  case class ChangeName(name: String) extends CustomerCommand with UpdateCmd
+  case class ChangeName(name: String) extends CustomerCommand
 
-  case class AddAddress(address: Address) extends CustomerCommand with UpdateCmd
+  case class AddAddress(address: Address) extends CustomerCommand
 
-  case class ChangeAddressStreet(street: Street) extends CustomerCommand with UpdateCmd
+  case class ChangeAddressStreet(street: Street) extends CustomerCommand
 
-  case class ChangeAddressCity(city: City) extends CustomerCommand with UpdateCmd
+  case class ChangeAddressCity(city: City) extends CustomerCommand
 
-  case class ChangeAddressCountry(country: Country) extends CustomerCommand with UpdateCmd
+  case class ChangeAddressCountry(country: Country) extends CustomerCommand
 
-  case class AddVatNumber(vat: VAT) extends CustomerCommand with UpdateCmd
+  case class AddVatNumber(vat: VAT) extends CustomerCommand
 
-  case class RemoveVatNumber(bool: Boolean = true) extends CustomerCommand with UpdateCmd
+  case class RemoveVatNumber(bool: Boolean = true) extends CustomerCommand
 
-  case class ReplaceVatNumber(vat: VAT) extends CustomerCommand with UpdateCmd
+  case class ReplaceVatNumber(vat: VAT) extends CustomerCommand
 
   val commandsFormat = {
 
@@ -112,31 +112,28 @@ object CustomerProtocol extends ProtocolDef.Protocol {
   }
 
 
-  sealed trait CustomerEvent extends DomainEvent
+  sealed trait CustomerEvent extends ProtocolEvent with MetadataFacet
 
   // Creation Event
-  sealed trait CustomerCreateEvent extends CustomerEvent with CreateEvent
-
   case class CustomerCreated(name: String,
                              vatNumber: Option[VAT],
-                             metadata: Metadata) extends CustomerCreateEvent
+                             metadata: Metadata) extends CustomerEvent
 
   // Update Events
-  sealed trait CustomerUpdateEvent extends CustomerEvent with UpdateEvent
 
-  case class NameChanged(name: String, metadata: Metadata) extends CustomerUpdateEvent
+  case class NameChanged(name: String, metadata: Metadata) extends CustomerEvent
 
-  case class AddressStreetChanged(street: Street, metadata: Metadata) extends CustomerUpdateEvent
+  case class AddressStreetChanged(street: Street, metadata: Metadata) extends CustomerEvent
 
-  case class AddressCityChanged(city: City, metadata: Metadata) extends CustomerUpdateEvent
+  case class AddressCityChanged(city: City, metadata: Metadata) extends CustomerEvent
 
-  case class AddressCountryChanged(country: Country, metadata: Metadata) extends CustomerUpdateEvent
+  case class AddressCountryChanged(country: Country, metadata: Metadata) extends CustomerEvent
 
-  case class VatNumberAdded(vat: VAT, metadata: Metadata) extends CustomerUpdateEvent
+  case class VatNumberAdded(vat: VAT, metadata: Metadata) extends CustomerEvent
 
-  case class VatNumberRemoved(metadata: Metadata) extends CustomerUpdateEvent
+  case class VatNumberRemoved(metadata: Metadata) extends CustomerEvent
 
-  case class VatNumberReplaced(vat: VAT, oldVat: VAT, metadata: Metadata) extends CustomerUpdateEvent
+  case class VatNumberReplaced(vat: VAT, oldVat: VAT, metadata: Metadata) extends CustomerEvent
 
 }
 
@@ -151,7 +148,7 @@ object Customer {
     val metadata = Metadata.metadata(tag, Order.dependentView)
 
     behaviorFor[Customer].whenConstructing { it =>
-      it.yieldsEvent {
+      it.emitsEvent {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.vatNumber, metadata(id))
       }
@@ -163,7 +160,7 @@ object Customer {
 
     }.whenUpdating { it =>
 
-      it.yieldsSingleEvent {
+      it.emitsSingleEvent {
 
         case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id))
         case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id))
@@ -176,7 +173,7 @@ object Customer {
 
       }
 
-      it.yieldsManyEvents {
+      it.emitsManyEvents {
         case (_, cmd: AddAddress) =>
           immutable.Seq(
             AddressStreetChanged(cmd.address.street, metadata(id)),

@@ -42,7 +42,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
   protected def initialReceive: Receive = {
 
-    case cmd: Protocol#CreateCmd =>
+    case cmd: Protocol#ProtocolCommand =>
       log.debug(s"Received creation cmd: $cmd")
       val asyncResult = behavior.validate(cmd)
       val origSender = sender()
@@ -57,8 +57,6 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
       changeState(Busy)
 
-    case cmd: Protocol#UpdateCmd =>
-      sender() ! Status.Failure(new NoSuchElementException(s"Nothing found for id: $persistenceId"))
   }
 
 
@@ -72,7 +70,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
   protected def availableReceive: Receive = {
 
-    case cmd: Protocol#UpdateCmd =>
+    case cmd: Protocol#ProtocolCommand =>
       log.debug(s"Received cmd: $cmd")
       val asyncResult = behavior.validate(aggregateRootOpt.get, cmd)
       val origSender = sender()
@@ -87,8 +85,6 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
       changeState(Busy)
 
-    case cmd: Protocol#CreateCmd =>
-      sender() ! Status.Failure(new IllegalArgumentException(s"Aggregate $persistenceId exists already!"))
   }
 
   def handleFailure(failedCmd: FailedCommand): Unit = {
@@ -120,7 +116,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
    * - check if a snapshot needs to be saved.
    * @param evt DomainEvent that has been persisted
    */
-  protected def afterEventPersisted[E <: DomainEvent](evt: E): Unit = {
+  protected def afterEventPersisted(evt: Protocol#ProtocolEvent): Unit = {
 
     aggregateRootOpt = applyEvent(evt)
 
@@ -158,10 +154,10 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
     (aggregateRootOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Protocol#CreateEvent) => Some(behavior.applyEvent(evt))
+      case (None, evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(evt))
 
       // Update events are applied on current state
-      case (Some(root), evt: Protocol#UpdateEvent) => Some(behavior.applyEvent(root, evt))
+      case (Some(root), evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(root, evt))
 
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
@@ -260,7 +256,8 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
    * - notify the original sender
    */
   private def handleUpdate(result: CompletedUpdateCmd): Unit = {
-    persistAll(result.events) { evt =>
+    val events = immutable.Seq(result.events).flatten
+    persistAll(events) { evt =>
       afterEventPersisted(evt)
     }
     result.origSender ! SuccessfulCommand(result.events)
@@ -268,7 +265,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
   }
 
 
-  private def handleEvent(evt: DomainEvent) = {
+  private def handleEvent(evt: Protocol#ProtocolEvent) = {
     persist(evt) { _ =>
       afterEventPersisted(evt)
     }
@@ -278,12 +275,12 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
   /**
    * Internal representation of a completed create command.
    */
-  private case class CompletedCreationCmd(event: Protocol#CreateEvent, origSender: ActorRef)
+  private case class CompletedCreationCmd(event: Protocol#ProtocolEvent, origSender: ActorRef)
 
   /**
    * Internal representation of a completed update command.
    */
-  private case class CompletedUpdateCmd(events: immutable.Seq[Protocol#UpdateEvent], origSender: ActorRef)
+  private case class CompletedUpdateCmd(events: Seq[Protocol#ProtocolEvent], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 

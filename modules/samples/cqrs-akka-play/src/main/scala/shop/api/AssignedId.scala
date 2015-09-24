@@ -17,7 +17,6 @@ trait AssignedId {
 
   def aggregateId(id: String): AggregateType#Identifier
 
-  def location(id: String): String
 
   def create(id: String) = Action.async(parse.json) { request =>
     val createCmd = toCommand(request.body)
@@ -26,7 +25,7 @@ trait AssignedId {
         (aggregateManager ?(aggregateId(id), cmd))
           .mapTo[SuccessfulCommand]
           .map { result =>
-          Created.withHeaders("Location" -> location(result.events.head.metadata.aggregateId.value))
+          Created.withHeaders("Location" -> id)
         }
       case e: JsError        => Future.successful(BadRequest(JsError.toJson(e)))
     }

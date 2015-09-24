@@ -3,11 +3,9 @@ package fun.cqrs
 trait EventBusSupport {
 
   val eventBus = new EventBus
-
   def addHandler(handler: HandleEvent) = eventBus.addHandler(handler)
 
 }
-
 
 class EventBus {
 
