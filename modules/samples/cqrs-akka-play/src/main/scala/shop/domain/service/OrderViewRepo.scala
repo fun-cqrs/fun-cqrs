@@ -1,6 +1,6 @@
 package shop.domain.service
 
-import fun.cqrs.InMemoryRepository
+import io.strongtyped.funcqrs.InMemoryRepository
 import shop.domain.model.{OrderNumber, OrderView}
 
 class OrderViewRepo extends InMemoryRepository {

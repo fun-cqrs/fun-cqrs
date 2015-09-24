@@ -1,7 +1,7 @@
 package shop.domain.model
 
 import org.scalatest.{FlatSpec, Matchers, TryValues}
-import fun.cqrs.FutureTry
+import io.strongtyped.funcqrs.FutureTry
 
 import shop.domain.model.ProductProtocol._
 

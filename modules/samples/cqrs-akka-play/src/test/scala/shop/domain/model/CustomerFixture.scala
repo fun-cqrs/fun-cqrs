@@ -1,6 +1,6 @@
 package shop.domain.model
 
-import fun.cqrs.{AggregateFixture, EventBusSupport, InMemoryRepository}
+import io.strongtyped.funcqrs.{AggregateFixture, EventBusSupport, InMemoryRepository}
 import shop.domain.model.CustomerProtocol._
 import shop.domain.service.{CustomerViewProjection, CustomerViewRepo}
 

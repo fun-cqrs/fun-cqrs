@@ -1,7 +1,7 @@
 package shop.api
 
 import akka.pattern._
-import fun.cqrs.akka.AggregateActor.SuccessfulCommand
+import io.strongtyped.funcqrs.akka.AggregateActor.SuccessfulCommand
 import play.api.libs.json.{JsError, JsSuccess}
 import play.api.mvc.Action
 

@@ -1,6 +1,6 @@
 package shop.domain.service
 
-import fun.cqrs.{Logging, Projection}
+import io.strongtyped.funcqrs.{Logging, Projection}
 import shop.domain.model.CustomerProtocol._
 import shop.domain.model.{CustomerId, CustomerView}
 

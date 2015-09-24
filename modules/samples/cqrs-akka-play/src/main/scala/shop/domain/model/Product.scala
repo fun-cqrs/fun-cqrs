@@ -1,8 +1,8 @@
 package shop.domain.model
 
-import fun.cqrs._
-import fun.cqrs.dsl.BehaviorDsl._
-import fun.cqrs.json.TypedJson.{TypeHintFormat, _}
+import io.strongtyped.funcqrs._
+import io.strongtyped.funcqrs.dsl.BehaviorDsl._
+import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext

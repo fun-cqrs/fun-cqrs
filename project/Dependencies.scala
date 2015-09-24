@@ -5,7 +5,7 @@ import sbt._
 object Dependencies {  
 
   //------------------------------------------------------------------------------------------------------------
-  // Fun.CQRS core
+  // io.strongtyped.funcqrs core
   val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"    % "3.1.0"
   val logBack               =  "ch.qos.logback"             %   "logback-classic"  % "1.1.3"
   val scalaTest             =  "org.scalatest"              %%  "scalatest"        % "2.2.1"         % "test"

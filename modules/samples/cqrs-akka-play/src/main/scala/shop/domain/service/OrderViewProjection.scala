@@ -1,7 +1,7 @@
 package shop.domain.service
 
 import com.softwaremill.macwire._
-import fun.cqrs.{HandleEvent, Logging, LoggingSuffix, Projection}
+import io.strongtyped.funcqrs.{HandleEvent, Logging, LoggingSuffix, Projection}
 import shop.domain.model.OrderProtocol.{OrderCreated, ProductAdded, ProductRemoved}
 import shop.domain.model._
 

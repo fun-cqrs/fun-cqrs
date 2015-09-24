@@ -2,7 +2,7 @@ package shop.api
 
 import akka.actor.ActorRef
 import com.softwaremill.macwire._
-import fun.cqrs.DomainCommand
+import io.strongtyped.funcqrs.DomainCommand
 import play.api.libs.json.{JsResult, JsValue}
 import shop.domain.model.{Customer, CustomerId, CustomerProtocol}
 

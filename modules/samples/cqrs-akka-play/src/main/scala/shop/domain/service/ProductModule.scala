@@ -2,8 +2,8 @@ package shop.domain.service
 
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
-import fun.cqrs.{Behavior, Tag}
-import fun.cqrs.akka.{ProjectionActor, AggregateManager, AssignedAggregateId}
+import io.strongtyped.funcqrs.{Behavior, Tag}
+import io.strongtyped.funcqrs.akka.{ProjectionActor, AggregateManager, AssignedAggregateId}
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
 import shop.domain.model.{ProductView, Product, ProductNumber}

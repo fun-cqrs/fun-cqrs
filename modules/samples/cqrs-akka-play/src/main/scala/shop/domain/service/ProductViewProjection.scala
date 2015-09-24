@@ -1,6 +1,6 @@
 package shop.domain.service
 
-import fun.cqrs.{HandleEvent, Logging, Projection}
+import io.strongtyped.funcqrs.{HandleEvent, Logging, Projection}
 import shop.domain.model.ProductProtocol._
 import shop.domain.model.{ProductNumber, ProductView}
 

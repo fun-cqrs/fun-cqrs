@@ -2,8 +2,8 @@ package shop.api
 
 import akka.actor.ActorRef
 import akka.util.Timeout
-import fun.cqrs.{DomainCommand, Aggregate}
-import fun.cqrs.akka.AggregateActor.SuccessfulCommand
+import io.strongtyped.funcqrs.{DomainCommand, Aggregate}
+import io.strongtyped.funcqrs.akka.AggregateActor.SuccessfulCommand
 import play.api.libs.json._
 import play.api.mvc.{Controller, Action}
 import akka.pattern._

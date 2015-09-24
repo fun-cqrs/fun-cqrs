@@ -4,8 +4,8 @@ import akka.actor.Actor
 import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.stream.scaladsl.Source
-import fun.cqrs.akka.ProjectionSource
-import fun.cqrs.{DomainEvent, Tag}
+import io.strongtyped.funcqrs.akka.ProjectionSource
+import io.strongtyped.funcqrs.{DomainEvent, Tag}
 
 trait LevelDbProjectionSource extends ProjectionSource {
   this: Actor =>
