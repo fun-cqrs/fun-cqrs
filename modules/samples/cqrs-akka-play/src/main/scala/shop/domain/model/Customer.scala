@@ -1,9 +1,12 @@
 package shop.domain.model
 
+import java.time.OffsetDateTime
+
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
+import shop.domain.model.ProductProtocol.ProductMetadata
 import scala.collection.immutable
 
 case class Customer(name: String,
@@ -24,8 +27,6 @@ case class CustomerId(value: String) extends AggregateIdentifier
 object CustomerId {
 
   implicit val formatCustomerId = Json.format[CustomerId]
-
-  def fromIdentifier(id: AggregateIdentifier): CustomerId = CustomerId.fromString(id.value)
 
   def fromString(aggregateId: String): CustomerId = {
     CustomerId(aggregateId)
@@ -109,29 +110,37 @@ object CustomerProtocol extends ProtocolDef.Protocol {
     )
   }
 
+  case class CustomerMetadata(aggregateId: CustomerId,
+                              commandId: CommandId,
+                              eventId: EventId = EventId(),
+                              date: OffsetDateTime = OffsetDateTime.now(),
+                              tags: Set[Tag] = Set()) extends Metadata {
 
-  sealed trait CustomerEvent extends ProtocolEvent with MetadataFacet
+    type Identifier = CustomerId
+  }
+
+  sealed trait CustomerEvent extends ProtocolEvent with MetadataFacet[CustomerMetadata]
 
   // Creation Event
   case class CustomerCreated(name: String,
                              vatNumber: Option[VAT],
-                             metadata: Metadata) extends CustomerEvent
+                             metadata: CustomerMetadata) extends CustomerEvent
 
   // Update Events
 
-  case class NameChanged(name: String, metadata: Metadata) extends CustomerEvent
+  case class NameChanged(name: String, metadata: CustomerMetadata) extends CustomerEvent
 
-  case class AddressStreetChanged(street: Street, metadata: Metadata) extends CustomerEvent
+  case class AddressStreetChanged(street: Street, metadata: CustomerMetadata) extends CustomerEvent
 
-  case class AddressCityChanged(city: City, metadata: Metadata) extends CustomerEvent
+  case class AddressCityChanged(city: City, metadata: CustomerMetadata) extends CustomerEvent
 
-  case class AddressCountryChanged(country: Country, metadata: Metadata) extends CustomerEvent
+  case class AddressCountryChanged(country: Country, metadata: CustomerMetadata) extends CustomerEvent
 
-  case class VatNumberAdded(vat: VAT, metadata: Metadata) extends CustomerEvent
+  case class VatNumberAdded(vat: VAT, metadata: CustomerMetadata) extends CustomerEvent
 
-  case class VatNumberRemoved(metadata: Metadata) extends CustomerEvent
+  case class VatNumberRemoved(metadata: CustomerMetadata) extends CustomerEvent
 
-  case class VatNumberReplaced(vat: VAT, oldVat: VAT, metadata: Metadata) extends CustomerEvent
+  case class VatNumberReplaced(vat: VAT, oldVat: VAT, metadata: CustomerMetadata) extends CustomerEvent
 
 }
 
@@ -143,12 +152,15 @@ object Customer {
     import CustomerProtocol._
 
 
-    val metadata = Metadata.metadata(tag, Order.dependentView)
+    def metadata(customerId: CustomerId, cmd: CustomerCommand) = {
+      CustomerMetadata(customerId, cmd.id, tags = Set(tag, Order.dependentView))
+    }
+
 
     behaviorFor[Customer].whenConstructing { it =>
       it.emitsEvent {
         case cmd: CreateCustomer =>
-          CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd.id))
+          CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd))
       }
 
       it.acceptsEvents {
@@ -160,23 +172,23 @@ object Customer {
 
       it.emitsSingleEvent {
 
-        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd.id))
-        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd.id))
+        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd))
+        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
 
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
-          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd.id))
+          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
 
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber         => VatNumberAdded(cmd.vat, metadata(id, cmd.id))
-        case (customer, cmd: RemoveVatNumber.type) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd.id))
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber         => VatNumberAdded(cmd.vat, metadata(id, cmd))
+        case (customer, cmd: RemoveVatNumber.type) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd))
 
       }
 
       it.emitsManyEvents {
         case (_, cmd: AddAddress) =>
           immutable.Seq(
-            AddressStreetChanged(cmd.address.street, metadata(id, cmd.id)),
-            AddressCityChanged(cmd.address.city, metadata(id, cmd.id)),
-            AddressCountryChanged(cmd.address.country, metadata(id, cmd.id))
+            AddressStreetChanged(cmd.address.street, metadata(id, cmd)),
+            AddressCityChanged(cmd.address.city, metadata(id, cmd)),
+            AddressCountryChanged(cmd.address.country, metadata(id, cmd))
           )
       }
 

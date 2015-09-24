@@ -38,19 +38,15 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
     case e: OrderProtocol.ProductAdded   => addProduct(e)
     case e: OrderProtocol.ProductRemoved => removeProduct(e)
 
-    case e: OrderProtocol.OrderExecuted  => changeStatus(number(e), Executed)
-    case e: OrderProtocol.OrderCancelled => changeStatus(number(e), Cancelled)
+    case e: OrderProtocol.OrderExecuted  => changeStatus(e.aggregateId, Executed)
+    case e: OrderProtocol.OrderCancelled => changeStatus(e.aggregateId, Cancelled)
 
-  }
-
-  private def number(evt: OrderProtocol.OrderEvent) = {
-    OrderNumber.fromAggregateId(evt.aggregateId)
   }
 
   def create(evt: OrderCreated): Future[Unit] = {
     logger.debug(s"creating order $evt")
     customerRepo.find(evt.customerId).flatMap { customer =>
-      orderRepo.save(OrderView(number(evt), customer.name))
+      orderRepo.save(OrderView(evt.aggregateId, customer.name))
     }
   }
 
@@ -66,7 +62,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
 
   def addProduct(evt: ProductAdded): Future[Unit] = {
 
-    val num = number(evt)
+    val num = evt.aggregateId
     logger.debug(s"adding product ${evt.productNumber} to order $num")
 
     for {
@@ -80,7 +76,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
 
   def removeProduct(evt: ProductRemoved): Future[Unit] = {
 
-    val num = number(evt)
+    val num = evt.aggregateId
     logger.debug(s"removing product ${evt.productNumber} from order $num")
 
     for {

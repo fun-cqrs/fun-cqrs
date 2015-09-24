@@ -70,12 +70,15 @@ object Order {
   def behavior(orderNum: OrderNumber): Behavior[Order] = {
 
     import OrderProtocol._
-    val metadata = Metadata.metadata(tag, dependentView)
+
+    def metadata(orderNum: OrderNumber, orderCommand: OrderCommand): OrderMetadata = {
+      OrderMetadata(orderNum, orderCommand.id, tags = Set(tag, dependentView))
+    }
 
     behaviorFor[Order].whenConstructing { it =>
 
       it.emitsEvent {
-        case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd.id))
+        case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
       }
 
       it.acceptsEvents {
@@ -87,16 +90,16 @@ object Order {
       it.emitsSingleEvent {
 
         case (order, cmd: AddProduct) if order.status == Open =>
-          ProductAdded(cmd.productNumber, metadata(orderNum, cmd.id))
+          ProductAdded(cmd.productNumber, metadata(orderNum, cmd))
 
         case (order, cmd: RemoveProduct) if order.status == Open =>
-          ProductRemoved(cmd.productNumber, metadata(orderNum, cmd.id))
+          ProductRemoved(cmd.productNumber, metadata(orderNum, cmd))
 
         case (order, cmd: Execute.type) if order.status == Open =>
-          OrderExecuted(OffsetDateTime.now(), metadata(orderNum, cmd.id))
+          OrderExecuted(metadata(orderNum, cmd))
 
         case (order, cmd: Cancel.type) if order.status == Open =>
-          OrderCancelled(OffsetDateTime.now(), metadata(orderNum, cmd.id))
+          OrderCancelled(metadata(orderNum, cmd))
       }
 
       it.rejectsCommands {
@@ -136,7 +139,6 @@ case class OrderNumber(value: String) extends AggregateIdentifier
 
 object OrderNumber {
   implicit val format = Json.format[OrderNumber]
-  def fromAggregateId(aggregateId: AggregateIdentifier) = OrderNumber.fromString(aggregateId.value)
   def fromString(id: String) = OrderNumber(id)
 }
 
@@ -165,17 +167,26 @@ object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
 
   }
 
+  case class OrderMetadata(aggregateId: OrderNumber,
+                           commandId: CommandId,
+                           eventId: EventId = EventId(),
+                           date: OffsetDateTime = OffsetDateTime.now(),
+                           tags: Set[Tag] = Set()) extends Metadata {
 
-  sealed trait OrderEvent extends ProtocolEvent with MetadataFacet
+    type Identifier = OrderNumber
+  }
 
-  case class OrderCreated(customerId: CustomerId, metadata: Metadata) extends OrderEvent
 
-  case class ProductAdded(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent
+  sealed trait OrderEvent extends ProtocolEvent with MetadataFacet[OrderMetadata]
 
-  case class ProductRemoved(productNumber: ProductNumber, metadata: Metadata) extends OrderEvent
+  case class OrderCreated(customerId: CustomerId, metadata: OrderMetadata) extends OrderEvent
 
-  case class OrderExecuted(date: OffsetDateTime, metadata: Metadata) extends OrderEvent
+  case class ProductAdded(productNumber: ProductNumber, metadata: OrderMetadata) extends OrderEvent
 
-  case class OrderCancelled(date: OffsetDateTime, metadata: Metadata) extends OrderEvent
+  case class ProductRemoved(productNumber: ProductNumber, metadata: OrderMetadata) extends OrderEvent
+
+  case class OrderExecuted(metadata: OrderMetadata) extends OrderEvent
+
+  case class OrderCancelled(metadata: OrderMetadata) extends OrderEvent
 
 }

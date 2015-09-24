@@ -1,11 +1,11 @@
 package shop.domain.model
 
+import java.time.OffsetDateTime
+
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
-
-import scala.concurrent.ExecutionContext
 
 // tag::prod[]
 case class Product(name: String,
@@ -27,10 +27,6 @@ object ProductNumber {
 
   implicit val format = Json.format[ProductNumber]
 
-  def fromAggregateId(aggregateId: AggregateIdentifier) = {
-    ProductNumber(aggregateId.value)
-  }
-
   def fromString(aggregateId: String): ProductNumber = {
     ProductNumber(aggregateId)
   }
@@ -49,16 +45,24 @@ object ProductProtocol extends ProtocolDef.Protocol {
   case class ChangePrice(price: Double) extends ProductCommand
 
 
-  sealed trait ProductEvent extends ProtocolEvent with MetadataFacet
+  case class ProductMetadata(aggregateId: ProductNumber,
+                             commandId: CommandId,
+                             eventId: EventId = EventId(),
+                             date: OffsetDateTime = OffsetDateTime.now(),
+                             tags: Set[Tag] = Set()) extends Metadata {
+    type Identifier = ProductNumber
+  }
+
+  sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
 
   case class ProductCreated(name: String, description: String, price: Double,
-                            metadata: Metadata) extends ProductEvent
+                            metadata: ProductMetadata) extends ProductEvent
 
   sealed trait ProductUpdateEvent extends ProductEvent
   // Update Events
-  case class NameChanged(newName: String, metadata: Metadata) extends ProductUpdateEvent
+  case class NameChanged(newName: String, metadata: ProductMetadata) extends ProductUpdateEvent
 
-  case class PriceChanged(newPrice: Double, metadata: Metadata) extends ProductUpdateEvent
+  case class PriceChanged(newPrice: Double, metadata: ProductMetadata) extends ProductUpdateEvent
 
 
   // play-json formats for commands
@@ -81,7 +85,9 @@ object Product {
 
     import ProductProtocol._
 
-    val metadata = Metadata.metadata(tag, Order.dependentView)
+    def metadata(productNum: ProductNumber, cmd: ProductCommand) = {
+      ProductMetadata(productNum, cmd.id, tags = Set(tag, Order.dependentView))
+    }
 
     behaviorFor[Product]
       .whenConstructing { it =>
@@ -95,7 +101,7 @@ object Product {
             cmd.name,
             cmd.description,
             cmd.price,
-            metadata(id, cmd.id)
+            metadata(id, cmd)
           )
       }
 
@@ -115,12 +121,12 @@ object Product {
       // Update Commands and Events
       it.emitsSingleEvent {
         // update name
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd.id))
+        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
       }
 
       it.emitsSingleEvent {
         // update price
-        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd.id))
+        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd))
 
       }
 

@@ -19,12 +19,9 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
     case evt: NameChanged           => updateById(evt)(_.copy(name = evt.name))
   }
 
-  private def customerId(evt: CustomerEvent): CustomerId = {
-    CustomerId.fromIdentifier(evt.aggregateId)
-  }
 
   private def updateById(evt: CustomerEvent)(updateFunc: CustomerView => CustomerView): Future[Unit] = {
-    customerViewRepo.updateById(customerId(evt))(updateFunc).map(_ => ())
+    customerViewRepo.updateById(evt.aggregateId)(updateFunc).map(_ => ())
   }
 
 
@@ -39,7 +36,7 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
         city = None,
         country = None,
         vatNumber = customerCreated.vatNumber,
-        identifier = customerId(customerCreated)
+        identifier = customerCreated.aggregateId
       )
     )
   }

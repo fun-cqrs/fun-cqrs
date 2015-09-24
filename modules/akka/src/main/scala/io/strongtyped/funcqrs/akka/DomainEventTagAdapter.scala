@@ -10,16 +10,16 @@ class DomainEventTagAdapter extends WriteEventAdapter {
   def toJournal(event: Any): Any = {
     event match {
 
-      case evt: DomainEvent with MetadataFacet =>
-        if (evt.metadata.tags.nonEmpty) tag(evt)
+      case evt: DomainEvent with MetadataFacet[_] =>
+        if (evt.tags.nonEmpty) tag(evt)
         else evt
 
       case _ => event
     }
   }
 
-  private def tag(evt: DomainEvent with MetadataFacet): Tagged = {
-    val tags = evt.metadata.tags.map(_.value)
+  private def tag(evt: DomainEvent with MetadataFacet[_]): Tagged = {
+    val tags = evt.tags.map(_.value)
     Tagged(evt, tags)
   }
 }

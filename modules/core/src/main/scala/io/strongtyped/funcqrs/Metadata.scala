@@ -5,28 +5,32 @@ import java.time.OffsetDateTime
 
 /** Holds DomainEvent metadata information such as:
   * - aggregateId
-  * - command id
-  * - event id
+  * - CommandId
+  * - EventId
   * - event date
   * - tags
   */
-case class Metadata(aggregateId: AggregateIdentifier,
-                    commandId: CommandId,
-                    eventId: EventId,
-                    date: OffsetDateTime,
-                    tags: Set[Tag]) {
+trait Metadata {
 
-  def withTags(tags: Tag*): Metadata = {
-    val tagSet = tags.toSet
-    this.copy(tags = this.tags ++ tagSet)
-  }
+  type Identifier <: AggregateIdentifier
+
+  def aggregateId: Identifier
+  def commandId: CommandId
+  def eventId: EventId
+  def date: OffsetDateTime
+  def tags: Set[Tag]
 }
 
 
-object Metadata {
+trait MetadataFacet[M <: Metadata] {
+  this: DomainEvent =>
 
-  def metadata(tags: Tag*): (AggregateIdentifier, CommandId) => Metadata = { (aggregateId, cmdId) =>
-    Metadata(aggregateId, cmdId, EventId(), OffsetDateTime.now(), tags.toSet)
-  }
+  def metadata: M
+
+  final def id: EventId = metadata.eventId
+  final def aggregateId: M#Identifier = metadata.aggregateId
+  final def commandId: CommandId = metadata.commandId
+  final def date: OffsetDateTime = metadata.date
+  final def tags: Set[Tag] = metadata.tags
 }
 

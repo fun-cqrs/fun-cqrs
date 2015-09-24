@@ -17,15 +17,14 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection with Loggi
 
   def create(e: ProductCreated): Future[Unit] = {
     logger.debug(s"Creating product $e")
-    val id = ProductNumber.fromAggregateId(e.metadata.aggregateId)
-    repo.save(ProductView(e.name, e.description, e.price, id))
+    repo.save(ProductView(e.name, e.description, e.price, e.metadata.aggregateId))
   }
 
   def update(e: ProductUpdateEvent): Future[Unit] = {
-    val id = ProductNumber.fromAggregateId(e.aggregateId)
+
     logger.debug(s"Updating product $e")
 
-    repo.updateById(id) { prod =>
+    repo.updateById(e.aggregateId) { prod =>
       updateFunc(prod, e)
     }.map(_ => ())
 

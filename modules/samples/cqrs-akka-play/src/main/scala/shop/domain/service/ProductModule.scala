@@ -2,12 +2,11 @@ package shop.domain.service
 
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
+import io.strongtyped.funcqrs.akka.{AggregateManager, AssignedAggregateId, ProjectionActor}
 import io.strongtyped.funcqrs.{Behavior, Tag}
-import io.strongtyped.funcqrs.akka.{ProjectionActor, AggregateManager, AssignedAggregateId}
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
-import shop.domain.model.{ProductView, Product, ProductNumber}
-import scala.concurrent.ExecutionContext.Implicits.global
+import shop.domain.model.{Product, ProductNumber, ProductView}
 
 
 trait ProductModule {
