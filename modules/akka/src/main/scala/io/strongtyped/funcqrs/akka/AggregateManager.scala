@@ -2,14 +2,14 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
-import io.strongtyped.funcqrs.{Aggregate, AggregateIdentifier, Behavior}
+import io.strongtyped.funcqrs.{Aggregate, AggregateID, Behavior}
 
 object AggregateManager {
 
   val maxChildren = 40
   val childrenToKillAtOnce = 20
 
-  case class GetState(id: AggregateIdentifier)
+  case class GetState(id: AggregateID)
 
 }
 
@@ -27,7 +27,7 @@ trait AggregateManager extends Actor with ActorLogging {
 
   type AggregateType <: Aggregate
 
-  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Identifier, command: AggregateType#Protocol#ProtocolCommand)
+  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
@@ -50,7 +50,7 @@ trait AggregateManager extends Actor with ActorLogging {
   def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (id: AggregateType#Identifier@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
+    case (id: AggregateType#Id@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
   }
 
   private def defaultProcessCommand: Receive = {
@@ -89,7 +89,7 @@ trait AggregateManager extends Actor with ActorLogging {
    * @param aggregateId Aggregate id
    * @param command DomainCommand that should be passed to aggregate
    */
-  def processAggregateCommand(aggregateId: AggregateType#Identifier, command: AggregateType#Protocol#ProtocolCommand): Unit = {
+  def processAggregateCommand(aggregateId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand): Unit = {
 
     val maybeChild = context child aggregateId.value
 
@@ -108,13 +108,13 @@ trait AggregateManager extends Actor with ActorLogging {
     }
   }
 
-  protected def findOrCreate(id: AggregateType#Identifier): ActorRef =
+  protected def findOrCreate(id: AggregateType#Id): ActorRef =
     context.child(id.value) getOrElse {
       log.debug(s"creating $id")
       create(id)
     }
 
-  protected def create(id: AggregateType#Identifier): ActorRef = {
+  protected def create(id: AggregateType#Id): ActorRef = {
     killChildrenIfNecessary()
     log.debug(s"creating $id")
     val agg = context.actorOf(aggregateActorProps(id), id.value)
@@ -122,12 +122,12 @@ trait AggregateManager extends Actor with ActorLogging {
     agg
   }
 
-  def behavior(id: AggregateType#Identifier): Behavior[AggregateType]
+  def behavior(id: AggregateType#Id): Behavior[AggregateType]
 
   /**
    * Build Props for a new Aggregate Actor with the passed Id
    */
-  def aggregateActorProps(id: AggregateType#Identifier): Props = {
+  def aggregateActorProps(id: AggregateType#Id): Props = {
     Props(classOf[AggregateActor[AggregateType]], id, behavior(id))
   }
 
@@ -135,7 +135,7 @@ trait AggregateManager extends Actor with ActorLogging {
     val childrenCount = context.children.size - childrenBeingTerminated.size
     if (childrenCount >= maxChildren) {
       log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
-      val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated.toSet)
+      val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
       val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
       childrenToKill foreach (_ ! KillAggregate)
       childrenBeingTerminated ++= childrenToKill

@@ -27,7 +27,7 @@ abstract class AggregateFixture[A <: Aggregate](eventBus: EventBus) {
   }
 
   def apply(model: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[A] = {
-    val result = behavior.applyCommand(model, cmd)
+    val result = behavior.applyCommand(cmd, model)
     result.map { case (evts, agg) =>
       eventBus.publishEvents(evts)
       agg

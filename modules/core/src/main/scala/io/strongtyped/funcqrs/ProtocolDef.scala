@@ -1,18 +1,7 @@
 package io.strongtyped.funcqrs
 
-// tag::adoc[]
-object ProtocolDef {
 
-  trait Commands {
-    trait ProtocolCommand extends DomainCommand
-  }
-
-  trait Events {
-    trait ProtocolEvent extends DomainEvent
-  }
-
-  trait Protocol extends Commands with Events
-
+trait ProtocolDef {
+  trait ProtocolCommand extends DomainCommand
+  trait ProtocolEvent extends DomainEvent
 }
-
-// end::adoc[]

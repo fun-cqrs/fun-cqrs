@@ -20,8 +20,8 @@ case class Order(number: OrderNumber,
                  products: Map[ProductNumber, Quantity] = Map(),
                  status: Status = Open) extends Aggregate {
 
-  type Identifier = OrderNumber
-  def identifier: Identifier = number
+  type Id = OrderNumber
+  def id: Id = number
   type Protocol = OrderProtocol.type
 
   def addProduct(productNumber: ProductNumber): Order = {
@@ -135,14 +135,14 @@ object Order {
   }
 }
 
-case class OrderNumber(value: String) extends AggregateIdentifier
+case class OrderNumber(value: String) extends AggregateID
 
 object OrderNumber {
   implicit val format = Json.format[OrderNumber]
   def fromString(id: String) = OrderNumber(id)
 }
 
-object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
+object OrderProtocol extends ProtocolDef {
 
   sealed trait OrderCommand extends ProtocolCommand
 
@@ -173,7 +173,7 @@ object OrderProtocol extends ProtocolDef.Commands with ProtocolDef.Events {
                            date: OffsetDateTime = OffsetDateTime.now(),
                            tags: Set[Tag] = Set()) extends Metadata {
 
-    type Identifier = OrderNumber
+    type Id = OrderNumber
   }
 
 

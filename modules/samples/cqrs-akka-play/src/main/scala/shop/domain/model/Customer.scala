@@ -12,17 +12,17 @@ import scala.collection.immutable
 case class Customer(name: String,
                     address: Option[Address],
                     vatNumber: Option[VAT],
-                    identifier: CustomerId) extends Aggregate {
+                    id: CustomerId) extends Aggregate {
 
   type Protocol = CustomerProtocol.type
-  type Identifier = CustomerId
+  type Id = CustomerId
 
   def doesNotHaveVatNumber = vatNumber.isEmpty
 
   def hasVatNumber = vatNumber.nonEmpty
 }
 
-case class CustomerId(value: String) extends AggregateIdentifier
+case class CustomerId(value: String) extends AggregateID
 
 object CustomerId {
 
@@ -67,7 +67,7 @@ object Address {
 }
 
 
-object CustomerProtocol extends ProtocolDef.Protocol {
+object CustomerProtocol extends ProtocolDef {
 
 
   sealed trait CustomerCommand extends ProtocolCommand
@@ -116,7 +116,7 @@ object CustomerProtocol extends ProtocolDef.Protocol {
                               date: OffsetDateTime = OffsetDateTime.now(),
                               tags: Set[Tag] = Set()) extends Metadata {
 
-    type Identifier = CustomerId
+    type Id = CustomerId
   }
 
   sealed trait CustomerEvent extends ProtocolEvent with MetadataFacet[CustomerMetadata]

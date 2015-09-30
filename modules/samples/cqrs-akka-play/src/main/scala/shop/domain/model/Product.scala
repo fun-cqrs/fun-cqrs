@@ -11,14 +11,14 @@ import play.api.libs.json.Json
 case class Product(name: String,
                    description: String,
                    price: Double,
-                   identifier: ProductNumber) extends Aggregate {
+                   id: ProductNumber) extends Aggregate {
 
-  type Identifier = ProductNumber
+  type Id = ProductNumber
   type Protocol = ProductProtocol.type
 
 }
 
-case class ProductNumber(number: String) extends AggregateIdentifier {
+case class ProductNumber(number: String) extends AggregateID {
   val value = number
 }
 // end::prod[]
@@ -32,7 +32,7 @@ object ProductNumber {
   }
 }
 
-object ProductProtocol extends ProtocolDef.Protocol {
+object ProductProtocol extends ProtocolDef {
 
   sealed trait ProductCommand extends ProtocolCommand
 
@@ -50,7 +50,7 @@ object ProductProtocol extends ProtocolDef.Protocol {
                              eventId: EventId = EventId(),
                              date: OffsetDateTime = OffsetDateTime.now(),
                              tags: Set[Tag] = Set()) extends Metadata {
-    type Identifier = ProductNumber
+    type Id = ProductNumber
   }
 
   sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]

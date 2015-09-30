@@ -12,7 +12,7 @@ trait AssignedId {
   this: CommandController =>
 
 
-  def aggregateId(id: String): AggregateType#Identifier
+  def aggregateId(id: String): AggregateType#Id
 
 
   def create(id: String) = Action.async(parse.json) { request =>

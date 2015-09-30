@@ -43,7 +43,7 @@ class ProductTest extends FlatSpec with Matchers with FutureTry with TryValues {
     val result =
       for {
         (_, prod) <- productBehavior.applyCommand(CreateProduct("test", "just a test", 10))
-        (_, updated) <- productBehavior.applyCommand(prod, ChangeName("abc"))
+        (_, updated) <- productBehavior.applyCommand(ChangeName("abc"), prod)
       } yield updated
 
     result.asTry.success
@@ -58,7 +58,7 @@ class ProductTest extends FlatSpec with Matchers with FutureTry with TryValues {
     val result =
       for {
         (_, prod) <- productBehavior.applyCommand(CreateProduct("test", "just a test", 10))
-        (_, updated) <- productBehavior.applyCommand(prod, ChangePrice(-1))
+        (_, updated) <- productBehavior.applyCommand(ChangePrice(-1), prod)
       } yield updated
 
     result.asTry.failure.exception.getMessage shouldBe "Price is too low!"

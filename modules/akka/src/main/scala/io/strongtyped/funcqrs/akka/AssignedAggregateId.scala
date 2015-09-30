@@ -4,6 +4,6 @@ trait AssignedAggregateId {
   this: AggregateManager =>
 
   override def processCreation: Receive = {
-    case (id: AggregateType#Identifier@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
+    case (id: AggregateType#Id@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
   }
 }

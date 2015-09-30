@@ -32,23 +32,23 @@ trait Behavior[A <: Aggregate] {
     validateAsync(cmd)(executionContext)
   }
 
-  def validate(aggregate: AggregateType, cmd: Command): Future[Events] = {
-    validateAsync(aggregate, cmd)(executionContext)
+  def validate(cmd: Command, aggregate: AggregateType): Future[Events] = {
+    validateAsync(cmd, aggregate)(executionContext)
   }
 
   def applyCommand(cmd: Command): Future[(Event, AggregateType)] = {
     applyAsyncCommand(cmd)(executionContext)
   }
 
-  def applyCommand(aggregate: AggregateType, cmd: Command): Future[(Events, AggregateType)] = {
-    applyAsyncCommand(aggregate, cmd)(executionContext)
+  def applyCommand(cmd: Command, aggregate: AggregateType): Future[(Events, AggregateType)] = {
+    applyAsyncCommand(cmd, aggregate)(executionContext)
   }
 
 
   // async behavior
   protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event]
 
-  protected def validateAsync(aggregate: AggregateType, cmd: Command)(implicit ec: ExecutionContext): Future[Events]
+  protected def validateAsync(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[Events]
 
 
   protected def applyAsyncCommand(cmd: Command)(implicit ec: ExecutionContext): Future[(Event, AggregateType)] = {
@@ -57,8 +57,8 @@ trait Behavior[A <: Aggregate] {
     }
   }
 
-  protected def applyAsyncCommand(aggregate: AggregateType, cmd: Command)(implicit ec: ExecutionContext): Future[(Events, AggregateType)] = {
-    validateAsync(aggregate, cmd).map { events =>
+  protected def applyAsyncCommand(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[(Events, AggregateType)] = {
+    validateAsync(cmd, aggregate).map { events =>
       (events, applyEvents(events, aggregate))
     }
   }

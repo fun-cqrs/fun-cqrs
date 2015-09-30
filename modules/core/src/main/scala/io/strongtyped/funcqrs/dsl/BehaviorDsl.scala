@@ -90,7 +90,7 @@ object BehaviorDsl {
 
     private[BehaviorDsl] def rejectFunction = {
       val refuseUpdateFallback: CommandToFailure = {
-        case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.identifier}")
+        case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.id}")
       }
       _rejectFunction orElse refuseUpdateFallback
     }
@@ -156,7 +156,7 @@ object BehaviorDsl {
             .getOrElse(Future.failed(refuseCreationalCmds(cmd)))
         }
 
-        def validateAsync(aggregate: A, cmd: Command)(implicit ec: ExecutionContext): Future[Events] = {
+        def validateAsync(cmd: Command, aggregate: A)(implicit ec: ExecutionContext): Future[Events] = {
           acceptCommands
             .lift(aggregate, cmd)
             .getOrElse(Future.failed(refuseCommands(aggregate, cmd)))

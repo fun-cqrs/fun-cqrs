@@ -4,22 +4,22 @@ import java.util.UUID
 
 trait Aggregate {
 
-  type Identifier <: AggregateIdentifier
+  type Id <: AggregateID
 
-  type Protocol <: ProtocolDef.Commands with ProtocolDef.Events
+  type Protocol <: ProtocolDef
 
-  def identifier: Identifier
+  def id: Id
 
 }
 
 /** Base trait for definitions of type-safe aggregate ids */
-trait AggregateIdentifier {
+trait AggregateID {
 
   def value: String
 
 }
 
-trait AggregateUUID extends AggregateIdentifier {
+trait AggregateUUID extends AggregateID {
 
   def uuid: UUID
 

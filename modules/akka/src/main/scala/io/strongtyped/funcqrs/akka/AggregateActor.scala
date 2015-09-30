@@ -9,7 +9,7 @@ import scala.collection.immutable
 
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavior[A])
+class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A])
   extends PersistentActor with ActorLogging {
 
   import context.dispatcher
@@ -72,7 +72,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Identifier, behavior: Behavio
 
     case cmd: Protocol#ProtocolCommand =>
       log.debug(s"Received cmd: $cmd")
-      val asyncResult = behavior.validate(aggregateRootOpt.get, cmd)
+      val asyncResult = behavior.validate(cmd, aggregateRootOpt.get)
       val origSender = sender()
 
       asyncResult.map { res =>

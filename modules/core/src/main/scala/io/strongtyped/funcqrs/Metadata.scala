@@ -12,9 +12,9 @@ import java.time.OffsetDateTime
   */
 trait Metadata {
 
-  type Identifier <: AggregateIdentifier
+  type Id <: AggregateID
 
-  def aggregateId: Identifier
+  def aggregateId: Id
   def commandId: CommandId
   def eventId: EventId
   def date: OffsetDateTime
@@ -28,7 +28,7 @@ trait MetadataFacet[M <: Metadata] {
   def metadata: M
 
   final def id: EventId = metadata.eventId
-  final def aggregateId: M#Identifier = metadata.aggregateId
+  final def aggregateId: M#Id = metadata.aggregateId
   final def commandId: CommandId = metadata.commandId
   final def date: OffsetDateTime = metadata.date
   final def tags: Set[Tag] = metadata.tags

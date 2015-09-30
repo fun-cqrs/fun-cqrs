@@ -23,7 +23,7 @@ trait CommandController extends Controller {
 
   def toCommand(jsValue: JsValue): JsResult[DomainCommand]
 
-  def toAggregateId(id: String): AggregateType#Identifier
+  def toAggregateId(id: String): AggregateType#Id
 
 
   def update(id: String) = Action.async(parse.json) { request =>

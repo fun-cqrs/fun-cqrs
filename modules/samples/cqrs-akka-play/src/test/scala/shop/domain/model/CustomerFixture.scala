@@ -57,7 +57,7 @@ trait CustomerFixture extends EventBusSupport {
 
     def view: Future[CustomerView] = {
       customerResult.flatMap { cust =>
-        inMemoryCustomerViewRepo.find(cust.identifier)
+        inMemoryCustomerViewRepo.find(cust.id)
       }
     }
   }
