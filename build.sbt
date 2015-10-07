@@ -48,7 +48,7 @@ lazy val funCqrsAkka = Project(
 // contains Play / Akka / Macwire sample
 lazy val playApp = Project(
   id = "fun-cqrs-akka-play-sample",
-  base = file("modules/samples/cqrs-akka-play"),
+  base = file("samples/cqrs-akka-play"),
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
