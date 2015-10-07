@@ -4,6 +4,7 @@ import java.util.UUID
 
 trait DomainEvent {
   def id: EventId
+  def commandId: CommandId
 }
 
 

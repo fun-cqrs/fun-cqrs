@@ -8,8 +8,7 @@ import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
 import shop.domain.model.{Customer, CustomerId, CustomerView}
 
-trait CustomerModule {
-  this: AkkaModule =>
+trait CustomerModule extends AkkaModule {
 
   val customerAggregateManager: ActorRef @@ Customer.type =
     actorSystem
@@ -19,9 +18,8 @@ trait CustomerModule {
   //----------------------------------------------------------------------
   // READ side wiring
   val customerViewRepo = wire[CustomerViewRepo].taggedWith[CustomerView.type]
-  val customerViewProjectionActor: ActorRef =
-    actorSystem
-      .actorOf(Props(classOf[CustomerViewProjectionActor], wire[CustomerViewProjection]), "CustomerViewProjectionActor")
+
+  funCQRS.projection(Props(classOf[CustomerViewProjectionActor], wire[CustomerViewProjection]), "CustomerViewProjectionActor")
 }
 
 class CustomerAggregateManager extends AggregateManager with AssignedAggregateId {

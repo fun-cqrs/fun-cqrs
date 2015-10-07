@@ -9,8 +9,7 @@ import shop.app.LevelDbProjectionSource
 import shop.domain.model.{Product, ProductNumber, ProductView}
 
 
-trait ProductModule {
-  this: AkkaModule =>
+trait ProductModule extends AkkaModule {
 
   // WRITE side wiring
   val productAggregateManager: ActorRef @@ Product.type =
@@ -22,9 +21,8 @@ trait ProductModule {
   //----------------------------------------------------------------------
   // READ side wiring
   val productViewRepo = wire[ProductViewRepo].taggedWith[ProductView.type]
-  val productViewProjectionActor: ActorRef =
-    actorSystem
-      .actorOf(Props(classOf[ProductViewProjectionActor], wire[ProductViewProjection]), "productViewProjectionActor")
+
+  funCQRS.projection(Props(classOf[ProductViewProjectionActor], wire[ProductViewProjection]), "ProductViewProjectionActor")
 
 }
 

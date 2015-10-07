@@ -32,10 +32,14 @@ object BehaviorDsl {
     private[BehaviorDsl] def acceptFunction = _acceptFunction
 
     private[BehaviorDsl] def rejectFunction = {
-      val refuseCreateFallback: CommandToFailure = {
-        case cmd => new CommandException(s"Invalid command $cmd")
+      val lifted: CommandToEventFuture = {
+        case e if _rejectFunction.isDefinedAt(e) => Future.failed(_rejectFunction(e))
       }
-      _rejectFunction orElse refuseCreateFallback
+      lifted
+    }
+
+    val fallbackFunction: CommandToFailure = {
+      case cmd => new CommandException(s"Invalid command $cmd")
     }
 
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
@@ -85,14 +89,17 @@ object BehaviorDsl {
     private var _rejectFunction: CommandToFailure = PartialFunction.empty
     private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
+    val fallbackFunction: CommandToFailure = {
+      case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.id}")
+    }
 
     private[BehaviorDsl] def acceptFunction = _acceptFunction
 
     private[BehaviorDsl] def rejectFunction = {
-      val refuseUpdateFallback: CommandToFailure = {
-        case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.id}")
+      val lifted: CommandToEventsFuture = {
+        case e if _rejectFunction.isDefinedAt(e) => Future.failed(_rejectFunction(e))
       }
-      _rejectFunction orElse refuseUpdateFallback
+      lifted
     }
 
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
@@ -143,23 +150,25 @@ object BehaviorDsl {
       new Behavior[A] {
 
         private val acceptCreationalCmds = creation.acceptFunction
-        private val refuseCreationalCmds = creation.rejectFunction
+        private val rejectCreationalCmds = creation.rejectFunction
+        private val fallbackOnCreation = creation.fallbackFunction
         private val handleCreationalEvents = creation.handleEventFunction
 
-        private val acceptCommands = updates.acceptFunction
-        private val refuseCommands = updates.rejectFunction
+        private val acceptUpdateCommands = updates.acceptFunction
+        private val rejectUpdateCommands = updates.rejectFunction
+        private val fallbackOnUpdate = updates.fallbackFunction
         private val handleEvents = updates.handleEventFunction
 
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-          acceptCreationalCmds
+          (rejectCreationalCmds orElse acceptCreationalCmds)
             .lift(cmd)
-            .getOrElse(Future.failed(refuseCreationalCmds(cmd)))
+            .getOrElse(Future.failed(fallbackOnCreation(cmd)))
         }
 
         def validateAsync(cmd: Command, aggregate: A)(implicit ec: ExecutionContext): Future[Events] = {
-          acceptCommands
+          (rejectUpdateCommands orElse acceptUpdateCommands)
             .lift(aggregate, cmd)
-            .getOrElse(Future.failed(refuseCommands(aggregate, cmd)))
+            .getOrElse(Future.failed(fallbackOnUpdate(aggregate, cmd)))
         }
 
         def applyEvent(evt: Event): A = {

@@ -8,8 +8,7 @@ import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
 import shop.domain.model.{Order, OrderNumber, OrderView}
 
-trait OrderModule {
-  this: AkkaModule =>
+trait OrderModule extends AkkaModule {
 
   val orderAggregateManager: ActorRef @@ Order.type =
     actorSystem
@@ -23,9 +22,7 @@ trait OrderModule {
   val productViewRepoForOrder = wire[ProductViewRepo].taggedWith[OrderView.type]
   val customerViewRepoForOrder = wire[CustomerViewRepo].taggedWith[OrderView.type]
 
-  val orderViewProjectionActor: ActorRef =
-    actorSystem
-      .actorOf(Props(classOf[OrderViewProjectionActor], wire[OrderViewProjection]), "OrderViewProjectionActor")
+  funCQRS.projection(Props(classOf[OrderViewProjectionActor], wire[OrderViewProjection]), "OrderViewProjectionActor")
 
 }
 

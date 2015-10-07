@@ -63,3 +63,18 @@ trait Behavior[A <: Aggregate] {
     }
   }
 }
+
+
+object Behavior {
+  def empty[A <: Aggregate]: Behavior[A] = new Behavior[A] {
+    def applyEvent(event: Event): AggregateType = ???
+    def applyEvent(event: Event, aggregate: AggregateType): AggregateType = ???
+    // async behavior
+    protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] =
+      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+
+    protected def validateAsync(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[Events] =
+      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+
+  }
+}

@@ -22,34 +22,40 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
   implicit val timeout = Timeout(5 seconds)
 
   override def preStart(): Unit = {
-    println(s"ProjectionActor: starting projection... $projection")
+    log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
     val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
     source.runWith(actorSink)
   }
 
-  def receive: Receive = handlingEvents
+  def receive: Receive = acceptingEvents
 
-  def processingEvents: Receive = {
+  def runningProjection: Receive = {
+
+    // stash new events while busy with projection
     case OnNext(evt: DomainEvent) => stash()
-    case ProjectionActor.Done     =>
+
+    // ready with projection, notify parent and start consuming next events
+    case ProjectionActor.Done(lastEvent) =>
+      log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
+      context.parent ! lastEvent // send last processed event to parent
       unstashAll()
-      context become handlingEvents
+      context become acceptingEvents
   }
 
-  def handlingEvents: Receive = {
+  def acceptingEvents: Receive = {
+
     case OnNext(evt: DomainEvent) =>
       log.debug(s"Received event $evt")
-
-      projection.onEvent(evt).map(_ => ProjectionActor.Done).pipeTo(self)
-      context become processingEvents
+      projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+      context become runningProjection
   }
 
 }
 
 object ProjectionActor {
 
-  case object Done
+  case class Done(evt: DomainEvent)
 
 }
 

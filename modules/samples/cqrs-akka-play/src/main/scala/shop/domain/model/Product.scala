@@ -34,17 +34,6 @@ object ProductNumber {
 
 object ProductProtocol extends ProtocolDef {
 
-  sealed trait ProductCommand extends ProtocolCommand
-
-  // Creation Command
-  case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand
-
-  // Update Commands
-  case class ChangeName(name: String) extends ProductCommand
-
-  case class ChangePrice(price: Double) extends ProductCommand
-
-
   case class ProductMetadata(aggregateId: ProductNumber,
                              commandId: CommandId,
                              eventId: EventId = EventId(),
@@ -53,8 +42,16 @@ object ProductProtocol extends ProtocolDef {
     type Id = ProductNumber
   }
 
-  sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
 
+  sealed trait ProductCommand extends ProtocolCommand
+
+  // Creation Command
+  case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand
+
+  case class ChangePrice(price: Double) extends ProductCommand
+
+
+  sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
   case class ProductCreated(name: String, description: String, price: Double,
                             metadata: ProductMetadata) extends ProductEvent
 
@@ -69,7 +66,6 @@ object ProductProtocol extends ProtocolDef {
   implicit val commandsFormat = {
     TypeHintFormat[ProductCommand](
       Json.format[CreateProduct].withTypeHint("Product.Create"),
-      Json.format[ChangeName].withTypeHint("Product.ChangeName"),
       Json.format[ChangePrice].withTypeHint("Product.ChangePrice")
     )
   }
@@ -81,7 +77,9 @@ object Product {
 
   val tag = Tags.aggregateTag("product")
 
-  def behavior(id: ProductNumber): Behavior[Product] = {
+  def behavior(id: ProductNumber): Behavior[Product] = behaviorImpl(id) //Behavior.empty
+
+  private def behaviorImpl(id: ProductNumber): Behavior[Product] = {
 
     import ProductProtocol._
 
@@ -95,7 +93,7 @@ object Product {
       //---------------------------------------------------------------------------------
       // Creational Commands and Events
       it.emitsEvent {
-        // only accept creation if price is valid
+        // PF (Command) => Event
         case cmd: CreateProduct if cmd.price > 0 =>
           ProductCreated(
             cmd.name,
@@ -106,12 +104,12 @@ object Product {
       }
 
       it.rejectsCommands {
-        // can't create a product with 0 or negative price
-        case createCmd: CreateProduct if createCmd.price <= 0 =>
-          new CommandException("Price is too low!")
+        // PF (Command) => Throwable
+        case createCmd: CreateProduct if createCmd.price <= 0 => new CommandException("Price is too low!")
       }
 
       it.acceptsEvents {
+        // PF (Event) => Aggregate
         case e: ProductCreated => Product(e.name, e.description, e.price, id)
       }
 
@@ -119,22 +117,20 @@ object Product {
 
       //---------------------------------------------------------------------------------
       // Update Commands and Events
-      it.emitsSingleEvent {
-        // update name
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
+      it.rejectsCommands {
+        // PF (Aggregate, Command) => Throwable
+        case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
+        case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
       }
 
       it.emitsSingleEvent {
-        // update price
+        // PF (Aggregate, Command) => Event
         case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd))
 
       }
 
-      it.rejectsCommands {
-        case (_, cmd: ChangePrice) if cmd.price <= 0 => new CommandException("Price is too low!")
-      }
-
       it.acceptsEvents {
+        // PF (Aggregate, Event) => Aggregate
         case (product, e: NameChanged)  => product.copy(name = e.newName)
         case (product, e: PriceChanged) => product.copy(price = e.newPrice)
       }
