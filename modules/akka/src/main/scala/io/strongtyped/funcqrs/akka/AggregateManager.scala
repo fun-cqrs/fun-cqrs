@@ -3,16 +3,17 @@ package io.strongtyped.funcqrs.akka
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
 import io.strongtyped.funcqrs.{Aggregate, AggregateID, Behavior}
+import scala.concurrent.duration.Duration
 
 object AggregateManager {
-
-  val maxChildren = 40
-  val childrenToKillAtOnce = 20
-
   case class GetState(id: AggregateID)
-
 }
 
+case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
+
+case class AggregatePassivationStrategy(
+  inactivityTimeout: Option[Duration] = None,
+  maxChildren: Option[MaxChildren] = None)
 
 /**
  * Base aggregate manager.
@@ -20,8 +21,6 @@ object AggregateManager {
  * It is also capable of aggregates creation and removal.
  */
 trait AggregateManager extends Actor with ActorLogging {
-
-  import AggregateManager._
 
   import scala.collection.immutable._
 
@@ -32,6 +31,7 @@ trait AggregateManager extends Actor with ActorLogging {
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
+  def aggregatePassivationStrategy: AggregatePassivationStrategy
 
   /**
    * Processes command.
@@ -128,17 +128,19 @@ trait AggregateManager extends Actor with ActorLogging {
    * Build Props for a new Aggregate Actor with the passed Id
    */
   def aggregateActorProps(id: AggregateType#Id): Props = {
-    Props(classOf[AggregateActor[AggregateType]], id, behavior(id))
+    Props(classOf[AggregateActor[AggregateType]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
   }
 
   private def killChildrenIfNecessary() = {
-    val childrenCount = context.children.size - childrenBeingTerminated.size
-    if (childrenCount >= maxChildren) {
-      log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
-      val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
-      val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
-      childrenToKill foreach (_ ! KillAggregate)
-      childrenBeingTerminated ++= childrenToKill
+    aggregatePassivationStrategy.maxChildren.foreach { case MaxChildren(maxChildren, childrenToKillAtOnce) =>
+      val childrenCount = context.children.size - childrenBeingTerminated.size
+      if (childrenCount >= maxChildren) {
+        log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
+        val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
+        val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
+        childrenToKill foreach (_ ! KillAggregate)
+        childrenBeingTerminated ++= childrenToKill
+      }
     }
   }
 }

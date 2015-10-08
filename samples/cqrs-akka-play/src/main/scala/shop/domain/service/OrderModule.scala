@@ -2,7 +2,7 @@ package shop.domain.service
 
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.akka.{AssignedAggregateId, AggregateManager, ProjectionActor}
+import io.strongtyped.funcqrs.akka._
 import io.strongtyped.funcqrs.{Behavior, Tag}
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
@@ -29,6 +29,9 @@ trait OrderModule extends AkkaModule {
 class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
   type AggregateType = Order
   def behavior(id: OrderNumber): Behavior[Order] = Order.behavior(id)
+
+  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
+
 }
 
 class OrderViewProjectionActor(val projection: OrderViewProjection) extends ProjectionActor with LevelDbProjectionSource {
