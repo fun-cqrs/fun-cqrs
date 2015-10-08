@@ -49,6 +49,7 @@ object ProductProtocol extends ProtocolDef {
   case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand
 
   case class ChangePrice(price: Double) extends ProductCommand
+  case class ChangeName(name: String) extends ProductCommand
 
 
   sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
@@ -119,13 +120,13 @@ object Product {
       // Update Commands and Events
       it.rejectsCommands {
         // PF (Aggregate, Command) => Throwable
-        case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
         case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
       }
 
       it.emitsSingleEvent {
         // PF (Aggregate, Command) => Event
         case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd))
+        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
 
       }
 
