@@ -1,9 +1,8 @@
 package shop.api
 
 import akka.pattern._
-import io.strongtyped.funcqrs.akka.AggregateActor.SuccessfulCommand
 import play.api.libs.json.{JsError, JsSuccess}
-import play.api.mvc.Action
+import play.api.mvc.{Request, RequestHeader, Action}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -14,15 +13,15 @@ trait AssignedId {
 
   def aggregateId(id: String): AggregateType#Id
 
+  def toLocation(id: String)(implicit request: RequestHeader): String
 
-  def create(id: String) = Action.async(parse.json) { request =>
+
+  def create(id: String) = Action.async(parse.json) { implicit request =>
     val createCmd = toCommand(request.body)
     createCmd match {
       case JsSuccess(cmd, _) =>
-        (aggregateManager ?(aggregateId(id), cmd))
-          .mapTo[SuccessfulCommand]
-          .map { result =>
-          Created.withHeaders("Location" -> id)
+        (aggregateManager ?(aggregateId(id), cmd)).map { result =>
+          Created.withHeaders("Location" -> toLocation(id))
         }
       case e: JsError        => Future.successful(BadRequest(JsError.toJson(e)))
     }

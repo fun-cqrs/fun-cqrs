@@ -4,7 +4,9 @@ import akka.actor.ActorRef
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.DomainCommand
 import play.api.libs.json.{JsResult, JsValue}
+import play.api.mvc.{Request, RequestHeader}
 import shop.domain.model.{Customer, CustomerId, CustomerProtocol}
+import shop.api.routes.{CustomerQueryController => ReverseQueryCtrl}
 
 
 class CustomerCmdController(val aggregateManager: ActorRef @@ Customer.type)
@@ -19,5 +21,7 @@ class CustomerCmdController(val aggregateManager: ActorRef @@ Customer.type)
 
   def toAggregateId(id: String): CustomerId = CustomerId.fromString(id)
 
-  def location(id: String): String = s"/customer/$id"
+  def toLocation(id: String)(implicit request: RequestHeader): String = {
+    ReverseQueryCtrl.get(id).absoluteURL()
+  }
 }
