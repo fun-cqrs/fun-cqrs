@@ -1,13 +1,14 @@
 package shop.domain.service
 
-import io.strongtyped.funcqrs.{HandleEvent, Logging, Projection}
+import com.typesafe.scalalogging.LazyLogging
+import io.strongtyped.funcqrs.{HandleEvent, Projection}
 import shop.domain.model.ProductProtocol._
-import shop.domain.model.{ProductNumber, ProductView}
+import shop.domain.model.ProductView
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class ProductViewProjection(repo: ProductViewRepo) extends Projection with Logging {
+class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyLogging {
 
 
   def receiveEvent: HandleEvent = {

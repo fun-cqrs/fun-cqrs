@@ -1,7 +1,8 @@
 package shop.domain.service
 
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.{HandleEvent, Logging, LoggingSuffix, Projection}
+import com.typesafe.scalalogging.LazyLogging
+import io.strongtyped.funcqrs.{HandleEvent, Projection}
 import shop.domain.model.OrderProtocol.{OrderCreated, ProductAdded, ProductRemoved}
 import shop.domain.model._
 
@@ -11,17 +12,12 @@ import scala.concurrent.Future
 
 class OrderViewProjection(orderRepo: OrderViewRepo,
                           productRepo: ProductViewRepo @@ OrderView.type,
-                          customerRepo: CustomerViewRepo @@ OrderView.type) extends Projection with Logging {
+                          customerRepo: CustomerViewRepo @@ OrderView.type) extends Projection with LazyLogging {
 
 
   // reuse projections with other repos
-  val productProjection = new ProductViewProjection(productRepo) with LoggingSuffix {
-    val suffix = "OrderView"
-  }
-
-  val customerProjection = new CustomerViewProjection(customerRepo) with LoggingSuffix {
-    val suffix = "OrderView"
-  }
+  val productProjection = new ProductViewProjection(productRepo)
+  val customerProjection = new CustomerViewProjection(customerRepo)
 
 
   def receiveEvent: HandleEvent = {

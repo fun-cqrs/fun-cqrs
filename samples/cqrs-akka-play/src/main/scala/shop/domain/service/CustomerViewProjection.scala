@@ -1,13 +1,14 @@
 package shop.domain.service
 
-import io.strongtyped.funcqrs.{Logging, Projection}
+import com.typesafe.scalalogging.LazyLogging
+import io.strongtyped.funcqrs.Projection
 import shop.domain.model.CustomerProtocol._
-import shop.domain.model.{CustomerId, CustomerView}
+import shop.domain.model.CustomerView
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Projection with Logging {
+class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Projection with LazyLogging {
 
 
   def receiveEvent = {

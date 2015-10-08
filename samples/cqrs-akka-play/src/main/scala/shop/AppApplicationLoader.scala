@@ -16,6 +16,9 @@ import scala.language.postfixOps
 class AppApplicationLoader extends ApplicationLoader {
 
   def load(context: Context) = {
+
+    Logger.configure(context.environment)
+
     val app = new BuiltInComponentsFromContext(context) with AppComponents
     app.applicationLifecycle.addStopHook { () =>
       for {

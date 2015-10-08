@@ -1,9 +1,11 @@
 package io.strongtyped.funcqrs
 
+import com.typesafe.scalalogging.LazyLogging
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
-trait InMemoryRepository extends Repository with Logging {
+trait InMemoryRepository extends Repository with LazyLogging {
 
   private var store: Map[Identifier, Model] = Map()
 

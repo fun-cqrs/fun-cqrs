@@ -7,11 +7,10 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
   val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"    % "3.1.0"
-  val logBack               =  "ch.qos.logback"             %   "logback-classic"  % "1.1.3"
   val scalaTest             =  "org.scalatest"              %%  "scalatest"        % "2.2.1"         % "test"
   
   val mainDeps = Seq(
-    libraryDependencies ++= Seq(scalaLogging, logBack),
+    libraryDependencies ++= Seq(scalaLogging),
     libraryDependencies ++= Seq(scalaTest)
   )
   //------------------------------------------------------------------------------------------------------------
@@ -20,7 +19,8 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion           =   "2.4.0-RC3"
+  val akkaVersion           =   "2.4.0"
+  val akkaActor             =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
   val akkaPersistence       =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
   val akkaSlf4j             =   "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion
   val akkaTestKit           =   "com.typesafe.akka"           %%  "akka-testkit"      % akkaVersion     % "test"
@@ -32,7 +32,7 @@ object Dependencies {
   val akkaPersistenceQuery  =   "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion
 
   val akkaDeps = Seq(
-    libraryDependencies ++= Seq(akkaPersistence, akkaTestKit, akkaSlf4j),
+    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaSlf4j, akkaTestKit),
     libraryDependencies ++= Seq(levelDb, levelDbJNI),
     // experimental
     libraryDependencies ++= Seq(akkaPersistenceQuery, akkaStreams)
