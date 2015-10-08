@@ -11,7 +11,6 @@ ivyScala := ivyScala.value map {
 }
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
-crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 // dependencies
 lazy val root = Project(
