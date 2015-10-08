@@ -3,7 +3,7 @@ package shop.api
 import akka.actor.ActorRef
 import com.softwaremill.macwire._
 import play.api.libs.json.{JsResult, JsValue}
-import play.api.mvc.{Request, RequestHeader}
+import play.api.mvc.RequestHeader
 import shop.api.routes.{OrderQueryController => ReverseQueryCtrl}
 import shop.domain.model.OrderProtocol.OrderCommand
 import shop.domain.model.{Order, OrderNumber, OrderProtocol}

@@ -4,9 +4,9 @@ import akka.actor.ActorRef
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.DomainCommand
 import play.api.libs.json.{JsResult, JsValue}
-import play.api.mvc.{Request, RequestHeader}
-import shop.domain.model.{Customer, CustomerId, CustomerProtocol}
+import play.api.mvc.RequestHeader
 import shop.api.routes.{CustomerQueryController => ReverseQueryCtrl}
+import shop.domain.model.{Customer, CustomerId, CustomerProtocol}
 
 
 class CustomerCmdController(val aggregateManager: ActorRef @@ Customer.type)

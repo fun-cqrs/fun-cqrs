@@ -2,7 +2,7 @@ package shop.api
 
 import akka.pattern._
 import play.api.libs.json.{JsError, JsSuccess}
-import play.api.mvc.{Request, RequestHeader, Action}
+import play.api.mvc.{Action, RequestHeader}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
