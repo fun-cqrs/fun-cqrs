@@ -3,13 +3,17 @@ package io.strongtyped.funcqrs
 import java.time.OffsetDateTime
 
 
-/** Holds DomainEvent metadata information such as:
-  * - aggregateId
-  * - CommandId
-  * - EventId
-  * - event date
-  * - tags
-  */
+/**
+ * Holds Metadata information such as:
+ * - aggregateId
+ * - CommandId
+ * - EventId
+ * - event date
+ * - tags
+ *
+ * Abstract type Id (subtype of AggregateID) must be defined,
+ * as such Metadata's implementation are bounded to specific Aggregate types.
+ */
 trait Metadata {
 
   type Id <: AggregateID
@@ -21,7 +25,10 @@ trait Metadata {
   def tags: Set[Tag]
 }
 
-
+/**
+ * Enriches [[DomainEvent]] with [[Metadata]] information.
+ * @tparam M a Metadata subtype
+ */
 trait MetadataFacet[M <: Metadata] {
   this: DomainEvent =>
 

@@ -7,6 +7,8 @@ import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json._
 
+import scala.concurrent.ExecutionContext
+
 sealed trait Status
 
 case object Open extends Status
@@ -63,7 +65,7 @@ object Quantity {
 
 object Order {
 
-  val tag = Tags.aggregateTag("order")
+  val tag = Tags.aggregateTag("Order")
   val dependentView = Tags.dependentViews("OrderView")
 
 
@@ -77,7 +79,7 @@ object Order {
 
     behaviorFor[Order].whenConstructing { it =>
 
-      it.emitsEvent {
+      it.processesCommands {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
       }
 
@@ -87,22 +89,7 @@ object Order {
 
     }.whenUpdating { it =>
 
-      it.emitsSingleEvent {
-
-        case (order, cmd: AddProduct) if order.status == Open =>
-          ProductAdded(cmd.productNumber, metadata(orderNum, cmd))
-
-        case (order, cmd: RemoveProduct) if order.status == Open =>
-          ProductRemoved(cmd.productNumber, metadata(orderNum, cmd))
-
-        case (order, cmd: Execute.type) if order.status == Open =>
-          OrderExecuted(metadata(orderNum, cmd))
-
-        case (order, cmd: Cancel.type) if order.status == Open =>
-          OrderCancelled(metadata(orderNum, cmd))
-      }
-
-      it.rejectsCommands {
+      it.processesCommands {
 
         case (order, cmd: Execute.type) if order.status == Executed =>
           new CommandException(s"Order is already executed")
@@ -119,6 +106,17 @@ object Order {
         case (order, _) if order.status == Cancelled =>
           new CommandException(s"Can't modify a cancelled order")
 
+        case (order, cmd: AddProduct) if order.status == Open =>
+          ProductAdded(cmd.productNumber, metadata(orderNum, cmd))
+
+        case (order, cmd: RemoveProduct) if order.status == Open =>
+          ProductRemoved(cmd.productNumber, metadata(orderNum, cmd))
+
+        case (order, cmd: Execute.type) if order.status == Open =>
+          OrderExecuted(metadata(orderNum, cmd))
+
+        case (order, cmd: Cancel.type) if order.status == Open =>
+          OrderCancelled(metadata(orderNum, cmd))
 
       }
 

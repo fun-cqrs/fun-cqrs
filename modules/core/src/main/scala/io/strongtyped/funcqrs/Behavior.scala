@@ -10,6 +10,16 @@ trait Behavior[A <: Aggregate] {
   type Events = Seq[Event]
 
 
+  /**
+   * The ExecutionContext to be used when calling validateAsync methods. Defaults to [[scala.concurrent.ExecutionContext.global]]
+   *
+   * Override this method if you prefer to use another ExecutionContext.
+   *
+   * Note: this is done on purpose to avoid using the EC from Akka for instance.
+   * It's recommended to avoid using Akka's context.dispatcher to run client code.
+   *
+   * @return - ExecutionContext to be used when calling validateAsync methods.
+   */
   def executionContext: ExecutionContext = {
     scala.concurrent.ExecutionContext.global
   }

@@ -3,7 +3,7 @@ package shop.domain.service
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.Behavior
-import io.strongtyped.funcqrs.akka.{AggregateManager, AssignedAggregateId, ProjectionActor}
+import io.strongtyped.funcqrs.akka._
 import shop.api.AkkaModule
 import shop.app.LevelDbProjectionSource
 import shop.domain.model.{Customer, CustomerId, CustomerView}
@@ -27,6 +27,8 @@ class CustomerAggregateManager extends AggregateManager with AssignedAggregateId
   type AggregateType = Customer
 
   def behavior(id: CustomerId): Behavior[Customer] = Customer.behavior(id)
+
+  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
 }
 
