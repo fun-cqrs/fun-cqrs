@@ -61,6 +61,6 @@ class ProductTest extends FlatSpec with Matchers with FutureTry with TryValues {
         (_, updated) <- productBehavior.applyCommand(ChangePrice(-1), prod)
       } yield updated
 
-    result.asTry.failure.exception.getMessage shouldBe "Price is too low!"
+    result.asTry.failure.exception.getMessage shouldBe "Can't decrease the price"
   }
 }

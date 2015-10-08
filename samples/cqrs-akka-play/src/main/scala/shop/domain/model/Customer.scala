@@ -158,7 +158,7 @@ object Customer {
 
 
     behaviorFor[Customer].whenConstructing { it =>
-      it.emitsEvent {
+      it.processesCommands {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd))
       }
@@ -170,7 +170,7 @@ object Customer {
 
     }.whenUpdating { it =>
 
-      it.emitsSingleEvent {
+      it.processesCommands {
 
         case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd))
         case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
@@ -181,9 +181,6 @@ object Customer {
         case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber         => VatNumberAdded(cmd.vat, metadata(id, cmd))
         case (customer, cmd: RemoveVatNumber.type) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd))
 
-      }
-
-      it.emitsManyEvents {
         case (_, cmd: AddAddress) =>
           immutable.Seq(
             AddressStreetChanged(cmd.address.street, metadata(id, cmd)),
