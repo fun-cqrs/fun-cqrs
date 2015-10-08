@@ -7,6 +7,8 @@ import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
 
+import scala.concurrent.ExecutionContext
+
 // tag::prod[]
 case class Product(name: String,
                    description: String,
@@ -51,6 +53,7 @@ object ProductProtocol extends ProtocolDef {
   case class ChangePrice(price: Double) extends ProductCommand
   case class ChangeName(name: String) extends ProductCommand
 
+  case class ChangeName(name: String) extends ProductCommand
 
   sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
   case class ProductCreated(name: String, description: String, price: Double,
@@ -93,8 +96,8 @@ object Product {
 
       //---------------------------------------------------------------------------------
       // Creational Commands and Events
-      it.emitsEvent {
-        // PF (Command) => Event
+      it.processesCommands {
+        // PF (Command) => EventMagnet
         case cmd: CreateProduct if cmd.price > 0 =>
           ProductCreated(
             cmd.name,
@@ -102,11 +105,8 @@ object Product {
             cmd.price,
             metadata(id, cmd)
           )
-      }
 
-      it.rejectsCommands {
-        // PF (Command) => Throwable
-        case createCmd: CreateProduct if createCmd.price <= 0 => new CommandException("Price is too low!")
+        case createCmd: CreateProduct => new CommandException("Price is too low!")
       }
 
       it.acceptsEvents {
@@ -116,18 +116,12 @@ object Product {
 
     }.whenUpdating { it =>
 
-      //---------------------------------------------------------------------------------
-      // Update Commands and Events
-      it.rejectsCommands {
-        // PF (Aggregate, Command) => Throwable
+      it.processesCommands {
+        // PF (Aggregate, Command) => EventMagnet
+        case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
         case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
-      }
-
-      it.emitsSingleEvent {
-        // PF (Aggregate, Command) => Event
-        case (_, cmd: ChangePrice) if cmd.price > 0 => PriceChanged(cmd.price, metadata(id, cmd))
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
-
+        case (_, cmd: ChangePrice)                              => PriceChanged(cmd.price, metadata(id, cmd))
+        case (_, cmd: ChangeName)                               => NameChanged(cmd.name, metadata(id, cmd))
       }
 
       it.acceptsEvents {

@@ -6,11 +6,11 @@ import akka.persistence._
 import io.strongtyped.funcqrs.akka.AggregateActor._
 import io.strongtyped.funcqrs.{Aggregate, Behavior, DomainCommand, DomainEvent}
 import scala.collection.immutable
-
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A])
-  extends PersistentActor with ActorLogging {
+class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A],
+  inactivityTimeout: Option[Duration] = None) extends PersistentActor with ActorLogging {
 
   import context.dispatcher
 
@@ -268,6 +268,22 @@ class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A])
   private def handleEvent(evt: Protocol#ProtocolEvent) = {
     persist(evt) { _ =>
       afterEventPersisted(evt)
+    }
+  }
+
+  override def preStart() {
+    inactivityTimeout.foreach { t =>
+      log.debug(s"Setting timeout to $t")
+      context.setReceiveTimeout(t)
+    }
+  }
+
+  override def unhandled(message: Any) = {
+    message match {
+      case ReceiveTimeout =>
+        log.info("Stopping")
+        context.stop(self)
+      case _ => super.unhandled(message)
     }
   }
 

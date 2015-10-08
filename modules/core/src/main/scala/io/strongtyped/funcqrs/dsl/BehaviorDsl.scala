@@ -1,10 +1,8 @@
 package io.strongtyped.funcqrs.dsl
 
 import io.strongtyped.funcqrs.{Aggregate, _}
-
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
+import scala.concurrent.{Future, ExecutionContext}
 
 object BehaviorDsl {
 
@@ -12,51 +10,48 @@ object BehaviorDsl {
 
     type Protocol = A#Protocol
 
-    // from Cmd to Future[Event]
-    type CommandToEventFuture = PartialFunction[Protocol#ProtocolCommand, Future[Protocol#ProtocolEvent]]
+    sealed trait EventMagnet {
+      def apply(): Future[Protocol#ProtocolEvent]
+    }
 
-    // from Cmd to Event
-    type CommandToEvent = PartialFunction[Protocol#ProtocolCommand, Protocol#ProtocolEvent]
+    object EventMagnet {
+      implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.successful(event)
+        }
 
-    // from Cmd to Exception
-    type CommandToFailure = PartialFunction[Protocol#ProtocolCommand, CommandException]
+      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent])(implicit ec: ExecutionContext): EventMagnet =
+        new EventMagnet {
+          def apply() = event
+        }
+
+      implicit def fromException(ex: CommandException): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.failed(ex)
+        }
+    }
+
+    // from Cmd to EventMagnet
+    type CommandToEventMagnet = PartialFunction[Protocol#ProtocolCommand, EventMagnet]
 
     // from Event to new Aggregate
     type EventToAggregate = PartialFunction[Protocol#ProtocolEvent, A]
 
     // Creation ------------------------------------------------------
-    private var _acceptFunction: CommandToEventFuture = PartialFunction.empty
-    private var _rejectFunction: CommandToFailure = PartialFunction.empty
+    private var _processCommandFunction: CommandToEventMagnet = PartialFunction.empty
     private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
-    private[BehaviorDsl] def acceptFunction = _acceptFunction
-
-    private[BehaviorDsl] def rejectFunction = {
-      val lifted: CommandToEventFuture = {
-        case e if _rejectFunction.isDefinedAt(e) => Future.failed(_rejectFunction(e))
-      }
-      lifted
-    }
-
-    val fallbackFunction: CommandToFailure = {
+    private[BehaviorDsl] def processCommandFunction = _processCommandFunction
+    
+    val fallbackFunction: CommandToEventMagnet = {
       case cmd => new CommandException(s"Invalid command $cmd")
     }
 
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
 
-    def emitsAsyncEvent(pf: CommandToEventFuture): Unit = {
-      _acceptFunction = _acceptFunction orElse pf
+    def processesCommands(pf: CommandToEventMagnet): Unit = {
+      _processCommandFunction = _processCommandFunction orElse pf
     }
-
-    def emitsEvent(pf: CommandToEvent): Unit = {
-      emitsAsyncEvent(liftFuture(pf))
-    }
-
-
-    def rejectsCommands(pf: CommandToFailure): Unit = {
-      _rejectFunction = _rejectFunction orElse pf
-    }
-
 
     def acceptsEvents(pf: EventToAggregate): Unit = {
       _handleEventFunction = _handleEventFunction orElse pf
@@ -68,68 +63,63 @@ object BehaviorDsl {
 
     type Protocol = A#Protocol
 
-    // from Aggregate + Cmd to Future[Event]
-    type CommandToEventFuture = PartialFunction[(A, Protocol#ProtocolCommand), Future[Protocol#ProtocolEvent]]
-    // from Aggregate + Cmd to Event
-    type CommandToEvent = PartialFunction[(A, Protocol#ProtocolCommand), Protocol#ProtocolEvent]
+    sealed trait EventMagnet {
+      def apply(): Future[Seq[Protocol#ProtocolEvent]]
+    }
 
-    // from Aggregate + Cmd to Future[Seq[Event]]
-    type CommandToEventsFuture = PartialFunction[(A, Protocol#ProtocolCommand), Future[immutable.Seq[Protocol#ProtocolEvent]]]
+    object EventMagnet {
+      implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.successful(immutable.Seq(event))
+        }
 
-    // from Aggregate + Cmd to Seq[Event]
-    type CommandToEvents = PartialFunction[(A, Protocol#ProtocolCommand), immutable.Seq[Protocol#ProtocolEvent]]
+      implicit def fromEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.successful(events)
+        }
 
-    // from Aggregate + Cmd to Exception
-    type CommandToFailure = PartialFunction[(A, Protocol#ProtocolCommand), CommandException]
+      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent])
+        (implicit ec: ExecutionContext): EventMagnet =
+        new EventMagnet {
+          def apply() = event.map(Seq(_))
+        }
+
+      implicit def fromAsyncEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]])
+        (implicit ec: ExecutionContext): EventMagnet =
+        new EventMagnet {
+          def apply() = events
+        }
+      
+      implicit def fromException(ex: CommandException): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.failed(ex)
+        }
+    }
+
+    // from Aggregate + Cmd to EventMagnet
+    type CommandToEventMagnet = PartialFunction[(A, Protocol#ProtocolCommand), EventMagnet]
 
     type EventToAggregate = PartialFunction[(A, Protocol#ProtocolEvent), A]
 
     // Updates --------------------------------------------------------
-    private var _acceptFunction: CommandToEventsFuture = PartialFunction.empty
-    private var _rejectFunction: CommandToFailure = PartialFunction.empty
+    private var _processCommandFunction: CommandToEventMagnet = PartialFunction.empty
     private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
-    val fallbackFunction: CommandToFailure = {
+    val fallbackFunction: CommandToEventMagnet = {
       case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.id}")
     }
 
-    private[BehaviorDsl] def acceptFunction = _acceptFunction
-
-    private[BehaviorDsl] def rejectFunction = {
-      val lifted: CommandToEventsFuture = {
-        case e if _rejectFunction.isDefinedAt(e) => Future.failed(_rejectFunction(e))
-      }
-      lifted
-    }
+    private[BehaviorDsl] def processCommandFunction = _processCommandFunction
 
     private[BehaviorDsl] def handleEventFunction = _handleEventFunction
 
-
-    def emitsManyEventsAsync(pf: CommandToEventsFuture): Unit = {
-      _acceptFunction = _acceptFunction orElse pf
-    }
-
-    def emitsSingleEventAsync(pf: CommandToEventFuture)(implicit ec: ExecutionContext): Unit = {
-      emitsManyEventsAsync(mapSeq(pf))
-    }
-
-    def emitsSingleEvent(pf: CommandToEvent): Unit = {
-      emitsManyEvents(liftSeq(pf))
-    }
-
-    def emitsManyEvents(pf: CommandToEvents): Unit = {
-      emitsManyEventsAsync(liftFuture(pf))
-    }
-
-    def rejectsCommands(pf: CommandToFailure): Unit = {
-      _rejectFunction = _rejectFunction orElse pf
+    def processesCommands(pf: CommandToEventMagnet): Unit = {
+      _processCommandFunction = _processCommandFunction orElse pf
     }
 
     def acceptsEvents(pf: EventToAggregate): Unit = {
       _handleEventFunction = _handleEventFunction orElse pf
     }
-
-
   }
 
   class BehaviorBuilder[A <: Aggregate](val creation: CreationBuilder[A], val updates: UpdatesBuilder[A]) {
@@ -149,26 +139,26 @@ object BehaviorDsl {
 
       new Behavior[A] {
 
-        private val acceptCreationalCmds = creation.acceptFunction
-        private val rejectCreationalCmds = creation.rejectFunction
+        private val processCreationalCmds = creation.processCommandFunction
         private val fallbackOnCreation = creation.fallbackFunction
         private val handleCreationalEvents = creation.handleEventFunction
 
-        private val acceptUpdateCommands = updates.acceptFunction
-        private val rejectUpdateCommands = updates.rejectFunction
+        private val processUpdateCommands = updates.processCommandFunction
         private val fallbackOnUpdate = updates.fallbackFunction
         private val handleEvents = updates.handleEventFunction
 
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-          (rejectCreationalCmds orElse acceptCreationalCmds)
+          processCreationalCmds
             .lift(cmd)
-            .getOrElse(Future.failed(fallbackOnCreation(cmd)))
+            .getOrElse(fallbackOnCreation(cmd))
+            .apply()
         }
 
         def validateAsync(cmd: Command, aggregate: A)(implicit ec: ExecutionContext): Future[Events] = {
-          (rejectUpdateCommands orElse acceptUpdateCommands)
+          processUpdateCommands
             .lift(aggregate, cmd)
-            .getOrElse(Future.failed(fallbackOnUpdate(aggregate, cmd)))
+            .getOrElse(fallbackOnUpdate(aggregate, cmd))
+            .apply()
         }
 
         def applyEvent(evt: Event): A = {
@@ -185,21 +175,5 @@ object BehaviorDsl {
 
   def behaviorFor[A <: Aggregate]: BehaviorBuilder[A] =
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
-
-
-  private def mapSeq[A, B](pf: PartialFunction[A, Future[B]])(implicit ec: ExecutionContext): PartialFunction[A, Future[immutable.Seq[B]]] = {
-    case e if pf.isDefinedAt(e) => pf(e).map { value => immutable.Seq(value) }
-  }
-
-  private def liftFuture[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Future[B]] = {
-    case e if pf.isDefinedAt(e) => Future.fromTry(Try(pf(e)))
-  }
-
-  private def liftSeq[A, B](pf: PartialFunction[A, B]): PartialFunction[A, immutable.Seq[B]] = {
-    case e if pf.isDefinedAt(e) => immutable.Seq(pf(e))
-  }
-
-  private def liftSeqFuture[A, B](pf: PartialFunction[A, B]): PartialFunction[A, Future[immutable.Seq[B]]] = liftFuture(liftSeq(pf))
-
 
 }
