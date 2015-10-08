@@ -1,0 +1,44 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+#==============================================================================================
+# PRODUCT
+
+# WRITE actions on Aggregate side
+PUT     /product/:id                        shop.api.ProductCmdController.create(id:String)
+PATCH   /product/:id                        shop.api.ProductCmdController.update(id:String)
+
+# READ actions on View Model side
+GET     /product/:id                        shop.api.ProductQueryController.get(id:String)
+GET     /products                           shop.api.ProductQueryController.list
+#===============================================================================================
+
+
+#==============================================================================================
+# CUSTOMER
+
+# WRITE actions on Aggregate side
+PUT     /customer/:id                       shop.api.CustomerCmdController.create(id:String)
+PATCH   /customer/:id                       shop.api.CustomerCmdController.update(id:String)
+
+# READ actions on View Model side
+GET     /customer/:id                       shop.api.CustomerQueryController.get(id:String)
+GET     /customers                          shop.api.CustomerQueryController.list
+#===============================================================================================
+
+
+#==============================================================================================
+# ORDER
+
+# WRITE actions on Aggregate side
+PUT    /order/:id                           shop.api.OrderCmdController.create(id:String)
+PATCH  /order/:id                           shop.api.OrderCmdController.update(id:String)
+
+# READ actions on View Model side
+GET     /order/:id                          shop.api.OrderQueryController.get(id:String)
+GET     /orders                             shop.api.OrderQueryController.list
+#===============================================================================================
+
+# Map static resources from the /public folder to the /assets URL path
+GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

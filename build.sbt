@@ -11,7 +11,6 @@ ivyScala := ivyScala.value map {
 }
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
-crossScalaVersions := Seq("2.10.5", "2.11.7")
 
 // dependencies
 lazy val root = Project(
@@ -20,7 +19,7 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   )
-) aggregate(funCqrs, funCqrsAkka, invoiceSample, playApp)
+) aggregate(funCqrs, funCqrsAkka, playApp)
 
 
 // Core ==========================================
@@ -32,16 +31,13 @@ lazy val funCqrs = Project(
 //================================================
 
 
-
 // Akka integration ==============================
 lazy val funCqrsAkka = Project(
-  id = "fun-cqrs-core",
+  id = "fun-cqrs-akka",
   base = file("modules/akka"),
   settings = mainDeps ++ akkaDeps
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
-
-
 
 
 // #####################################################
@@ -51,28 +47,18 @@ lazy val funCqrsAkka = Project(
 // contains Play / Akka / Macwire sample
 lazy val playApp = Project(
   id = "fun-cqrs-akka-play-sample",
-  base = file("modules/samples/cqrs-akka-play"),
-   settings = Seq(
+  base = file("samples/cqrs-akka-play"),
+  settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ mainDeps ++ akkaDeps ++ macwireDeps
+  ) ++ playSampleDeps
 ).enablePlugins(PlayScala)
- .disablePlugins(PlayLayoutPlugin)
- .dependsOn (funCqrs % "compile->compile;test->test")
- .dependsOn(funCqrsAkka % "compile->compile;test->test")
+  .disablePlugins(PlayLayoutPlugin)
+  .dependsOn(funCqrs % "compile->compile;test->test")
+  .dependsOn(funCqrsAkka % "compile->compile;test->test")
 //================================================
 
-
-
-// contains examples used on the docs, not intended to be released
-lazy val invoiceSample = Project(
-  id = "fun-cqrs-invoices-sample",
-  base = file("modules/samples/invoices"),
-  settings = Seq(
-    publishArtifact := false
-  ) ++ mainDeps 
-) dependsOn (funCqrs % "compile->compile;test->test")
-//================================================
+addCommandAlias("runPlaySample", "fun-cqrs-akka-play-sample/run")
 
 
 //@formatter:on
