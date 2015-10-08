@@ -1,13 +1,13 @@
 package shop.domain.model
 
 import java.time.OffsetDateTime
-
+import scala.collection.immutable
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
 import play.api.libs.json.Json
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{Future, ExecutionContext}
 
 // tag::prod[]
 case class Product(name: String,
@@ -53,8 +53,6 @@ object ProductProtocol extends ProtocolDef {
   case class ChangePrice(price: Double) extends ProductCommand
   case class ChangeName(name: String) extends ProductCommand
 
-  case class ChangeName(name: String) extends ProductCommand
-
   sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
   case class ProductCreated(name: String, description: String, price: Double,
                             metadata: ProductMetadata) extends ProductEvent
@@ -79,9 +77,9 @@ object ProductProtocol extends ProtocolDef {
 
 object Product {
 
-  val tag = Tags.aggregateTag("product")
+  val tag = Tags.aggregateTag("Product")
 
-  def behavior(id: ProductNumber): Behavior[Product] = behaviorImpl(id) //Behavior.empty
+  def behavior(id: ProductNumber): Behavior[Product] = behaviorImpl(id)
 
   private def behaviorImpl(id: ProductNumber): Behavior[Product] = {
 
@@ -121,7 +119,7 @@ object Product {
         case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
         case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
         case (_, cmd: ChangePrice)                              => PriceChanged(cmd.price, metadata(id, cmd))
-        case (_, cmd: ChangeName)                               => NameChanged(cmd.name, metadata(id, cmd))
+        case (_, cmd: ChangeName)                               => Future.successful(NameChanged(cmd.name, metadata(id, cmd)))
       }
 
       it.acceptsEvents {

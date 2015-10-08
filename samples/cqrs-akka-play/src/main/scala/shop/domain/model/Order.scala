@@ -65,7 +65,7 @@ object Quantity {
 
 object Order {
 
-  val tag = Tags.aggregateTag("order")
+  val tag = Tags.aggregateTag("Order")
   val dependentView = Tags.dependentViews("OrderView")
 
 

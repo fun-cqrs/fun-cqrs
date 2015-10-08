@@ -3,6 +3,7 @@ package io.strongtyped.funcqrs.dsl
 import io.strongtyped.funcqrs.{Aggregate, _}
 import scala.collection.immutable
 import scala.concurrent.{Future, ExecutionContext}
+import scala.language.implicitConversions
 
 object BehaviorDsl {
 
@@ -20,7 +21,7 @@ object BehaviorDsl {
           def apply() = Future.successful(event)
         }
 
-      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent])(implicit ec: ExecutionContext): EventMagnet =
+      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
           def apply() = event
         }
@@ -42,7 +43,7 @@ object BehaviorDsl {
     private var _handleEventFunction: EventToAggregate = PartialFunction.empty
 
     private[BehaviorDsl] def processCommandFunction = _processCommandFunction
-    
+
     val fallbackFunction: CommandToEventMagnet = {
       case cmd => new CommandException(s"Invalid command $cmd")
     }
@@ -61,6 +62,7 @@ object BehaviorDsl {
 
   class UpdatesBuilder[A <: Aggregate] {
 
+    private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
     type Protocol = A#Protocol
 
     sealed trait EventMagnet {
@@ -78,18 +80,16 @@ object BehaviorDsl {
           def apply() = Future.successful(events)
         }
 
-      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent])
-        (implicit ec: ExecutionContext): EventMagnet =
+      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
           def apply() = event.map(Seq(_))
         }
 
-      implicit def fromAsyncEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]])
-        (implicit ec: ExecutionContext): EventMagnet =
+      implicit def fromAsyncEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
         new EventMagnet {
           def apply() = events
         }
-      
+
       implicit def fromException(ex: CommandException): EventMagnet =
         new EventMagnet {
           def apply() = Future.failed(ex)
@@ -139,7 +139,7 @@ object BehaviorDsl {
 
       new Behavior[A] {
 
-        private val processCreationalCmds = creation.processCommandFunction
+        private val processCreationalCommands = creation.processCommandFunction
         private val fallbackOnCreation = creation.fallbackFunction
         private val handleCreationalEvents = creation.handleEventFunction
 
@@ -148,7 +148,7 @@ object BehaviorDsl {
         private val handleEvents = updates.handleEventFunction
 
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-          processCreationalCmds
+          processCreationalCommands
             .lift(cmd)
             .getOrElse(fallbackOnCreation(cmd))
             .apply()

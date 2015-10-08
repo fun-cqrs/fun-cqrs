@@ -9,8 +9,9 @@ import scala.collection.immutable
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A],
-  inactivityTimeout: Option[Duration] = None) extends PersistentActor with ActorLogging {
+class AggregateActor[A <: Aggregate](identifier: A#Id,
+                                     behavior: Behavior[A],
+                                     inactivityTimeout: Option[Duration] = None) extends PersistentActor with ActorLogging {
 
   import context.dispatcher
 
@@ -283,7 +284,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id, behavior: Behavior[A],
       case ReceiveTimeout =>
         log.info("Stopping")
         context.stop(self)
-      case _ => super.unhandled(message)
+      case _              => super.unhandled(message)
     }
   }
 

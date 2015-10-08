@@ -146,7 +146,7 @@ object CustomerProtocol extends ProtocolDef {
 
 object Customer {
 
-  val tag = Tags.aggregateTag("customer")
+  val tag = Tags.aggregateTag("Customer")
 
   def behavior(id: CustomerId): Behavior[Customer] = {
     import CustomerProtocol._
@@ -178,8 +178,8 @@ object Customer {
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
           VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
 
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber         => VatNumberAdded(cmd.vat, metadata(id, cmd))
-        case (customer, cmd: RemoveVatNumber.type) if customer.doesNotHaveVatNumber => VatNumberRemoved(metadata(id, cmd))
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber => VatNumberAdded(cmd.vat, metadata(id, cmd))
+        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber => VatNumberRemoved(metadata(id, cmd))
 
         case (_, cmd: AddAddress) =>
           immutable.Seq(
