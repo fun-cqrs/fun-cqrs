@@ -150,15 +150,15 @@ object BehaviorDsl {
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
           processCreationalCmds
             .lift(cmd)
-            .map(_.apply())
-            .getOrElse(fallbackOnCreation(cmd).apply())
+            .getOrElse(fallbackOnCreation(cmd))
+            .apply()
         }
 
         def validateAsync(cmd: Command, aggregate: A)(implicit ec: ExecutionContext): Future[Events] = {
           processUpdateCommands
             .lift(aggregate, cmd)
-            .map(_.apply())
-            .getOrElse(fallbackOnUpdate(aggregate, cmd).apply())
+            .getOrElse(fallbackOnUpdate(aggregate, cmd))
+            .apply()
         }
 
         def applyEvent(evt: Event): A = {
