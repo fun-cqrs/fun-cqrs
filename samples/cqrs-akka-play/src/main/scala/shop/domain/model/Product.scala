@@ -119,7 +119,7 @@ object Product {
         case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
         case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
         case (_, cmd: ChangePrice)                              => PriceChanged(cmd.price, metadata(id, cmd))
-        case (_, cmd: ChangeName)                               => Future.successful(NameChanged(cmd.name, metadata(id, cmd)))
+        case (_, cmd: ChangeName)                               => NameChanged(cmd.name, metadata(id, cmd))
       }
 
       it.acceptsEvents {
