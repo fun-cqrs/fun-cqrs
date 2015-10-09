@@ -26,7 +26,7 @@ object BehaviorDsl {
           def apply() = event
         }
 
-      implicit def fromException(ex: CommandException): EventMagnet =
+      implicit def fromException(ex: Exception): EventMagnet =
         new EventMagnet {
           def apply() = Future.failed(ex)
         }
@@ -90,7 +90,7 @@ object BehaviorDsl {
           def apply() = events
         }
 
-      implicit def fromException(ex: CommandException): EventMagnet =
+      implicit def fromException(ex: Exception): EventMagnet =
         new EventMagnet {
           def apply() = Future.failed(ex)
         }
