@@ -2,12 +2,18 @@ language: scala
 sudo: false
 script: sbt -jvm-opts jvmopts.travis test
 jdk:
-  - oraclejdk8
-
+- oraclejdk8
 notifications:
   webhooks:
     urls:
-      - https://webhooks.gitter.im/e/7053daf92ef3da0554f0       
-    on_success: change  # options: [always|never|change] default: always
-    on_failure: always  # options: [always|never|change] default: always
-    on_start: false     # default: false
+    - https://webhooks.gitter.im/e/7053daf92ef3da0554f0
+    on_success: change
+    on_failure: always
+    on_start: false
+after_success:
+- '[[ $TRAVIS_BRANCH == "develop" ]] && { sbt "+ publish" ; };'
+
+env:
+  global:
+  - secure: Zw2E2G10Pecb0gORmMY+Z2Q2j6BinYrnUwn1mNCLsL+LDU0IWBUNP3q/5c3FCJkpcqkMXXhWuZUQNkHIt9IRLfU9JujBNNs06q1SSOVwr37JDGp39q//nNJXAhzfLd/g4PJxXeVhWGjuRc8q/Zl8YX+Pxcb1XqJRMmsqzKzdW9k43H4cu4u3Ja7X8UKLMvfDBrvhswrGL+2zAcSyETWStysJMud2YY9tqsKvg9+ovbC0wdm8ssLrrIdJ3r0UnAKmt34+D3jnVk81cUVT7h7zTsznVmFtukWRi8L8UOI7UPSApDJI1DBCE4S2yUXh9IwqO6PQQaBEU0dkwU3xqypM535n1KBKnp18WYRPphuzguUcrM83JBX5HBqRtznzaYyGS/acOXYWJfaISwPs80DkGQXoY8YRk4q5ui1+AjS3ppMnwZ/iENPn5Yem1owCHtMB03QpoKDQ9UCEwA8ohlwxYSL/F+qw/dgpbeG4PyeeROc7HU7Q/fyXIWn3UzwGSw4lwtb8h2ljkpZS9VitniKXrFsKTywWfstwQyxbKfWqfOVZtiGSkyCpV77S/3N5YJdYNn9NwoyUC56yTDTofSmMfsM8TGhnEpZsXiFtHZWlKWg4mPfrbQMrRwukFBgt3hkESQM6VrsFrVArJLkRGN3HbPvsTda7icDn+Zd6gyQKIEY=
+  - secure: W6ufoIuFdtUpKos1Nip3M+3cJvksNBe1CAAS7v4cB/TJzIsZ/XOqdz/h7YySocEg7Nh8+kuFUs6HvbrDGbH6SdSg2TsJGzCjiGypdVIYyNnFTc5TAdOTJS/DTIOwyDCU3jZH68Uq9XtL0GkJz6Oieb2N8CUNfmTRNge9LQ8YY49qiJm5KNxwqWYuPs34e0ims3N38T/DWe2OPAd9nqDgIdvfzWmvzlMS8YBdxmHdW3UDSIAUsXEH0nandMr/9cIVmGgGtxZpE+b+QIScI3ZHsEH3D8jtyPJRYFpA9bLUDH0HYQsNKUJR5VoXDK5ybHbYuuxe1oQhog2S6ZTEV5IDnDJg9v62siwdoq5ffb4cUJf+L0RVyKxILxtOjQ92a0nwD5we7A8kWPwhH8e1yiyPKbPLjjAFSgqWi6fsgwRMX79m2k9yJyiKSCZuH2RYitIRyvbaNn9i1imIgvqj+3qpX6etqQbn1Y4RH0Dik5a+hZjULdrMWqUcFVDaE93STQI5fXnyyTCgnxIVJu5wz9ivE9Mrw1c7HS5xvf9DHyt+Ax40mGBOL2PxtHR+qrctJwFrKX7okydxQSkXPo4MAD1Oqp9fd3ku8paB/cLtVQhEkSWgZLur8kuYaImtKgVinmLW0HpmJ05B8ZMGfqVVYtFjkwRobGqymfrqxp9RhkmoWQc=
