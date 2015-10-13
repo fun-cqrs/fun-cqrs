@@ -81,10 +81,10 @@ object Behavior {
     def applyEvent(event: Event, aggregate: AggregateType): AggregateType = ???
     // async behavior
     protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] =
-      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
 
     protected def validateAsync(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[Events] =
-      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
 
   }
 }
