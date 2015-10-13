@@ -1,4 +1,4 @@
-package io.strongtyped.funcqrs.json
+package funcqrs.json
 
 import play.api.libs.json._
 import scala.reflect.ClassTag

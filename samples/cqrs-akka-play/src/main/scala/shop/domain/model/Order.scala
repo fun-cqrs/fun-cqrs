@@ -2,9 +2,10 @@ package shop.domain.model
 
 import java.time.OffsetDateTime
 
+import funcqrs.json.TypedJson
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import io.strongtyped.funcqrs.json.TypedJson.{TypeHintFormat, _}
+import TypedJson.{TypeHintFormat, _}
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
