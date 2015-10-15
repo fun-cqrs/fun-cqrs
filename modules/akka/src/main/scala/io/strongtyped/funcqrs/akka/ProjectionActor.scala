@@ -13,7 +13,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 abstract class ProjectionActor extends Actor with ActorLogging with Stash {
-  this: ProjectionSource =>
+  this: EventsSourceProvider =>
 
   def projection: Projection
 
@@ -21,11 +21,13 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
 
   implicit val timeout = Timeout(5 seconds)
 
+  def offset: Long = 0
+
   override def preStart(): Unit = {
     log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
     val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
-    source.runWith(actorSink)
+    source(offset).runWith(actorSink)
   }
 
   def receive: Receive = acceptingEvents
