@@ -36,4 +36,10 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 
 class OrderViewProjectionActor(val projection: OrderViewProjection) extends ProjectionActor with LevelDbProjectionSource {
   val tag: Tag = Order.dependentView
+
+  override def onFailure = {
+    // do nothing, ignore event
+    case (evt, e: NoSuchElementException) => log.debug(s"Got a NoSuchElementException, ignoring event $evt")
+  }
+
 }

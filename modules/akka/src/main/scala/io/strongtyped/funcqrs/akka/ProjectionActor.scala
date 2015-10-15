@@ -23,6 +23,7 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
 
   def offset: Long = 0
 
+
   override def preStart(): Unit = {
     log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
@@ -32,7 +33,7 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
 
   def receive: Receive = acceptingEvents
 
-  def runningProjection: Receive = {
+  def runningProjection(currentEvent: DomainEvent): Receive = {
 
     // stash new events while busy with projection
     case OnNext(evt: DomainEvent) => stash()
@@ -43,6 +44,10 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
       context.parent ! lastEvent // send last processed event to parent
       unstashAll()
       context become acceptingEvents
+
+    case Status.Failure(e) =>
+      handleFailure(currentEvent, e)
+      context become acceptingEvents // continue processing if possible
   }
 
   def acceptingEvents: Receive = {
@@ -50,9 +55,24 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
     case OnNext(evt: DomainEvent) =>
       log.debug(s"Received event $evt")
       projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
-      context become runningProjection
+      context become runningProjection(evt)
   }
 
+
+  final def handleFailure(evt: DomainEvent, e: Throwable): Unit = {
+    val finalHandleFailure = onFailure orElse handleFailureFunc
+    finalHandleFailure((evt, e))
+  }
+
+  val handleFailureFunc: PartialFunction[(DomainEvent, Throwable), Unit] = {
+    // by default we re-throw to kill the actor and reprocess event
+    case (currentEvent, e) =>
+      log.error(e, s"Failed to process event $currentEvent")
+      throw e
+  }
+
+
+  def onFailure: PartialFunction[(DomainEvent, Throwable), Unit] = PartialFunction.empty
 }
 
 object ProjectionActor {
