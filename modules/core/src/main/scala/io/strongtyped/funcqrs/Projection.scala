@@ -38,6 +38,12 @@ trait Projection {
 
 object Projection {
 
+  /** Projection with empty domain */
+  def empty = new Projection {
+    def receiveEvent: HandleEvent = PartialFunction.empty
+  }
+
+
   /**
    * A [[Projection]] composed of two other Projections to each [[DomainEvent]] will be sent.
    *
