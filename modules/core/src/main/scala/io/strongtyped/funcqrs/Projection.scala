@@ -43,7 +43,6 @@ object Projection {
     def receiveEvent: HandleEvent = PartialFunction.empty
   }
 
-
   /**
    * A [[Projection]] composed of two other Projections to each [[DomainEvent]] will be sent.
    *

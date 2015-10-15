@@ -12,14 +12,14 @@ trait LevelDbProjectionSource extends EventsSourceProvider {
 
   def tag: Tag
 
-  def source: Source[DomainEvent, Unit] = {
+  def source(offset: Long): Source[DomainEvent, Unit] = {
 
     val readJournal =
       PersistenceQuery(context.system)
         .readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
     // will always read from start!!
-    readJournal.eventsByTag(tag.value).map { env =>
+    readJournal.eventsByTag(tag.value, offset).map { env =>
       // and this will blow up if something different than a DomainEvent comes in!!
       env.event match {
         case evt: DomainEvent => evt
