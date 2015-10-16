@@ -19,7 +19,7 @@ trait CustomerModule extends AkkaModule {
   // READ side wiring
   val customerViewRepo = wire[CustomerViewRepo].taggedWith[CustomerView.type]
 
-  funCQRS.projection(Props(classOf[CustomerViewProjectionActor], wire[CustomerViewProjection]), "CustomerViewProjectionActor")
+  funCQRS.projection[CustomerViewProjectionActor]("CustomerViewProjectionActor", wire[CustomerViewProjection])
 }
 
 class CustomerAggregateManager extends AggregateManager with AssignedAggregateId {
@@ -32,7 +32,7 @@ class CustomerAggregateManager extends AggregateManager with AssignedAggregateId
 
 }
 
-class CustomerViewProjectionActor(val projection: CustomerViewProjection) extends ProjectionActor with LevelDbProjectionSource {
-
+class CustomerViewProjectionActor(name: String, projection: CustomerViewProjection)
+  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
   val tag = Customer.tag
 }

@@ -2,6 +2,8 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import akka.pattern._
+import akka.persistence.{RecoveryCompleted, SnapshotOffer, PersistentActor}
+import akka.persistence.query.EventEnvelope
 import akka.stream.ActorMaterializer
 import akka.stream.actor.ActorSubscriberMessage.{OnError, OnNext}
 import akka.stream.actor.{ActorSubscriber, RequestStrategy, WatermarkRequestStrategy}
@@ -12,38 +14,78 @@ import io.strongtyped.funcqrs.{DomainEvent, Projection}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class ProjectionActor extends Actor with ActorLogging with Stash {
+abstract class ProjectionActor(name: String, projection: Projection) extends PersistentActor with ActorLogging with Stash {
   this: EventsSourceProvider =>
 
-  def projection: Projection
 
   import context.dispatcher
 
   implicit val timeout = Timeout(5 seconds)
 
-  def offset: Long = 0
+  var currentOffset: Long = 0
 
+  def saveCurrentOffset(offset: Long): Unit = {
+    persist(offset) { o =>
+      currentOffset = offset
+      if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+        log.debug(s"$eventsPerSnapshot events consumed, saving snapshot")
+        saveSnapshot(offset)
+        eventsSinceLastSnapshot = 0
+      }
+    }
 
-  override def preStart(): Unit = {
+  }
+
+  private var eventsSinceLastSnapshot: Long = 0
+
+  def eventsPerSnapshot: Long = 100
+
+  override def receiveCommand: Receive = acceptingEvents
+
+  def persistenceId: String = name
+
+  override val receiveRecover: Receive = {
+
+    case SnapshotOffer(metadata, offset: Long) =>
+      eventsSinceLastSnapshot = 0
+      currentOffset = offset
+
+    case offset: Long         => currentOffset = offset
+    case _: RecoveryCompleted =>
+      log.debug(s"Recovery completed for ProjectionActor $name")
+      recoveryCompleted()
+
+    case unknown => log.debug(s"Unknown message on recovery: $unknown")
+  }
+
+  def recoveryCompleted(): Unit = {
     log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
     val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
-    source(offset).runWith(actorSink)
+    source(currentOffset).runWith(actorSink)
   }
 
-  def receive: Receive = acceptingEvents
+  override def receive: Receive = acceptingEvents
 
-  def runningProjection(currentEvent: DomainEvent): Receive = {
+  def runningProjection(currentEvent: DomainEvent, offset: Long): Receive = {
 
     // stash new events while busy with projection
-    case OnNext(evt: DomainEvent) => stash()
+    case OnNextDomainEvent(_, _) => stash()
 
     // ready with projection, notify parent and start consuming next events
     case ProjectionActor.Done(lastEvent) =>
       log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
       context.parent ! lastEvent // send last processed event to parent
+
+      // save offset of last processed event
+      // event will be processed twice if saveCurrentOffset fails
+      // therefore Projections should be idempotent or fail-safe
+      saveCurrentOffset(offset)
+
       unstashAll()
       context become acceptingEvents
+
+    case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
 
     case Status.Failure(e) =>
       handleFailure(currentEvent, e)
@@ -52,10 +94,16 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
 
   def acceptingEvents: Receive = {
 
-    case OnNext(evt: DomainEvent) =>
+    case OnNextDomainEvent(evt, offset) =>
       log.debug(s"Received event $evt")
       projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
-      context become runningProjection(evt)
+      context become runningProjection(evt, offset)
+
+    case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+
+    case Status.Failure(e) =>
+      log.error(e, "Failure while accepting events...")
+      throw e
   }
 
 
@@ -71,6 +119,14 @@ abstract class ProjectionActor extends Actor with ActorLogging with Stash {
       throw e
   }
 
+  object OnNextDomainEvent {
+    def unapply(onNext: OnNext): Option[(DomainEvent, Long)] = {
+      onNext.element match {
+        case EventEnvelope(offset, _, _, event: DomainEvent) => Option((event, offset))
+        case _                                               => None
+      }
+    }
+  }
 
   def onFailure: PartialFunction[(DomainEvent, Throwable), Unit] = PartialFunction.empty
 }

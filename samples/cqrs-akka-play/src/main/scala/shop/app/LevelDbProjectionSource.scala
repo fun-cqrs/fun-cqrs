@@ -1,31 +1,34 @@
 package shop.app
 
 import akka.actor.Actor
-import akka.persistence.query.PersistenceQuery
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
+import akka.persistence.query.{EventEnvelope, PersistenceQuery}
 import akka.stream.scaladsl.Source
+import io.strongtyped.funcqrs.Tag
 import io.strongtyped.funcqrs.akka.EventsSourceProvider
-import io.strongtyped.funcqrs.{DomainEvent, Tag}
 
 trait LevelDbProjectionSource extends EventsSourceProvider {
   this: Actor =>
 
+  /**
+   * The [[Tag]] to query events. Only events tagged with this [[Tag]] will be returned.
+   * @return
+   */
   def tag: Tag
 
-  def source(offset: Long): Source[DomainEvent, Unit] = {
+  /**
+   * Builds a [[Source]] of [[EventEnvelope]]s containing the [[Tag]] and starting from the passed offset.
+   *
+   * @param offset - initial offset to start read from
+   * @return
+   */
+  def source(offset: Long): Source[EventEnvelope, Unit] = {
 
     val readJournal =
       PersistenceQuery(context.system)
         .readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
-    // will always read from start!!
-    readJournal.eventsByTag(tag.value, offset).map { env =>
-      // and this will blow up if something different than a DomainEvent comes in!!
-      env.event match {
-        case evt: DomainEvent => evt
-        case unexpected       => sys.error(s"Oeps!! That's was totally unexpected $unexpected")
-      }
-    }
+    readJournal.eventsByTag(tag.value, offset)
   }
 
 }

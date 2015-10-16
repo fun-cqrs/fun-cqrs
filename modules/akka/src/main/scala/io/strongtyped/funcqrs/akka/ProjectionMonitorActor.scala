@@ -13,6 +13,7 @@ import scala.concurrent.duration.{FiniteDuration, _}
  */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
+
   // internal EventBus to dispatch events to subscribed EventsMonitor
   // (too lazy to build and maintain my own Map[CommandId, ActorRef])
   private val eventBus = new LookupClassification with ActorEventBus {

@@ -22,7 +22,7 @@ trait ProductModule extends AkkaModule {
   // READ side wiring
   val productViewRepo = wire[ProductViewRepo].taggedWith[ProductView.type]
 
-  funCQRS.projection(Props(classOf[ProductViewProjectionActor], wire[ProductViewProjection]), "ProductViewProjectionActor")
+  funCQRS.projection[ProductViewProjectionActor]("ProductViewProjectionActor", wire[ProductViewProjection])
 
 }
 
@@ -33,6 +33,7 @@ class ProductAggregateManager extends AggregateManager with AssignedAggregateId 
   override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 }
 
-class ProductViewProjectionActor(val projection: ProductViewProjection) extends ProjectionActor with LevelDbProjectionSource {
+class ProductViewProjectionActor(name: String, projection: ProductViewProjection)
+  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
   val tag: Tag = Product.tag
 }

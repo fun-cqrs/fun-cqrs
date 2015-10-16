@@ -22,7 +22,7 @@ trait OrderModule extends AkkaModule {
   val productViewRepoForOrder = wire[ProductViewRepo].taggedWith[OrderView.type]
   val customerViewRepoForOrder = wire[CustomerViewRepo].taggedWith[OrderView.type]
 
-  funCQRS.projection(Props(classOf[OrderViewProjectionActor], wire[OrderViewProjection]), "OrderViewProjectionActor")
+  funCQRS.projection[OrderViewProjectionActor]("OrderViewProjectionActor", wire[OrderViewProjection])
 
 }
 
@@ -34,12 +34,13 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 
 }
 
-class OrderViewProjectionActor(val projection: OrderViewProjection) extends ProjectionActor with LevelDbProjectionSource {
+class OrderViewProjectionActor(name: String, projection: OrderViewProjection)
+  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
+
   val tag: Tag = Order.dependentView
 
   override def onFailure = {
     // do nothing, ignore event
     case (evt, e: NoSuchElementException) => log.debug(s"Got a NoSuchElementException, ignoring event $evt")
   }
-
 }
