@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait Behavior[A <: Aggregate] {
+trait Behavior[A <: Aggregate] { 
 
   type AggregateType = A
   type Command = A#Protocol#ProtocolCommand
