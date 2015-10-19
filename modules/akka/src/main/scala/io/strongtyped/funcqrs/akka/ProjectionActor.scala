@@ -25,20 +25,8 @@ abstract class ProjectionActor(name: String, projection: Projection) extends Per
   var currentOffset: Long = 0
 
   def saveCurrentOffset(offset: Long): Unit = {
-    persist(offset) { o =>
-      currentOffset = offset
-      if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
-        log.debug(s"$eventsPerSnapshot events consumed, saving snapshot")
-        saveSnapshot(offset)
-        eventsSinceLastSnapshot = 0
-      }
-    }
-
+    saveSnapshot(offset)
   }
-
-  private var eventsSinceLastSnapshot: Long = 0
-
-  def eventsPerSnapshot: Long = 100
 
   override def receiveCommand: Receive = acceptingEvents
 
@@ -47,10 +35,8 @@ abstract class ProjectionActor(name: String, projection: Projection) extends Per
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      eventsSinceLastSnapshot = 0
       currentOffset = offset
 
-    case offset: Long         => currentOffset = offset
     case _: RecoveryCompleted =>
       log.debug(s"Recovery completed for ProjectionActor $name")
       recoveryCompleted()
