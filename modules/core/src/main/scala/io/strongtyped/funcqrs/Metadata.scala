@@ -2,7 +2,6 @@ package io.strongtyped.funcqrs
 
 import java.time.OffsetDateTime
 
-
 /**
  * Holds Metadata information such as:
  * - aggregateId
@@ -17,12 +16,18 @@ import java.time.OffsetDateTime
 trait Metadata {
 
   type Id <: AggregateID
+  type DateTime
 
   def aggregateId: Id
   def commandId: CommandId
   def eventId: EventId
-  def date: OffsetDateTime
+  def date: DateTime
   def tags: Set[Tag]
+}
+
+trait JavaTime {
+  self: Metadata =>
+  type DateTime = OffsetDateTime
 }
 
 /**
@@ -37,7 +42,7 @@ trait MetadataFacet[M <: Metadata] {
   final def id: EventId = metadata.eventId
   final def aggregateId: M#Id = metadata.aggregateId
   final def commandId: CommandId = metadata.commandId
-  final def date: OffsetDateTime = metadata.date
+  final def date: M#DateTime = metadata.date
   final def tags: Set[Tag] = metadata.tags
 }
 
