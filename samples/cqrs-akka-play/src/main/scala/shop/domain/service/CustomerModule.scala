@@ -5,7 +5,7 @@ import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.Behavior
 import io.strongtyped.funcqrs.akka._
 import shop.api.AkkaModule
-import shop.app.LevelDbProjectionSource
+import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{Customer, CustomerId, CustomerView}
 
 trait CustomerModule extends AkkaModule {
@@ -33,6 +33,6 @@ class CustomerAggregateManager extends AggregateManager with AssignedAggregateId
 }
 
 class CustomerViewProjectionActor(name: String, projection: CustomerViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
+  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource {
   val tag = Customer.tag
 }

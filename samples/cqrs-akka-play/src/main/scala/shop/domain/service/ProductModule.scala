@@ -5,7 +5,7 @@ import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.akka._
 import io.strongtyped.funcqrs.{Behavior, Tag}
 import shop.api.AkkaModule
-import shop.app.LevelDbProjectionSource
+import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{Product, ProductNumber, ProductView}
 
 
@@ -34,6 +34,7 @@ class ProductAggregateManager extends AggregateManager with AssignedAggregateId 
 }
 
 class ProductViewProjectionActor(name: String, projection: ProductViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
+  extends ProjectionActor(name, projection) // receives events and forward to ProductViewProjection
+          with LevelDbTaggedEventsSource { // mixin the source
   val tag: Tag = Product.tag
 }

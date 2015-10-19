@@ -5,7 +5,7 @@ import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.akka._
 import io.strongtyped.funcqrs.{Behavior, Tag}
 import shop.api.AkkaModule
-import shop.app.LevelDbProjectionSource
+import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{Order, OrderNumber, OrderView}
 
 trait OrderModule extends AkkaModule {
@@ -35,7 +35,7 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 }
 
 class OrderViewProjectionActor(name: String, projection: OrderViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbProjectionSource {
+  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource {
 
   val tag: Tag = Order.dependentView
 

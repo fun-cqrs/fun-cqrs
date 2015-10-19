@@ -7,7 +7,7 @@ import akka.stream.scaladsl.Source
 import io.strongtyped.funcqrs.Tag
 import io.strongtyped.funcqrs.akka.EventsSourceProvider
 
-trait LevelDbProjectionSource extends EventsSourceProvider {
+trait LevelDbTaggedEventsSource extends EventsSourceProvider {
   this: Actor =>
 
   /**
