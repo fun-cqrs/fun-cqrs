@@ -15,20 +15,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
                           customerRepo: CustomerViewRepo @@ OrderView.type) extends Projection with LazyLogging {
 
 
-  // reuse projections with other repos
-  val productProjection = new ProductViewProjection(productRepo)
-  val customerProjection = new CustomerViewProjection(customerRepo)
-
-
   def receiveEvent: HandleEvent = {
-
-    case e: ProductProtocol.ProductEvent =>
-      logger.debug(s"received product event $e")
-      productProjection.onEvent(e)
-
-    case e: CustomerProtocol.CustomerEvent =>
-      logger.debug(s"received customer event $e")
-      customerProjection.onEvent(e)
 
     case e: OrderProtocol.OrderCreated   => create(e)
     case e: OrderProtocol.ProductAdded   => addProduct(e)

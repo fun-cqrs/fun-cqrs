@@ -35,8 +35,8 @@ class ProductAggregateManager extends AggregateManager with AssignedAggregateId 
 
 class ProductViewProjectionActor(name: String, projection: ProductViewProjection)
   extends ProjectionActor(name, projection) // receives events and forward to ProductViewProjection
-          with LevelDbTaggedEventsSource
-          with OffsetNotPersisted {
+          with LevelDbTaggedEventsSource // mixin the source
+          with OffsetNotPersisted { // no offset persistence, replay full-stream
 
   val tag: Tag = Product.tag
 }
