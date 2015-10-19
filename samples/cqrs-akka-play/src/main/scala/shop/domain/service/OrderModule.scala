@@ -35,7 +35,7 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 }
 
 class OrderViewProjectionActor(name: String, projection: OrderViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource {
+  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
 
   val tag: Tag = Order.dependentView
 

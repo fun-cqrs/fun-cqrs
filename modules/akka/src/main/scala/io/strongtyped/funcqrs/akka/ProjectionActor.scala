@@ -14,9 +14,8 @@ import io.strongtyped.funcqrs.{DomainEvent, Projection}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class ProjectionActor(name: String, projection: Projection) extends PersistentActor with ActorLogging with Stash {
+abstract class ProjectionActor(val name: String, val projection: Projection) extends ActorLogging with Stash {
   this: EventsSourceProvider =>
-
 
   import context.dispatcher
 
@@ -24,25 +23,7 @@ abstract class ProjectionActor(name: String, projection: Projection) extends Per
 
   var currentOffset: Long = 0
 
-  def saveCurrentOffset(offset: Long): Unit = {
-    saveSnapshot(offset)
-  }
-
-  override def receiveCommand: Receive = acceptingEvents
-
-  def persistenceId: String = name
-
-  override val receiveRecover: Receive = {
-
-    case SnapshotOffer(metadata, offset: Long) =>
-      currentOffset = offset
-
-    case _: RecoveryCompleted =>
-      log.debug(s"Recovery completed for ProjectionActor $name")
-      recoveryCompleted()
-
-    case unknown => log.debug(s"Unknown message on recovery: $unknown")
-  }
+  def saveCurrentOffset(offset: Long): Unit
 
   def recoveryCompleted(): Unit = {
     log.debug(s"ProjectionActor: starting projection... $projection")

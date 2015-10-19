@@ -33,6 +33,6 @@ class CustomerAggregateManager extends AggregateManager with AssignedAggregateId
 }
 
 class CustomerViewProjectionActor(name: String, projection: CustomerViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource {
+  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
   val tag = Customer.tag
 }
