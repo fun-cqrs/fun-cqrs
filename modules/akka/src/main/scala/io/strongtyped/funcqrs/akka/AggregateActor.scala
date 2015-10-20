@@ -53,7 +53,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
       } recover {
         case NonFatal(cause) =>
           log.error(cause, s"Error while processing creational command: $cmd")
-          FailedCommand(cause, origSender)
+          FailedCommand(cause, origSender, Uninitialized)
       } pipeTo self
 
       changeState(Busy)
@@ -81,7 +81,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
       } recover {
         case NonFatal(cause) =>
           log.error(cause, s"Error while processing update command: $cmd")
-          FailedCommand(cause, origSender)
+          FailedCommand(cause, origSender, Available)
       } pipeTo self
 
       changeState(Busy)
@@ -89,7 +89,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
   def onCommandFailure(failedCmd: FailedCommand): Unit = {
     failedCmd.origSender ! Status.Failure(failedCmd.cause)
-    changeState(Available)
+    changeState(failedCmd.state)
   }
 
   private def busy: Receive = {
@@ -290,7 +290,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
    */
   private case class CompletedUpdateCmd(events: Seq[Protocol#ProtocolEvent], origSender: ActorRef)
 
-  private case class FailedCommand(cause: Throwable, origSender: ActorRef)
+  private case class FailedCommand(cause: Throwable, origSender: ActorRef, state: State)
 
 }
 
