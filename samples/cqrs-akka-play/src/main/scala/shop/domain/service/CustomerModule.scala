@@ -4,8 +4,8 @@ import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.Behavior
 import io.strongtyped.funcqrs.akka._
+import io.strongtyped.funcqrs.leveldb.LevelDbTaggedEventsSource
 import shop.api.AkkaModule
-import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{Customer, CustomerId, CustomerView}
 
 trait CustomerModule extends AkkaModule {

@@ -3,9 +3,9 @@ package shop.domain.service
 import akka.actor.{ActorRef, Props}
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.akka._
+import io.strongtyped.funcqrs.leveldb.LevelDbTaggedEventsSource
 import io.strongtyped.funcqrs.{Projection, Behavior, Tag}
 import shop.api.AkkaModule
-import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{Order, OrderNumber, OrderView}
 
 trait OrderModule extends AkkaModule {
