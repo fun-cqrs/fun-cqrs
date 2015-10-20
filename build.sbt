@@ -19,7 +19,7 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   )
-) aggregate(funCqrs, funCqrsAkka, playApp)
+) aggregate(funCqrs, funCqrsAkka, funCqrsLevelDb, playApp)
 
 
 // Core ==========================================
@@ -30,7 +30,6 @@ lazy val funCqrs = Project(
 )
 //================================================
 
-
 // Akka integration ==============================
 lazy val funCqrsAkka = Project(
   id = "fun-cqrs-akka",
@@ -39,6 +38,14 @@ lazy val funCqrsAkka = Project(
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
+// LevelDB integration ===========================
+lazy val funCqrsLevelDb = Project(
+  id = "fun-cqrs-leveldb",
+  base = file("modules/leveldb"),
+  settings = levelDbDeps
+).dependsOn(funCqrs % "compile->compile;test->test")
+  .dependsOn(funCqrsAkka % "compile->compile;test->test")
+//================================================
 
 // #####################################################
 // #                     SAMPLES                      #
@@ -56,6 +63,7 @@ lazy val playApp = Project(
   .disablePlugins(PlayLayoutPlugin)
   .dependsOn(funCqrs % "compile->compile;test->test")
   .dependsOn(funCqrsAkka % "compile->compile;test->test")
+  .dependsOn(funCqrsLevelDb % "compile->compile;test->test")
 //================================================
 
 addCommandAlias("runPlaySample", "fun-cqrs-akka-play-sample/run")

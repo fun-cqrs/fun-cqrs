@@ -1,10 +1,8 @@
 package shop.domain.model
 
-import org.scalatest.{FlatSpec, Matchers, TryValues}
 import io.strongtyped.funcqrs.FutureTry
-
+import org.scalatest.{FlatSpec, Matchers, TryValues}
 import shop.domain.model.ProductProtocol._
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ProductTest extends FlatSpec with Matchers with FutureTry with TryValues {

@@ -1,4 +1,4 @@
-package shop.app
+package io.strongtyped.funcqrs.leveldb
 
 import akka.actor.Actor
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
