@@ -170,7 +170,7 @@ object OrderProtocol extends ProtocolDef {
                            commandId: CommandId,
                            eventId: EventId = EventId(),
                            date: OffsetDateTime = OffsetDateTime.now(),
-                           tags: Set[Tag] = Set()) extends Metadata {
+                           tags: Set[Tag] = Set()) extends Metadata with JavaTime {
 
     type Id = OrderNumber
   }
