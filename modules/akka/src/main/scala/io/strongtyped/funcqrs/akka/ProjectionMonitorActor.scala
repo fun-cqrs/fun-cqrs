@@ -12,35 +12,45 @@ import scala.concurrent.duration.{ FiniteDuration, _ }
   */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
+  type CommandIdWithProjectionName = (CommandId, String)
+  // (ProjectionName, DomainEvent)
+  type EventWithProjectionName = (DomainEvent, String)
+
   // internal EventBus to dispatch events to subscribed EventsMonitor
   // (too lazy to build and maintain my own Map[CommandId, ActorRef])
   private val eventBus = new LookupClassification with ActorEventBus {
 
-    type Classifier = CommandId
-    type Event = DomainEvent
+    type Classifier = CommandIdWithProjectionName
+    type Event = EventWithProjectionName
 
     protected def mapSize(): Int = 8
 
-    protected def publish(event: DomainEvent, subscriber: ActorRef): Unit = subscriber ! event
+    protected def publish(eventWithName: EventWithProjectionName, subscriber: ActorRef): Unit = {
+      val (evt, projectionName) = eventWithName
+      subscriber ! evt
+    }
 
-    protected def classify(event: DomainEvent): CommandId = event.commandId
+    protected def classify(eventWithName: EventWithProjectionName): CommandIdWithProjectionName = {
+      val (evt, projectionName) = eventWithName
+      (evt.commandId, projectionName)
+    }
   }
 
   def receive = {
     // start new projections child on demand
-    case CreateProjection(props, name)   => createNewProjection(props, name)
+    case CreateProjection(props, name)                   => createNewProjection(props, name)
 
     // receive status from child projection
     // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent                => receivedEventFromProjection(evt)
+    case evt: DomainEvent                                => receivedEventFromProjection(evt)
 
     // create EventsMonitorActors on demand
-    case EventsMonitorRequest(commandId) => createEventMonitor(commandId)
+    case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
 
     // child EventsMonitor is ready, can be removed
-    case RemoveMe(eventsMonitor)         => removeEventMonitor(eventsMonitor)
+    case RemoveMe(eventsMonitor)                         => removeEventMonitor(eventsMonitor)
 
-    case anyOther                        => log.warning(s"Unknown message: $anyOther")
+    case anyOther                                        => log.warning(s"Unknown message: $anyOther")
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {
@@ -51,20 +61,22 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   private def receivedEventFromProjection(evt: DomainEvent): Unit = {
     val currentSender = sender()
+
+    val projectionName = currentSender.path.name
     log.debug(s"received $evt from $currentSender, publishing it internally")
-    eventBus.publish(evt)
+    eventBus.publish((evt, projectionName))
   }
 
-  private def createEventMonitor(commandId: CommandId): Unit = {
+  private def createEventMonitor(commandId: CommandId, projectionName: String): Unit = {
 
-    val monitorName = s"events-monitor::${commandId.value}"
+    val monitorName = s"events-monitor::$projectionName::${commandId.value}"
 
     // TODO this could be moved to property file eventually
     val shutdownEventsMonitorAfter = 10.seconds
-    val monitor = context.actorOf(eventsMonitor(commandId, shutdownEventsMonitorAfter), monitorName)
+    val monitor = context.actorOf(eventsMonitor(commandId, projectionName, shutdownEventsMonitorAfter), monitorName)
 
-    // subscribe
-    eventBus.subscribe(monitor, commandId)
+    // subscribe for events having `commandId` and coming frmo projection named with `projectionName`
+    eventBus.subscribe(monitor, (commandId, projectionName))
 
     log.debug(s"Created EventMonitor $monitor")
     // sends monitor back
@@ -77,7 +89,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     context.stop(eventsMonitor)
   }
 
-  class EventsMonitorActor(commandId: CommandId, timeout: FiniteDuration) extends Actor with ActorLogging {
+  class EventsMonitorActor(commandId: CommandId, projectionName: String, timeout: FiniteDuration) extends Actor with ActorLogging {
 
     import EventsMonitorActor._
 
@@ -123,21 +135,24 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   }
 
-  def eventsMonitor(commandId: CommandId, timeout: FiniteDuration) =
-    Props(new EventsMonitorActor(commandId, timeout))
+  def eventsMonitor(commandId: CommandId, projectionName: String, timeout: FiniteDuration) =
+    Props(new EventsMonitorActor(commandId, projectionName, timeout))
 }
 
 object ProjectionMonitorActor {
 
   case class CreateProjection(props: Props, name: String)
 
-  case class EventsMonitorRequest(commandId: CommandId)
+  case class EventsMonitorRequest(commandId: CommandId, projectionName: String)
 
 }
 
 object EventsMonitorActor {
 
   case class Subscribe(events: Seq[DomainEvent])
+  object Subscribe {
+    def apply(event: DomainEvent): Subscribe = Subscribe(Seq(event))
+  }
 
   case object Done
 

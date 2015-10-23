@@ -184,3 +184,9 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
 
 }
+
+object BehaviorDsl {
+  def behaviorFor[A <: AggregateLike] = {
+    new BehaviorDsl[A].behaviorBuilder
+  }
+}

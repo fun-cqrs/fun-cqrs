@@ -4,15 +4,16 @@ import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.Projection
+import io.strongtyped.funcqrs.{AggregateLike, CommandId, Projection}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
-class CQRSSystem(actorSystem: ActorSystem) extends LazyLogging {
+class FunCQRS(actorSystem: ActorSystem) extends LazyLogging {
 
-  implicit val actorCreationTimeout = Timeout(200.millis)
+  // Timeout for the actor creation response. Certainly exaggerated!!
+  implicit val actorCreationTimeout = Timeout(3.seconds)
 
   val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
 
@@ -33,5 +34,17 @@ class CQRSSystem(actorSystem: ActorSystem) extends LazyLogging {
     (projectionMonitorActorRef ? ProjectionMonitorActor.CreateProjection(props, name)).mapTo[ActorRef]
   }
 
-  val cqrsContext = new CQRSContext(projectionMonitorActorRef)
+  def projectionMonitor[A <: AggregateLike](viewName: String): ProjectionMonitor[A] = {
+
+    /** Builds a EventsMonitor actor that can inform when events from a given command have been applied
+      * to the read model.
+      */
+    val newEventsMonitor = (commandId: CommandId) => {
+      (projectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(commandId, viewName)).mapTo[ActorRef]
+    }
+
+    new ProjectionMonitor[A](viewName, newEventsMonitor)
+  }
+
 }
+
