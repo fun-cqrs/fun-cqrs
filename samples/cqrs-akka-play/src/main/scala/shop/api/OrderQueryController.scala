@@ -1,7 +1,7 @@
 package shop.api
 
 import play.api.libs.json.Writes
-import shop.domain.model.{OrderNumber, OrderView}
+import shop.domain.model.{ OrderNumber, OrderView }
 import shop.domain.service.OrderViewRepo
 
 class OrderQueryController(val viewRepo: OrderViewRepo) extends QueryController {

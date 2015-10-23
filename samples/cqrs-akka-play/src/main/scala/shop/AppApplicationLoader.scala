@@ -2,9 +2,9 @@ package shop
 
 import _root_.controllers.Assets
 import com.softwaremill.macwire.MacwireMacros._
-import shop.api.{ApiModule, AkkaModule}
+import shop.api.{ ApiModule, AkkaModule }
 import shop.app.RestHttpErrorHandler
-import shop.domain.service.{ServiceModule, ProductModule}
+import shop.domain.service.{ ServiceModule, ProductModule }
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.routing.Router
@@ -37,5 +37,4 @@ trait AppComponents extends BuiltInComponents with ApiModule with ServiceModule 
 
   override lazy val httpErrorHandler = new RestHttpErrorHandler
 }
-
 

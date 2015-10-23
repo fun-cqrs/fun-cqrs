@@ -1,7 +1,7 @@
 package shop.domain.service
 
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.{HandleEvent, Projection}
+import io.strongtyped.funcqrs.{ HandleEvent, Projection }
 import shop.domain.model.ProductProtocol._
 import shop.domain.model.ProductView
 
@@ -9,7 +9,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyLogging {
-
 
   def receiveEvent: HandleEvent = {
     case e: ProductCreated     => create(e)

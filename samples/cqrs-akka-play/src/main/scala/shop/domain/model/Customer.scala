@@ -5,7 +5,7 @@ import java.time.OffsetDateTime
 import funcqrs.json.TypedJson
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{TypeHintFormat, _}
+import TypedJson.{ TypeHintFormat, _ }
 import play.api.libs.json.Json
 import shop.domain.model.ProductProtocol.ProductMetadata
 import scala.collection.immutable
@@ -67,15 +67,12 @@ object Address {
   implicit val formatAddress = Json.format[Address]
 }
 
-
 object CustomerProtocol extends ProtocolDef {
-
 
   sealed trait CustomerCommand extends ProtocolCommand
 
   // Creation Commands
   case class CreateCustomer(name: String, vatNumber: Option[VAT] = None) extends CustomerCommand
-
 
   // Update Commands
   case class ChangeName(name: String) extends CustomerCommand
@@ -97,7 +94,6 @@ object CustomerProtocol extends ProtocolDef {
   val commandsFormat = {
 
     implicit val formatCommandId = Json.format[CommandId]
-
 
     TypeHintFormat[CustomerCommand](
       Json.format[CreateCustomer].withTypeHint("Customer.Create"),
@@ -152,11 +148,9 @@ object Customer {
   def behavior(id: CustomerId): Behavior[Customer] = {
     import CustomerProtocol._
 
-
     def metadata(customerId: CustomerId, cmd: CustomerCommand) = {
       CustomerMetadata(customerId, cmd.id, tags = Set(tag, Order.dependentView))
     }
-
 
     behaviorFor[Customer].whenConstructing { it =>
       it.processesCommands {
@@ -191,15 +185,15 @@ object Customer {
       }
 
       it.acceptsEvents {
-        case (customer, e: NameChanged) => customer.copy(name = e.name)
+        case (customer, e: NameChanged)           => customer.copy(name = e.name)
 
         case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.map(_.copy(street = e.street)))
         case (customer, e: AddressCityChanged)    => customer.copy(address = customer.address.map(_.copy(city = e.city)))
         case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.map(_.copy(country = e.country)))
 
-        case (customer, e: VatNumberAdded)    => customer.copy(vatNumber = Some(e.vat))
-        case (customer, e: VatNumberReplaced) => customer.copy(vatNumber = Some(e.vat))
-        case (customer, _: VatNumberRemoved)  => customer.copy(vatNumber = None)
+        case (customer, e: VatNumberAdded)        => customer.copy(vatNumber = Some(e.vat))
+        case (customer, e: VatNumberReplaced)     => customer.copy(vatNumber = Some(e.vat))
+        case (customer, _: VatNumberRemoved)      => customer.copy(vatNumber = None)
       }
     }
   }

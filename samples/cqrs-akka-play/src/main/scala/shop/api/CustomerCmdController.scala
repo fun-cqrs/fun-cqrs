@@ -3,14 +3,13 @@ package shop.api
 import akka.actor.ActorRef
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.DomainCommand
-import play.api.libs.json.{JsResult, JsValue}
+import play.api.libs.json.{ JsResult, JsValue }
 import play.api.mvc.RequestHeader
-import shop.api.routes.{CustomerQueryController => ReverseQueryCtrl}
-import shop.domain.model.{Customer, CustomerId, CustomerProtocol}
-
+import shop.api.routes.{ CustomerQueryController => ReverseQueryCtrl }
+import shop.domain.model.{ Customer, CustomerId, CustomerProtocol }
 
 class CustomerCmdController(val aggregateManager: ActorRef @@ Customer.type)
-  extends CommandController with AssignedId {
+    extends CommandController with AssignedId {
 
   type AggregateType = Customer
 

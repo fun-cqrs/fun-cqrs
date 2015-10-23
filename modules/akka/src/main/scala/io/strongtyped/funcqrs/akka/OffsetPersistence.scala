@@ -1,6 +1,6 @@
 package io.strongtyped.funcqrs.akka
 
-import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
+import akka.persistence.{ PersistentActor, RecoveryCompleted, SnapshotOffer }
 
 import scala.concurrent.Future
 
@@ -10,7 +10,6 @@ trait OffsetPersistence {
 
   def saveCurrentOffset(offset: Long): Unit
 }
-
 
 /** Does NOT persist the offset forcing a full stream read each time */
 trait OffsetNotPersisted extends OffsetPersistence {

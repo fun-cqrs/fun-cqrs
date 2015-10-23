@@ -1,6 +1,6 @@
 package shop.domain.model
 
-import play.api.libs.json.{JsString, JsValue, Writes, Json}
+import play.api.libs.json.{ JsString, JsValue, Writes, Json }
 
 case class OrderView(number: OrderNumber,
                      customerName: String,

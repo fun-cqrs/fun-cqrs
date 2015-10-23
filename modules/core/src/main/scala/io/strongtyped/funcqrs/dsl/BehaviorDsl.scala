@@ -1,8 +1,8 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{Aggregate, _}
+import io.strongtyped.funcqrs.{ Aggregate, _ }
 import scala.collection.immutable
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ Future, ExecutionContext }
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -90,7 +90,6 @@ object BehaviorDsl {
           def apply() = Future.successful(events)
         }
 
-
       implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
           def apply() = Future.fromTry(event.map(immutable.Seq(_)))
@@ -105,7 +104,6 @@ object BehaviorDsl {
         new EventMagnet {
           def apply() = Future.fromTry(events)
         }
-
 
       implicit def fromAsyncImmutableEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
         new EventMagnet {
@@ -156,7 +154,6 @@ object BehaviorDsl {
       build
     }
 
-
     private def build: Behavior[A] = {
 
       new Behavior[A] {
@@ -193,7 +190,6 @@ object BehaviorDsl {
       }
     }
   }
-
 
   def behaviorFor[A <: Aggregate]: BehaviorBuilder[A] =
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)

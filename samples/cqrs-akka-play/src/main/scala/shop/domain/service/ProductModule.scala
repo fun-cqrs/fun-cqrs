@@ -1,13 +1,12 @@
 package shop.domain.service
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.akka._
-import io.strongtyped.funcqrs.{Behavior, Tag}
+import io.strongtyped.funcqrs.{ Behavior, Tag }
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{Product, ProductNumber, ProductView}
-
+import shop.domain.model.{ Product, ProductNumber, ProductView }
 
 trait ProductModule extends AkkaModule {
 
@@ -16,7 +15,6 @@ trait ProductModule extends AkkaModule {
     actorSystem
       .actorOf(Props[ProductAggregateManager], "ProductAggregateManager")
       .taggedWith[Product.type]
-
 
   //----------------------------------------------------------------------
   // READ side wiring
@@ -34,9 +32,9 @@ class ProductAggregateManager extends AggregateManager with AssignedAggregateId 
 }
 
 class ProductViewProjectionActor(name: String, projection: ProductViewProjection)
-  extends ProjectionActor(name, projection) // receives events and forward to ProductViewProjection
-          with LevelDbTaggedEventsSource // mixin the source
-          with OffsetNotPersisted { // no offset persistence, replay full-stream
+    extends ProjectionActor(name, projection) // receives events and forward to ProductViewProjection
+    with LevelDbTaggedEventsSource // mixin the source
+    with OffsetNotPersisted { // no offset persistence, replay full-stream
 
   val tag: Tag = Product.tag
 }

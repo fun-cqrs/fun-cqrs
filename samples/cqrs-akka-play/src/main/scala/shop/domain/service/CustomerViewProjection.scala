@@ -10,7 +10,6 @@ import scala.concurrent.Future
 
 class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Projection with LazyLogging {
 
-
   def receiveEvent = {
     case evt: CustomerCreated       => createView(evt)
     case evt: VatNumberAdded        => updateById(evt)(_.copy(vatNumber = Some(evt.vat)))
@@ -20,11 +19,9 @@ class CustomerViewProjection(val customerViewRepo: CustomerViewRepo) extends Pro
     case evt: NameChanged           => updateById(evt)(_.copy(name = evt.name))
   }
 
-
   private def updateById(evt: CustomerEvent)(updateFunc: CustomerView => CustomerView): Future[Unit] = {
     customerViewRepo.updateById(evt.aggregateId)(updateFunc).map(_ => ())
   }
-
 
   def createView(customerCreated: CustomerCreated): Future[Unit] = {
 

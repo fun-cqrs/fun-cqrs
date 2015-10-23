@@ -1,7 +1,7 @@
 package shop.domain.service
 
 import io.strongtyped.funcqrs.InMemoryRepository
-import shop.domain.model.{CustomerId, CustomerView}
+import shop.domain.model.{ CustomerId, CustomerView }
 
 class CustomerViewRepo extends InMemoryRepository {
 

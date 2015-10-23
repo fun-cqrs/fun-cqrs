@@ -5,7 +5,7 @@ import java.time.OffsetDateTime
 import funcqrs.json.TypedJson
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{TypeHintFormat, _}
+import TypedJson.{ TypeHintFormat, _ }
 import play.api.libs.json._
 
 import scala.concurrent.ExecutionContext
@@ -69,7 +69,6 @@ object Order {
   val tag = Tags.aggregateTag("Order")
   val dependentView = Tags.dependentViews("OrderView")
 
-
   def behavior(orderNum: OrderNumber): Behavior[Order] = {
 
     import OrderProtocol._
@@ -123,7 +122,7 @@ object Order {
 
       it.acceptsEvents {
 
-        case (order, evt: ProductAdded) => order.addProduct(evt.productNumber)
+        case (order, evt: ProductAdded)   => order.addProduct(evt.productNumber)
 
         case (order, evt: ProductRemoved) => order.removeProduct(evt.productNumber)
 
@@ -174,7 +173,6 @@ object OrderProtocol extends ProtocolDef {
 
     type Id = OrderNumber
   }
-
 
   sealed trait OrderEvent extends ProtocolEvent with MetadataFacet[OrderMetadata]
 

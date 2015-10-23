@@ -1,12 +1,12 @@
 package shop.domain.service
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.Behavior
 import io.strongtyped.funcqrs.akka._
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{Customer, CustomerId, CustomerView}
+import shop.domain.model.{ Customer, CustomerId, CustomerView }
 
 trait CustomerModule extends AkkaModule {
 
@@ -33,6 +33,6 @@ class CustomerAggregateManager extends AggregateManager with AssignedAggregateId
 }
 
 class CustomerViewProjectionActor(name: String, projection: CustomerViewProjection)
-  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
+    extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
   val tag = Customer.tag
 }

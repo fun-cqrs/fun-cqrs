@@ -7,5 +7,4 @@ trait DomainEvent {
   def commandId: CommandId
 }
 
-
 case class EventId(value: UUID = UUID.randomUUID())

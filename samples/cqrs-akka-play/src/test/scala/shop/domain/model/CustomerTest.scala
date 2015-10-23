@@ -1,6 +1,6 @@
 package shop.domain.model
 
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.{ FunSuite, Matchers }
 
 class CustomerTest extends FunSuite with Matchers {
 

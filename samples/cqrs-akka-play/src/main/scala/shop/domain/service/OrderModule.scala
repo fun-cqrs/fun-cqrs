@@ -1,12 +1,12 @@
 package shop.domain.service
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
 import io.strongtyped.funcqrs.akka._
-import io.strongtyped.funcqrs.{Projection, Behavior, Tag}
+import io.strongtyped.funcqrs.{ Projection, Behavior, Tag }
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{Order, OrderNumber, OrderView}
+import shop.domain.model.{ Order, OrderNumber, OrderView }
 
 trait OrderModule extends AkkaModule {
 
@@ -15,13 +15,11 @@ trait OrderModule extends AkkaModule {
       .actorOf(Props[OrderAggregateManager], "orderAggregateManager")
       .taggedWith[Order.type]
 
-
   //----------------------------------------------------------------------
   // READ side wiring
   val orderViewRepo = wire[OrderViewRepo]
   val productViewRepoForOrder = wire[ProductViewRepo].taggedWith[OrderView.type]
   val customerViewRepoForOrder = wire[CustomerViewRepo].taggedWith[OrderView.type]
-
 
   // reuse projections with other repos
   val productProjection = new ProductViewProjection(productViewRepoForOrder)
@@ -42,7 +40,7 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 }
 
 class OrderViewProjectionActor(name: String, projection: Projection)
-  extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
+    extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
 
   val tag: Tag = Order.dependentView
 

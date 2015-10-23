@@ -5,13 +5,13 @@ import com.typesafe.sbt.SbtScalariform
 import com.typesafe.sbt.SbtScalariform._
 
 object Settings {
-  
+
   import sbt.Keys._
 
   import sbt._
 
   import ScalariformKeys._
-  
+
   val commonSettings = formatSettings
 
   lazy val formatSettings = SbtScalariform.scalariformSettings ++ Seq(

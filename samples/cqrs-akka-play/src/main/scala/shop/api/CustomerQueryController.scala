@@ -1,7 +1,7 @@
 package shop.api
 
 import play.api.libs.json.Writes
-import shop.domain.model.{CustomerView, CustomerId}
+import shop.domain.model.{ CustomerView, CustomerId }
 import shop.domain.service.CustomerViewRepo
 import com.softwaremill.macwire._
 
