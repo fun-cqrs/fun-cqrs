@@ -22,7 +22,7 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   ) ++ commonSettings
-) aggregate(funCqrs, funCqrsAkka, playApp)
+) aggregate(funCqrs, funCqrsAkka, shopApp, lotteryApp)
 
 
 // Core ==========================================
@@ -48,9 +48,9 @@ lazy val funCqrsAkka = Project(
 // #####################################################
 
 // contains Play / Akka / Macwire sample
-lazy val playApp = Project(
-  id = "fun-cqrs-akka-play-sample",
-  base = file("samples/cqrs-akka-play"),
+lazy val shopApp = Project(
+  id = "sample-shop",
+  base = file("samples/shop"),
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
@@ -61,7 +61,20 @@ lazy val playApp = Project(
   .dependsOn(funCqrsAkka % "compile->compile;test->test")
 //================================================
 
-addCommandAlias("runPlaySample", "fun-cqrs-akka-play-sample/run")
+lazy val lotteryApp = Project(
+  id = "sample-lottery",
+  base = file("samples/lottery"),
+  settings = Seq(
+    publishArtifact := false,
+    routesGenerator := InjectedRoutesGenerator
+  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
+).enablePlugins(PlayScala)
+  .disablePlugins(PlayLayoutPlugin)
+  .dependsOn(funCqrs % "compile->compile;test->test")
+  .dependsOn(funCqrsAkka % "compile->compile;test->test")
+
+addCommandAlias("runShopSample", "sample-shop/run")
+addCommandAlias("runLotterySample", "sample-lottery/run")
 
 
 //@formatter:on
