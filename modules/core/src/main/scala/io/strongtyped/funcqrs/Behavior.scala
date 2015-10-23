@@ -1,13 +1,14 @@
 package io.strongtyped.funcqrs
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.collection.immutable
 
 trait Behavior[A <: Aggregate] { 
 
   type AggregateType = A
   type Command = A#Protocol#ProtocolCommand
   type Event = A#Protocol#ProtocolEvent
-  type Events = Seq[Event]
+  type Events = immutable.Seq[Event]
 
 
   /**

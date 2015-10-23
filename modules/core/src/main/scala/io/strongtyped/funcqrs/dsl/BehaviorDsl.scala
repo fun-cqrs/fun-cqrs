@@ -75,7 +75,7 @@ object BehaviorDsl {
 
     sealed trait EventMagnet {
 
-      def apply(): Future[Seq[Protocol#ProtocolEvent]]
+      def apply(): Future[immutable.Seq[Protocol#ProtocolEvent]]
     }
 
     object EventMagnet {
@@ -85,27 +85,29 @@ object BehaviorDsl {
           def apply() = Future.successful(immutable.Seq(event))
         }
 
-      implicit def fromEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromImmutableEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(events)
         }
 
+
       implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
-          def apply() = Future.fromTry(event.map(Seq(_)))
+          def apply() = Future.fromTry(event.map(immutable.Seq(_)))
         }
 
       implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
-          def apply() = event.map(Seq(_))
+          def apply() = event.map(immutable.Seq(_))
         }
 
-      implicit def fromTryEventSeq(events: Try[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+      implicit def fromTryImmutableEventSeq(events: Try[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
         new EventMagnet {
           def apply() = Future.fromTry(events)
         }
 
-      implicit def fromAsyncEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+
+      implicit def fromAsyncImmutableEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
         new EventMagnet {
           def apply() = events
         }
