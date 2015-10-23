@@ -1,10 +1,12 @@
 //@formatter:off
 
 import Dependencies._
+import Settings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
 scalaVersion in ThisBuild := "2.11.7"
+
 
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
@@ -12,13 +14,14 @@ ivyScala := ivyScala.value map {
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
+
 // dependencies
 lazy val root = Project(
   id = "fun-cqrs",
   base = file("."),
   settings = Seq(
     publishArtifact := false
-  )
+  ) ++ commonSettings
 ) aggregate(funCqrs, funCqrsAkka, playApp)
 
 
@@ -26,7 +29,7 @@ lazy val root = Project(
 lazy val funCqrs = Project(
   id = "fun-cqrs-core",
   base = file("modules/core"),
-  settings = mainDeps
+  settings = mainDeps ++ commonSettings
 )
 //================================================
 
@@ -35,7 +38,7 @@ lazy val funCqrs = Project(
 lazy val funCqrsAkka = Project(
   id = "fun-cqrs-akka",
   base = file("modules/akka"),
-  settings = mainDeps ++ akkaDeps
+  settings = mainDeps ++ akkaDeps ++ commonSettings
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
@@ -51,7 +54,7 @@ lazy val playApp = Project(
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ playSampleDeps
+  ) ++ playSampleDeps ++ commonSettings
 ).enablePlugins(PlayScala)
   .disablePlugins(PlayLayoutPlugin)
   .dependsOn(funCqrs % "compile->compile;test->test")
