@@ -1,16 +1,14 @@
 package io.strongtyped.funcqrs.akka
 
 import akka.actor.{ ActorRef, ActorSystem, Props }
-import java.util.UUID
-import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 import io.strongtyped.funcqrs.Projection
+
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.{ Failure, Success, Try }
 
 class CQRSSystem(actorSystem: ActorSystem) extends LazyLogging {
 

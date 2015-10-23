@@ -54,7 +54,7 @@ lazy val playApp = Project(
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ playSampleDeps ++ commonSettings
+  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
 ).enablePlugins(PlayScala)
   .disablePlugins(PlayLayoutPlugin)
   .dependsOn(funCqrs % "compile->compile;test->test")
