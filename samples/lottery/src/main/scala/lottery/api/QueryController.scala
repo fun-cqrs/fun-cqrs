@@ -1,8 +1,8 @@
-package raffle.api
+package lottery.api
 
 import io.strongtyped.funcqrs.Repository
-import play.api.libs.json.{Writes, JsValue, Json}
-import play.api.mvc.{Action, Controller}
+import play.api.libs.json.{ Writes, JsValue, Json }
+import play.api.mvc.{ Action, Controller }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 

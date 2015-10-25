@@ -1,10 +1,10 @@
-package raffle
+package lottery
 
 import _root_.controllers.Assets
 import com.softwaremill.macwire.MacwireMacros._
-import raffle.api.{ApiModule, AkkaModule}
-import raffle.app.RestHttpErrorHandler
-import raffle.domain.service.{ServiceModule, RaffleModule}
+import lottery.api.{ ApiModule, AkkaModule }
+import lottery.app.RestHttpErrorHandler
+import lottery.domain.service.{ ServiceModule, LotteryModule }
 import play.api.ApplicationLoader.Context
 import play.api._
 import play.api.routing.Router
@@ -37,5 +37,4 @@ trait AppComponents extends BuiltInComponents with ApiModule with ServiceModule 
 
   override lazy val httpErrorHandler = new RestHttpErrorHandler
 }
-
 

@@ -4,12 +4,12 @@
 
 
 # WRITE actions on Aggregate side
-PUT     /raffle/:id                        raffle.api.RaffleCmdController.create(id:String)
-PATCH   /raffle/:id                        raffle.api.RaffleCmdController.update(id:String)
+PUT     /lottery/:id                        lottery.api.LotteryCmdController.create(id:String)
+PATCH   /lottery/:id                        lottery.api.LotteryCmdController.update(id:String)
 
 # READ actions on View Model side
-GET     /raffle/:id                        raffle.api.RaffleQueryController.get(id:String)
-GET     /raffles                           raffle.api.RaffleQueryController.list
+GET     /lottery/:id                        lottery.api.LotteryQueryController.get(id:String)
+GET     /lotteries                          lottery.api.LotteryQueryController.list
 #===============================================================================================
 
 # Map static resources from the /public folder to the /assets URL path

@@ -1,4 +1,4 @@
-package raffle.api
+package lottery.api
 
 import akka.actor.ActorSystem
 import io.strongtyped.funcqrs.akka.CQRSSystem

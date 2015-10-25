@@ -1,11 +1,11 @@
-package raffle.api
+package lottery.api
 
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
-import io.strongtyped.funcqrs.{Aggregate, DomainCommand}
+import io.strongtyped.funcqrs.{ Aggregate, DomainCommand }
 import play.api.libs.json._
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{ Action, Controller }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -30,7 +30,7 @@ trait CommandController extends Controller {
 
     updateCmd match {
       case JsSuccess(cmd, _) =>
-        (aggregateManager ?(toAggregateId(id), cmd)).map(_ => Ok("done"))
+        (aggregateManager ? (toAggregateId(id), cmd)).map(_ => Ok("done"))
 
       case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
     }
