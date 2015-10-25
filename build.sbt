@@ -76,5 +76,7 @@ lazy val lotteryApp = Project(
 addCommandAlias("runShopSample", "sample-shop/run")
 addCommandAlias("runLotterySample", "sample-lottery/run")
 
+addCommandAlias("format", ";scalariformFormat;test:scalariformFormat")
+
 
 //@formatter:on
