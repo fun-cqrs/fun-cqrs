@@ -1,6 +1,7 @@
 package io.strongtyped.funcqrs.akka
 
-import akka.persistence.{ PersistentActor, RecoveryCompleted, SnapshotOffer }
+import akka.actor.Stash
+import akka.persistence._
 
 import scala.concurrent.Future
 
@@ -48,26 +49,45 @@ trait PersistedOffsetDb extends OffsetPersistence {
   * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
   * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
   */
-trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor {
+trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with Stash {
   self: ProjectionActor =>
 
   def persistenceId: String = name
 
   override def receive = receiveCommand
+
   override def receiveCommand: Receive = acceptingEvents
 
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      log.debug(s"snapshot offer $offset")
+      log.debug(s"[$name] snapshot offer - offset $offset")
       currentOffset = offset
 
     case _: RecoveryCompleted =>
-      log.debug(s"Recovery completed for ProjectionActor $name")
+      log.debug(s"[$name] recovery completed - offset $currentOffset")
       recoveryCompleted()
 
     case unknown => log.debug(s"Unknown message on recovery: $unknown")
   }
 
-  def saveCurrentOffset(offset: Long): Unit = saveSnapshot(currentOffset)
+  def saveCurrentOffset(offset: Long): Unit = {
+    saveSnapshot(offset)
+    // switch behavior but preserve previous Receive function so we can properly unbecome
+    context.become(waitSnapshotConfirmation, discardOld = false)
+  }
+
+  def waitSnapshotConfirmation: Receive = {
+    case SaveSnapshotSuccess(_) =>
+      log.debug(s"[$name] snapshot saved")
+      context.unbecome()
+      unstashAll() // resume consuming DomainEvents
+
+    case SaveSnapshotFailure(_, e) =>
+      // can't do much in case of failure. Better to restart ProjectionActor
+      throw e
+
+    // stash any other msg
+    case _ => stash()
+  }
 }
