@@ -35,7 +35,7 @@ trait PersistedOffsetDb extends OffsetPersistence {
   override def preStart(): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     readOffset.map { offset =>
-      currentOffset = offset
+      lastProcessedOffset = offset
       recoveryCompleted()
     }
   }
@@ -61,11 +61,11 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      log.debug(s"[$name] snapshot offer - offset $offset")
-      currentOffset = offset
+      log.debug(s"[$name] snapshot offer - lastProcessedOffset $offset")
+      lastProcessedOffset = offset
 
     case _: RecoveryCompleted =>
-      log.debug(s"[$name] recovery completed - offset $currentOffset")
+      log.debug(s"[$name] recovery completed - lastProcessedOffset $lastProcessedOffset")
       recoveryCompleted()
 
     case unknown => log.debug(s"Unknown message on recovery: $unknown")
