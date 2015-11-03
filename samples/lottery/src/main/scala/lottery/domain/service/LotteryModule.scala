@@ -11,7 +11,7 @@ import lottery.domain.model.{ Lottery, LotteryId, LotteryView }
 trait LotteryModule extends AkkaModule {
 
   // WRITE side wiring
-  val productAggregateManager: ActorRef @@ Lottery.type =
+  val aggregateManager: ActorRef @@ Lottery.type =
     actorSystem
       .actorOf(Props[LotteryAggregateManager], "LotteryAggregateManager")
       .taggedWith[Lottery.type]
@@ -32,13 +32,13 @@ class LotteryAggregateManager extends AggregateManager with AssignedAggregateId 
 
   override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 }
-
 class LotteryViewProjectionActor(name: String, projection: LotteryViewProjection)
-    extends ProjectionActor(name, projection) // receives events and forward to RaffleViewProjection
-    with LevelDbTaggedEventsSource // mixin the source
+    // receives events and forward to LotteryViewProjection
+    extends ProjectionActor(name, projection)
+    // mixin the source
+    with LevelDbTaggedEventsSource
+    // no offset persistence, replay full-stream
     with OffsetNotPersisted {
-
-  // no offset persistence, replay full-stream
 
   val tag: Tag = Lottery.tag
 }

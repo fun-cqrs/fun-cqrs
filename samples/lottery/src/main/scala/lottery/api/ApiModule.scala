@@ -5,7 +5,7 @@ import lottery.domain.service.ServiceModule
 
 trait ApiModule extends ServiceModule {
 
-  val productCmdController = wire[LotteryCmdController]
-  val productQueryController = wire[LotteryQueryController]
+  val cmdController = wire[LotteryCmdController]
+  val queryController = wire[LotteryQueryController]
 
 }
