@@ -35,5 +35,6 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyL
     }
   }
 
-  private def newParticipant(evt: ParticipantAdded): LotteryView.Participant = LotteryView.Participant(evt.name, evt.date)
+  private def newParticipant(evt: ParticipantAdded): LotteryView.Participant =
+    LotteryView.Participant(evt.name, evt.date)
 }
