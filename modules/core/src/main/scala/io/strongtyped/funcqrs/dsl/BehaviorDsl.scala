@@ -7,11 +7,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
 
-object BehaviorDsl {
+class BehaviorDsl[A <: Aggregate] {
 
-  case class CreationBuilder[A <: Aggregate]
-  (processCommandFunction: CreationBuilder[A]#CommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: CreationBuilder[A]#EventToAggregate = PartialFunction.empty) {
+  case class CreationBuilder
+  (processCommandFunction: CreationBuilder#CommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: CreationBuilder#EventToAggregate = PartialFunction.empty) {
 
     type Protocol = A#Protocol
 
@@ -49,11 +49,11 @@ object BehaviorDsl {
     // from Event to new Aggregate
     type EventToAggregate = PartialFunction[Protocol#ProtocolEvent, A]
 
-    def processesCommands(pf: CommandToEventMagnet): CreationBuilder[A] = {
+    def processesCommands(pf: CommandToEventMagnet): CreationBuilder = {
       copy(processCommandFunction = processCommandFunction orElse pf)
     }
 
-    def acceptsEvents(pf: EventToAggregate): CreationBuilder[A] = {
+    def acceptsEvents(pf: EventToAggregate): CreationBuilder = {
       copy(handleEventFunction = handleEventFunction orElse pf)
     }
 
@@ -63,9 +63,9 @@ object BehaviorDsl {
 
   }
 
-  case class UpdatesBuilder[A <: Aggregate]
-  (processCommandFunction: UpdatesBuilder[A]#CommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: UpdatesBuilder[A]#EventToAggregate = PartialFunction.empty) {
+  case class UpdatesBuilder
+  (processCommandFunction: UpdatesBuilder#CommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: UpdatesBuilder#EventToAggregate = PartialFunction.empty) {
 
     private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
     type Protocol = A#Protocol
@@ -118,11 +118,11 @@ object BehaviorDsl {
 
     type EventToAggregate = PartialFunction[(A, Protocol#ProtocolEvent), A]
 
-    def processesCommands(pf: CommandToEventMagnet): UpdatesBuilder[A] = {
+    def processesCommands(pf: CommandToEventMagnet): UpdatesBuilder = {
       copy(processCommandFunction = processCommandFunction orElse pf)
     }
 
-    def acceptsEvents(pf: EventToAggregate): UpdatesBuilder[A] = {
+    def acceptsEvents(pf: EventToAggregate): UpdatesBuilder = {
       copy(handleEventFunction = handleEventFunction orElse pf)
     }
 
@@ -131,14 +131,13 @@ object BehaviorDsl {
     }
   }
 
-  case class BehaviorBuilder[A <: Aggregate](creation: CreationBuilder[A], updates: UpdatesBuilder[A]) {
+  case class BehaviorBuilder(creation: CreationBuilder, updates: UpdatesBuilder) {
 
-    def whenConstructing(creationBlock: CreationBuilder[A] => CreationBuilder[A]): BehaviorBuilder[A] = {
+    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder = {
       copy(creation = creationBlock(creation))
-      // this
     }
 
-    def whenUpdating(updateBlock: UpdatesBuilder[A] => UpdatesBuilder[A]): Behavior[A] = {
+    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[A] = {
       copy(updates = updateBlock(updates)).build
     }
 
@@ -179,7 +178,7 @@ object BehaviorDsl {
     }
   }
 
-  def behaviorFor[A <: Aggregate]: BehaviorBuilder[A] =
+  val behaviorFor: BehaviorBuilder =
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
 
 }

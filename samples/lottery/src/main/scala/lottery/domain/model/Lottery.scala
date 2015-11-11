@@ -4,7 +4,6 @@ import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson.{TypeHintFormat, _}
 import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import play.api.libs.json.Json
 
 import scala.util.Random
@@ -107,20 +106,23 @@ object Lottery {
       LotteryMetadata(id, cmd.id, tags = Set(tag))
     }
 
-    behaviorFor[Lottery]
-      .whenConstructing {
-        _.processesCommands {
-          case cmd: CreateLottery =>
-            println(s"[debug] - whenConstructing processesCommands $cmd")
-            LotteryCreated(cmd.name, metadata(id, cmd))
-        }.acceptsEvents {
-          case evt: LotteryCreated =>
-            println(s"[debug] - whenConstructing acceptsEvents $evt")
-            Lottery(name = evt.name, id = id)
-        }
+    val lotteryBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Lottery]
 
-      }.whenUpdating {
-      _.processesCommands {
+    import lotteryBehaviorDsl.behaviorFor._
+
+    whenConstructing { it =>
+      it.processesCommands {
+        case cmd: CreateLottery =>
+          println(s"[debug] - whenConstructing processesCommands $cmd")
+          LotteryCreated(cmd.name, metadata(id, cmd))
+      }.acceptsEvents {
+        case evt: LotteryCreated =>
+          println(s"[debug] - whenConstructing acceptsEvents $evt")
+          Lottery(name = evt.name, id = id)
+      }
+
+    }.whenUpdating { it =>
+      it.processesCommands {
         case (lottery, cmd) if lottery.hasWinner =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           new CommandException("Lottery has already a winner")

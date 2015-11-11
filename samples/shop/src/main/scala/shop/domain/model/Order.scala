@@ -3,12 +3,9 @@ package shop.domain.model
 import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
+import funcqrs.json.TypedJson.{TypeHintFormat, _}
 import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{ TypeHintFormat, _ }
 import play.api.libs.json._
-
-import scala.concurrent.ExecutionContext
 
 sealed trait Status
 
@@ -24,7 +21,9 @@ case class Order(number: OrderNumber,
                  status: Status = Open) extends Aggregate {
 
   type Id = OrderNumber
+
   def id: Id = number
+
   type Protocol = OrderProtocol.type
 
   def addProduct(productNumber: ProductNumber): Order = {
@@ -39,7 +38,7 @@ case class Order(number: OrderNumber,
       products.get(productNumber).flatMap {
         case Quantity(1) => None
         case Quantity(0) => None
-        case qty         => Some(qty.minusOne)
+        case qty => Some(qty.minusOne)
       }
 
     val newProducts =
@@ -57,6 +56,7 @@ case class Order(number: OrderNumber,
 
 case class Quantity(num: Int) {
   def plusOne = Quantity(num + 1)
+
   def minusOne = Quantity(num - 1)
 }
 
@@ -77,7 +77,12 @@ object Order {
       OrderMetadata(orderNum, orderCommand.id, tags = Set(tag, dependentView))
     }
 
-    behaviorFor[Order].whenConstructing { // it =>
+    val orderBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Order]
+
+    import orderBehaviorDsl.behaviorFor._
+
+    whenConstructing {
+      // it =>
 
       _.processesCommands {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
@@ -85,7 +90,8 @@ object Order {
         case evt: OrderCreated => Order(orderNum, evt.customerId)
       }
 
-    }.whenUpdating { // it =>
+    }.whenUpdating {
+      // it =>
 
       _.processesCommands {
 
@@ -118,11 +124,11 @@ object Order {
 
       }.acceptsEvents {
 
-        case (order, evt: ProductAdded)   => order.addProduct(evt.productNumber)
+        case (order, evt: ProductAdded) => order.addProduct(evt.productNumber)
 
         case (order, evt: ProductRemoved) => order.removeProduct(evt.productNumber)
 
-        case (order, evt: OrderExecuted)  => order.copy(status = Executed)
+        case (order, evt: OrderExecuted) => order.copy(status = Executed)
         case (order, evt: OrderCancelled) => order.copy(status = Cancelled)
       }
     }
@@ -133,6 +139,7 @@ case class OrderNumber(value: String) extends AggregateID
 
 object OrderNumber {
   implicit val format = Json.format[OrderNumber]
+
   def fromString(id: String) = OrderNumber(id)
 }
 
