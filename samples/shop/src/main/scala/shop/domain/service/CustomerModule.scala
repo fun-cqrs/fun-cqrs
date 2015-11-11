@@ -22,9 +22,7 @@ trait CustomerModule extends AkkaModule {
   funCQRS.projection[CustomerViewProjectionActor]("CustomerViewProjectionActor", wire[CustomerViewProjection])
 }
 
-class CustomerAggregateManager extends AggregateManager with AssignedAggregateId {
-
-  type AggregateType = Customer
+class CustomerAggregateManager extends AggregateManager[Customer] with AssignedAggregateId[Customer] {
 
   def behavior(id: CustomerId): Behavior[Customer] = Customer.behavior(id)
 

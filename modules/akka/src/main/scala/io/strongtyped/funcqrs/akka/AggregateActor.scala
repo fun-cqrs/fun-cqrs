@@ -1,27 +1,26 @@
 package io.strongtyped.funcqrs.akka
 
-import akka.actor._
-import akka.pattern.pipe
-import akka.persistence._
+import _root_.akka.actor._
+import _root_.akka.pattern.pipe
+import _root_.akka.persistence._
+import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.akka.AggregateActor._
-import io.strongtyped.funcqrs.{ Aggregate, Behavior, DomainCommand, DomainEvent }
+
 import scala.collection.immutable
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: Aggregate](identifier: A#Id,
-                                     behavior: Behavior[A],
-                                     inactivityTimeout: Option[Duration] = None) extends PersistentActor with ActorLogging {
+class AggregateActor[Aggregate <: AggregateDef](identifier: Aggregate#Id,
+                                                behavior: Behavior[Aggregate],
+                                                inactivityTimeout: Option[Duration] = None) extends AggregateTypes[Aggregate] with PersistentActor with ActorLogging {
 
   import context.dispatcher
-
-  type Protocol = A#Protocol
 
   // persistenceId is always defined as the Aggregate.Identifier
   val persistenceId = identifier.value
 
   /** The aggregate instance if initialized, None otherwise */
-  private var aggregateOpt: Option[A] = None
+  private var aggregateOpt: Option[Aggregate] = None
 
   /** The lifecycle of the aggregate, by default [[Uninitialized]]
     */
@@ -41,7 +40,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
   protected def initialReceive: Receive = {
 
-    case cmd: Protocol#ProtocolCommand =>
+    case cmd: Command =>
       log.debug(s"Received creation cmd: $cmd")
       val eventualEvent = behavior.validate(cmd)
       val origSender = sender()
@@ -67,7 +66,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
   protected def availableReceive: Receive = {
 
-    case cmd: Protocol#ProtocolCommand =>
+    case cmd: Command =>
       log.debug(s"Received cmd: $cmd")
       val eventualEvents = behavior.validate(cmd, aggregateOpt.get)
       val origSender = sender()
@@ -90,10 +89,10 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case GetState                     => respond()
+    case GetState => respond()
     case result: CompletedCreationCmd => onSuccessfulCreation(result)
-    case result: CompletedUpdateCmd   => onSuccessfulUpdate(result)
-    case failedCmd: FailedCommand     => onCommandFailure(failedCmd)
+    case result: CompletedUpdateCmd => onSuccessfulUpdate(result)
+    case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
     case anyOther =>
       log.debug(s"received $anyOther while processing another command")
@@ -110,7 +109,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
     * - check if a snapshot needs to be saved.
     * @param evt DomainEvent that has been persisted
     */
-  protected def afterEventPersisted(evt: Protocol#ProtocolEvent): Unit = {
+  protected def afterEventPersisted(evt: Event): Unit = {
 
     aggregateOpt = applyEvent(evt)
 
@@ -129,7 +128,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
   protected def respond(replyTo: ActorRef = context.sender()): Unit = {
     aggregateOpt match {
       case Some(data) => replyTo ! data
-      case None       => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -140,15 +139,15 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
     *
     * All other combinations will be ignored and the current Aggregate state is returned.
     */
-  def applyEvent(event: DomainEvent): Option[A] = {
+  def applyEvent(event: DomainEvent): Option[Aggregate] = {
 
     (aggregateOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(evt))
+      case (None, evt: Event) => Some(behavior.applyEvent(evt))
 
       // Update events are applied on current state
-      case (Some(aggregate), evt: Protocol#ProtocolEvent) => Some(behavior.applyEvent(evt, aggregate))
+      case (Some(aggregate), evt: Event) => Some(behavior.applyEvent(evt, aggregate))
 
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
@@ -168,7 +167,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
     */
   override val receiveRecover: Receive = {
 
-    case SnapshotOffer(metadata, (state: State, data: Option[A])) =>
+    case SnapshotOffer(metadata, (state: State, data: Option[Aggregate])) =>
       eventsSinceLastSnapshot = 0
       log.debug("recovering aggregate from snapshot")
       restoreState(metadata, state, data)
@@ -181,7 +180,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
     case event: DomainEvent => onEvent(event)
 
-    case unknown            => log.debug(s"Unknown message on recovery")
+    case unknown => log.debug(s"Unknown message on recovery")
   }
 
   protected def onEvent(evt: DomainEvent): Unit = {
@@ -197,7 +196,7 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
     * @param state the state of the aggregate
     * @param data the data of the aggregate
     */
-  protected def restoreState(metadata: SnapshotMetadata, state: State, data: Option[A]) = {
+  protected def restoreState(metadata: SnapshotMetadata, state: State, data: Option[Aggregate]) = {
     changeState(state)
     log.debug(s"restoring data $data")
     aggregateOpt = data
@@ -267,11 +266,11 @@ class AggregateActor[A <: Aggregate](identifier: A#Id,
 
   /** Internal representation of a completed create command.
     */
-  private case class CompletedCreationCmd(event: Protocol#ProtocolEvent, origSender: ActorRef)
+  private case class CompletedCreationCmd(event: Event, origSender: ActorRef)
 
   /** Internal representation of a completed update command.
     */
-  private case class CompletedUpdateCmd(events: Seq[Protocol#ProtocolEvent], origSender: ActorRef)
+  private case class CompletedUpdateCmd(events: Events, origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef, state: State)
 

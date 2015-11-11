@@ -18,7 +18,7 @@ case object Cancelled extends Status
 case class Order(number: OrderNumber,
                  customerId: CustomerId,
                  products: Map[ProductNumber, Quantity] = Map(),
-                 status: Status = Open) extends Aggregate {
+                 status: Status = Open) extends AggregateDef {
 
   type Id = OrderNumber
 

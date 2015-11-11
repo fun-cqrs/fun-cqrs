@@ -11,7 +11,7 @@ import play.api.libs.json.Json
 case class Product(name: String,
                    description: String,
                    price: Double,
-                   id: ProductNumber) extends Aggregate {
+                   id: ProductNumber) extends AggregateDef {
 
   type Id = ProductNumber
   type Protocol = ProductProtocol.type

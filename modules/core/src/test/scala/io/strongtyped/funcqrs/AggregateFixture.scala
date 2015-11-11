@@ -2,12 +2,10 @@ package io.strongtyped.funcqrs
 
 import scala.concurrent.{ Future, ExecutionContext }
 
-abstract class AggregateFixture[A <: Aggregate](eventBus: EventBus) {
+abstract class AggregateFixture[Aggregate <: AggregateDef](eventBus: EventBus) extends AggregateTypes[Aggregate] {
 
-  val behavior: Behavior[A]
-
-  type Protocol = A#Protocol
-
+  val behavior: Behavior[Aggregate]
+  
   def projection: Projection
 
   eventBus.addHandler {
@@ -16,7 +14,7 @@ abstract class AggregateFixture[A <: Aggregate](eventBus: EventBus) {
       pf(evt)
   }
 
-  def apply(cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[A] = {
+  def apply(cmd: Command)(implicit ec: ExecutionContext): Future[Aggregate] = {
     val result = behavior.applyCommand(cmd)
 
     result.map {
@@ -26,7 +24,7 @@ abstract class AggregateFixture[A <: Aggregate](eventBus: EventBus) {
     }
   }
 
-  def apply(model: A, cmd: Protocol#ProtocolCommand)(implicit ec: ExecutionContext): Future[A] = {
+  def apply(model: Aggregate, cmd: Command)(implicit ec: ExecutionContext): Future[Aggregate] = {
     val result = behavior.applyCommand(cmd, model)
     result.map {
       case (evts, agg) =>

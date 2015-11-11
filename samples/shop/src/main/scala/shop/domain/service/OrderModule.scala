@@ -31,8 +31,8 @@ trait OrderModule extends AkkaModule {
 
 }
 
-class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
-  type AggregateType = Order
+class OrderAggregateManager extends AggregateManager[Order] with AssignedAggregateId[Order] {
+
   def behavior(id: OrderNumber): Behavior[Order] = Order.behavior(id)
 
   override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
