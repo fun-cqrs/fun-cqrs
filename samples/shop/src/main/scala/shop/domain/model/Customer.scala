@@ -152,20 +152,18 @@ object Customer {
       CustomerMetadata(customerId, cmd.id, tags = Set(tag, Order.dependentView))
     }
 
-    behaviorFor[Customer].whenConstructing { it =>
-      it.processesCommands {
+    behaviorFor[Customer].whenConstructing { // it =>
+      _.processesCommands {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd))
-      }
-
-      it.acceptsEvents {
+      }.acceptsEvents {
         case e: CustomerCreated =>
           Customer(e.name, address = None, e.vatNumber, id)
       }
 
-    }.whenUpdating { it =>
+    }.whenUpdating { // it =>
 
-      it.processesCommands {
+      _.processesCommands {
 
         case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd))
         case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
@@ -182,9 +180,7 @@ object Customer {
             AddressCityChanged(cmd.address.city, metadata(id, cmd)),
             AddressCountryChanged(cmd.address.country, metadata(id, cmd))
           )
-      }
-
-      it.acceptsEvents {
+      }.acceptsEvents {
         case (customer, e: NameChanged)           => customer.copy(name = e.name)
 
         case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.map(_.copy(street = e.street)))

@@ -77,19 +77,17 @@ object Order {
       OrderMetadata(orderNum, orderCommand.id, tags = Set(tag, dependentView))
     }
 
-    behaviorFor[Order].whenConstructing { it =>
+    behaviorFor[Order].whenConstructing { // it =>
 
-      it.processesCommands {
+      _.processesCommands {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
-      }
-
-      it.acceptsEvents {
+      }.acceptsEvents {
         case evt: OrderCreated => Order(orderNum, evt.customerId)
       }
 
-    }.whenUpdating { it =>
+    }.whenUpdating { // it =>
 
-      it.processesCommands {
+      _.processesCommands {
 
         case (order, cmd: Execute.type) if order.status == Executed =>
           new CommandException(s"Order is already executed")
@@ -118,9 +116,7 @@ object Order {
         case (order, cmd: Cancel.type) if order.status == Open =>
           OrderCancelled(metadata(orderNum, cmd))
 
-      }
-
-      it.acceptsEvents {
+      }.acceptsEvents {
 
         case (order, evt: ProductAdded)   => order.addProduct(evt.productNumber)
 

@@ -89,11 +89,11 @@ object Product {
     }
 
     behaviorFor[Product]
-      .whenConstructing { it =>
+      .whenConstructing { // it =>
 
         //---------------------------------------------------------------------------------
         // Creational Commands and Events
-        it.processesCommands {
+        _.processesCommands {
           // PF (Command) => EventMagnet
           case cmd: CreateProduct if cmd.price > 0 =>
             ProductCreated(
@@ -104,24 +104,20 @@ object Product {
             )
 
           case createCmd: CreateProduct => new CommandException("Price is too low!")
-        }
-
-        it.acceptsEvents {
+        }.acceptsEvents {
           // PF (Event) => Aggregate
           case e: ProductCreated => Product(e.name, e.description, e.price, id)
         }
 
-      }.whenUpdating { it =>
+      }.whenUpdating { // it =>
 
-        it.processesCommands {
+        _.processesCommands {
           // PF (Aggregate, Command) => EventMagnet
           case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
           case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
           case (_, cmd: ChangePrice)                              => PriceChanged(cmd.price, metadata(id, cmd))
           case (_, cmd: ChangeName)                               => NameChanged(cmd.name, metadata(id, cmd))
-        }
-
-        it.acceptsEvents {
+        }.acceptsEvents {
           // PF (Aggregate, Event) => Aggregate
           case (product, e: NameChanged)  => product.copy(name = e.newName)
           case (product, e: PriceChanged) => product.copy(price = e.newPrice)
