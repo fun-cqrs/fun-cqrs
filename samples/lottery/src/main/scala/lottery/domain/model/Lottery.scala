@@ -2,12 +2,12 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 
-import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
+import funcqrs.json.TypedJson.{TypeHintFormat, _}
 import io.strongtyped.funcqrs._
 import io.strongtyped.funcqrs.dsl.BehaviorDsl._
 import play.api.libs.json.Json
 
-import scala.util.{ Try, Success, Failure, Random }
+import scala.util.Random
 
 case class Lottery(name: String, participants: List[String] = List(),
                    winner: Option[String] = None,
@@ -15,7 +15,6 @@ case class Lottery(name: String, participants: List[String] = List(),
 
   type Id = LotteryId
   type Protocol = LotteryProtocol.type
-  import LotteryProtocol._
 
   def addParticipant(name: String): Lottery =
     copy(participants = participants :+ name)
@@ -63,6 +62,7 @@ object LotteryProtocol extends ProtocolDef {
   case class CreateLottery(name: String) extends LotteryCommand
 
   case class AddParticipant(name: String) extends LotteryCommand
+
   case class RemoveParticipant(name: String) extends LotteryCommand
 
   case object Run extends LotteryCommand
@@ -76,6 +76,7 @@ object LotteryProtocol extends ProtocolDef {
 
   // Update Events
   case class ParticipantAdded(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
+
   case class ParticipantRemoved(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
 
   case class WinnerSelected(winner: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
@@ -107,35 +108,50 @@ object Lottery {
     }
 
     behaviorFor[Lottery]
-      .whenConstructing { it =>
-
-        it.processesCommands {
-          case cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd))
+      .whenConstructing {
+        _.processesCommands {
+          case cmd: CreateLottery =>
+            println(s"[debug] - whenConstructing processesCommands $cmd")
+            LotteryCreated(cmd.name, metadata(id, cmd))
+        }.acceptsEvents {
+          case evt: LotteryCreated =>
+            println(s"[debug] - whenConstructing acceptsEvents $evt")
+            Lottery(name = evt.name, id = id)
         }
 
-        it.acceptsEvents {
-          case evt: LotteryCreated => Lottery(name = evt.name, id = id)
-        }
+      }.whenUpdating {
+      _.processesCommands {
+        case (lottery, cmd) if lottery.hasWinner =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          new CommandException("Lottery has already a winner")
+        case (lottery, cmd: Run.type) if lottery.hasNoParticipants =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          new CommandException("Lottery has no participants")
 
-      }.whenUpdating { it =>
+        case (lottery, cmd: AddParticipant) if lottery.hasParticipant(cmd.name) =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          new IllegalArgumentException(s"Participant ${cmd.name} already added!")
 
-        it.processesCommands {
-          case (lottery, _) if lottery.hasWinner                     => new CommandException("Lottery has already a winner")
-          case (lottery, cmd: Run.type) if lottery.hasNoParticipants => new CommandException("Lottery has no participants")
-
-          case (lottery, cmd: AddParticipant) if lottery.hasParticipant(cmd.name) =>
-            new IllegalArgumentException(s"Participant ${cmd.name} already added!")
-
-          case (lottery, cmd: AddParticipant) => ParticipantAdded(cmd.name, metadata(id, cmd))
-          case (_, cmd: RemoveParticipant)    => ParticipantRemoved(cmd.name, metadata(id, cmd))
-          case (lottery, cmd: Run.type)       => WinnerSelected(lottery.selectParticipant(), metadata(id, cmd))
-        }
-
-        it.acceptsEvents {
-          case (lottery, evt: ParticipantAdded)   => lottery.addParticipant(evt.name)
-          case (lottery, evt: ParticipantRemoved) => lottery.removeParticipant(evt.name)
-          case (lottery, evt: WinnerSelected)     => lottery.copy(winner = Option(evt.winner))
-        }
+        case (lottery, cmd: AddParticipant) =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          ParticipantAdded(cmd.name, metadata(id, cmd))
+        case (_, cmd: RemoveParticipant) =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          ParticipantRemoved(cmd.name, metadata(id, cmd))
+        case (lottery, cmd: Run.type) =>
+          println(s"[debug] - whenUpdating processesCommands $cmd")
+          WinnerSelected(lottery.selectParticipant(), metadata(id, cmd))
+      }.acceptsEvents {
+        case (lottery, evt: ParticipantAdded) =>
+          println(s"[debug] - whenUpdating acceptsEvents $evt")
+          lottery.addParticipant(evt.name)
+        case (lottery, evt: ParticipantRemoved) =>
+          println(s"[debug] - whenUpdating acceptsEvents $evt")
+          lottery.removeParticipant(evt.name)
+        case (lottery, evt: WinnerSelected) =>
+          println(s"[debug] - whenUpdating acceptsEvents $evt")
+          lottery.copy(winner = Option(evt.winner))
       }
+    }
   }
 }

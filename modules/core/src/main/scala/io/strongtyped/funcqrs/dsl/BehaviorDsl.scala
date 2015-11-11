@@ -1,14 +1,17 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{ Aggregate, _ }
+import io.strongtyped.funcqrs.{Aggregate, _}
+
 import scala.collection.immutable
-import scala.concurrent.{ Future, ExecutionContext }
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
 
 object BehaviorDsl {
 
-  class CreationBuilder[A <: Aggregate] {
+  case class CreationBuilder[A <: Aggregate]
+  (processCommandFunction: CreationBuilder[A]#CommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: CreationBuilder[A]#EventToAggregate = PartialFunction.empty) {
 
     type Protocol = A#Protocol
 
@@ -46,29 +49,23 @@ object BehaviorDsl {
     // from Event to new Aggregate
     type EventToAggregate = PartialFunction[Protocol#ProtocolEvent, A]
 
-    // Creation ------------------------------------------------------
-    private var _processCommandFunction: CommandToEventMagnet = PartialFunction.empty
-    private var _handleEventFunction: EventToAggregate = PartialFunction.empty
+    def processesCommands(pf: CommandToEventMagnet): CreationBuilder[A] = {
+      copy(processCommandFunction = processCommandFunction orElse pf)
+    }
 
-    private[BehaviorDsl] def processCommandFunction = _processCommandFunction
+    def acceptsEvents(pf: EventToAggregate): CreationBuilder[A] = {
+      copy(handleEventFunction = handleEventFunction orElse pf)
+    }
 
     val fallbackFunction: CommandToEventMagnet = {
       case cmd => new CommandException(s"Invalid command $cmd")
     }
 
-    private[BehaviorDsl] def handleEventFunction = _handleEventFunction
-
-    def processesCommands(pf: CommandToEventMagnet): Unit = {
-      _processCommandFunction = _processCommandFunction orElse pf
-    }
-
-    def acceptsEvents(pf: EventToAggregate): Unit = {
-      _handleEventFunction = _handleEventFunction orElse pf
-    }
-
   }
 
-  class UpdatesBuilder[A <: Aggregate] {
+  case class UpdatesBuilder[A <: Aggregate]
+  (processCommandFunction: UpdatesBuilder[A]#CommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: UpdatesBuilder[A]#EventToAggregate = PartialFunction.empty) {
 
     private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
     type Protocol = A#Protocol
@@ -121,37 +118,28 @@ object BehaviorDsl {
 
     type EventToAggregate = PartialFunction[(A, Protocol#ProtocolEvent), A]
 
-    // Updates --------------------------------------------------------
-    private var _processCommandFunction: CommandToEventMagnet = PartialFunction.empty
-    private var _handleEventFunction: EventToAggregate = PartialFunction.empty
+    def processesCommands(pf: CommandToEventMagnet): UpdatesBuilder[A] = {
+      copy(processCommandFunction = processCommandFunction orElse pf)
+    }
+
+    def acceptsEvents(pf: EventToAggregate): UpdatesBuilder[A] = {
+      copy(handleEventFunction = handleEventFunction orElse pf)
+    }
 
     val fallbackFunction: CommandToEventMagnet = {
       case (agg, cmd) => new CommandException(s"Invalid command $cmd for aggregate ${agg.id}")
     }
-
-    private[BehaviorDsl] def processCommandFunction = _processCommandFunction
-
-    private[BehaviorDsl] def handleEventFunction = _handleEventFunction
-
-    def processesCommands(pf: CommandToEventMagnet): Unit = {
-      _processCommandFunction = _processCommandFunction orElse pf
-    }
-
-    def acceptsEvents(pf: EventToAggregate): Unit = {
-      _handleEventFunction = _handleEventFunction orElse pf
-    }
   }
 
-  class BehaviorBuilder[A <: Aggregate](val creation: CreationBuilder[A], val updates: UpdatesBuilder[A]) {
+  case class BehaviorBuilder[A <: Aggregate](creation: CreationBuilder[A], updates: UpdatesBuilder[A]) {
 
-    def whenConstructing(creationBlock: CreationBuilder[A] => Unit): this.type = {
-      creationBlock(creation)
-      this
+    def whenConstructing(creationBlock: CreationBuilder[A] => CreationBuilder[A]): BehaviorBuilder[A] = {
+      copy(creation = creationBlock(creation))
+      // this
     }
 
-    def whenUpdating(updateBlock: UpdatesBuilder[A] => Unit): Behavior[A] = {
-      updateBlock(updates)
-      build
+    def whenUpdating(updateBlock: UpdatesBuilder[A] => UpdatesBuilder[A]): Behavior[A] = {
+      copy(updates = updateBlock(updates)).build
     }
 
     private def build: Behavior[A] = {
