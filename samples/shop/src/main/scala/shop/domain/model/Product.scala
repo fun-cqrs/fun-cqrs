@@ -1,15 +1,11 @@
 package shop.domain.model
 
 import java.time.OffsetDateTime
+
 import funcqrs.json.TypedJson
-
-import scala.collection.immutable
+import funcqrs.json.TypedJson.{TypeHintFormat, _}
 import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{ TypeHintFormat, _ }
 import play.api.libs.json.Json
-
-import scala.concurrent.{ Future, ExecutionContext }
 
 // tag::prod[]
 case class Product(name: String,
@@ -25,6 +21,7 @@ case class Product(name: String,
 case class ProductNumber(number: String) extends AggregateID {
   val value = number
 }
+
 // end::prod[]
 
 object ProductNumber {
@@ -52,13 +49,16 @@ object ProductProtocol extends ProtocolDef {
   case class CreateProduct(name: String, description: String, price: Double) extends ProductCommand
 
   case class ChangePrice(price: Double) extends ProductCommand
+
   case class ChangeName(name: String) extends ProductCommand
 
   sealed trait ProductEvent extends ProtocolEvent with MetadataFacet[ProductMetadata]
+
   case class ProductCreated(name: String, description: String, price: Double,
                             metadata: ProductMetadata) extends ProductEvent
 
   sealed trait ProductUpdateEvent extends ProductEvent
+
   // Update Events
   case class NameChanged(newName: String, metadata: ProductMetadata) extends ProductUpdateEvent
 
@@ -88,41 +88,46 @@ object Product {
       ProductMetadata(productNum, cmd.id, tags = Set(tag, Order.dependentView))
     }
 
-    behaviorFor[Product]
-      .whenConstructing { // it =>
+    val productBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Product]
 
-        //---------------------------------------------------------------------------------
-        // Creational Commands and Events
-        _.processesCommands {
-          // PF (Command) => EventMagnet
-          case cmd: CreateProduct if cmd.price > 0 =>
-            ProductCreated(
-              cmd.name,
-              cmd.description,
-              cmd.price,
-              metadata(id, cmd)
-            )
+    import productBehaviorDsl.behaviorFor._
 
-          case createCmd: CreateProduct => new CommandException("Price is too low!")
-        }.acceptsEvents {
-          // PF (Event) => Aggregate
-          case e: ProductCreated => Product(e.name, e.description, e.price, id)
-        }
+    whenConstructing {
+      // it =>
 
-      }.whenUpdating { // it =>
+      //---------------------------------------------------------------------------------
+      // Creational Commands and Events
+      _.processesCommands {
+        // PF (Command) => EventMagnet
+        case cmd: CreateProduct if cmd.price > 0 =>
+          ProductCreated(
+            cmd.name,
+            cmd.description,
+            cmd.price,
+            metadata(id, cmd)
+          )
 
-        _.processesCommands {
-          // PF (Aggregate, Command) => EventMagnet
-          case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
-          case (_, cmd: ChangePrice) if cmd.price <= 0            => new CommandException("Price is too low!")
-          case (_, cmd: ChangePrice)                              => PriceChanged(cmd.price, metadata(id, cmd))
-          case (_, cmd: ChangeName)                               => NameChanged(cmd.name, metadata(id, cmd))
-        }.acceptsEvents {
-          // PF (Aggregate, Event) => Aggregate
-          case (product, e: NameChanged)  => product.copy(name = e.newName)
-          case (product, e: PriceChanged) => product.copy(price = e.newPrice)
-        }
-        //---------------------------------------------------------------------------------
+        case createCmd: CreateProduct => new CommandException("Price is too low!")
+      }.acceptsEvents {
+        // PF (Event) => Aggregate
+        case e: ProductCreated => Product(e.name, e.description, e.price, id)
       }
+
+    }.whenUpdating {
+      // it =>
+
+      _.processesCommands {
+        // PF (Aggregate, Command) => EventMagnet
+        case (prod, cmd: ChangePrice) if cmd.price < prod.price => new CommandException("Can't decrease the price")
+        case (_, cmd: ChangePrice) if cmd.price <= 0 => new CommandException("Price is too low!")
+        case (_, cmd: ChangePrice) => PriceChanged(cmd.price, metadata(id, cmd))
+        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
+      }.acceptsEvents {
+        // PF (Aggregate, Event) => Aggregate
+        case (product, e: NameChanged) => product.copy(name = e.newName)
+        case (product, e: PriceChanged) => product.copy(price = e.newPrice)
+      }
+      //---------------------------------------------------------------------------------
+    }
   }
 }
