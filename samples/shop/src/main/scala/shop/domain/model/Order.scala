@@ -79,57 +79,43 @@ object Order {
 
     val orderBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Order]
 
-    import orderBehaviorDsl.behaviorFor._
+    import orderBehaviorDsl.behaviorBuilder._
 
-    whenConstructing {
-      // it =>
-
-      _.processesCommands {
+    whenConstructing { it =>
+      it.processesCommands {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
       }.acceptsEvents {
         case evt: OrderCreated => Order(orderNum, evt.customerId)
       }
-
-    }.whenUpdating {
-      // it =>
-
-      _.processesCommands {
-
+    } whenUpdating { it =>
+      it.processesCommands {
         case (order, cmd: Execute.type) if order.status == Executed =>
           new CommandException(s"Order is already executed")
-
         case (order, cmd: Execute.type) if order.status == Cancelled =>
           new CommandException(s"Can't execute a cancelled order")
-
         case (order, cmd: Cancel.type) if order.status == Executed =>
           new CommandException(s"Can't cancel an executed order")
-
         case (order, _) if order.status == Executed =>
           new CommandException(s"Can't modify an executed order")
-
         case (order, _) if order.status == Cancelled =>
           new CommandException(s"Can't modify a cancelled order")
-
         case (order, cmd: AddProduct) if order.status == Open =>
           ProductAdded(cmd.productNumber, metadata(orderNum, cmd))
-
         case (order, cmd: RemoveProduct) if order.status == Open =>
           ProductRemoved(cmd.productNumber, metadata(orderNum, cmd))
-
         case (order, cmd: Execute.type) if order.status == Open =>
           OrderExecuted(metadata(orderNum, cmd))
-
         case (order, cmd: Cancel.type) if order.status == Open =>
           OrderCancelled(metadata(orderNum, cmd))
-
-      }.acceptsEvents {
-
-        case (order, evt: ProductAdded) => order.addProduct(evt.productNumber)
-
-        case (order, evt: ProductRemoved) => order.removeProduct(evt.productNumber)
-
-        case (order, evt: OrderExecuted) => order.copy(status = Executed)
-        case (order, evt: OrderCancelled) => order.copy(status = Cancelled)
+      } acceptsEvents {
+        case (order, evt: ProductAdded) =>
+          order.addProduct(evt.productNumber)
+        case (order, evt: ProductRemoved) =>
+          order.removeProduct(evt.productNumber)
+        case (order, evt: OrderExecuted) =>
+          order.copy(status = Executed)
+        case (order, evt: OrderCancelled) =>
+          order.copy(status = Cancelled)
       }
     }
   }

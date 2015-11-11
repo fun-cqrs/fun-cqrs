@@ -178,7 +178,7 @@ class BehaviorDsl[A <: Aggregate] {
     }
   }
 
-  val behaviorFor: BehaviorBuilder =
+  val behaviorBuilder: BehaviorBuilder =
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
 
 }

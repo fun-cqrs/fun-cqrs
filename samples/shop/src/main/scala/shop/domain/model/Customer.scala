@@ -153,48 +153,49 @@ object Customer {
 
     val customerBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Customer]
 
-    import customerBehaviorDsl.behaviorFor._
+    import customerBehaviorDsl.behaviorBuilder._
 
-    whenConstructing {
-      // it =>
-      _.processesCommands {
+    whenConstructing { it =>
+      it.processesCommands {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd))
-      }.acceptsEvents {
+      } acceptsEvents {
         case e: CustomerCreated =>
           Customer(e.name, address = None, e.vatNumber, id)
       }
-
-    }.whenUpdating {
-      // it =>
-
-      _.processesCommands {
-
-        case (_, cmd: ChangeName) => NameChanged(cmd.name, metadata(id, cmd))
-        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
-
+    } whenUpdating { it =>
+      it.processesCommands {
+        case (_, cmd: ChangeName) =>
+          NameChanged(cmd.name, metadata(id, cmd))
+        case (_, cmd: ChangeAddressStreet) =>
+          AddressStreetChanged(cmd.street, metadata(id, cmd))
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
           VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
-
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber => VatNumberAdded(cmd.vat, metadata(id, cmd))
-        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber => VatNumberRemoved(metadata(id, cmd))
-
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber =>
+          VatNumberAdded(cmd.vat, metadata(id, cmd))
+        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber =>
+          VatNumberRemoved(metadata(id, cmd))
         case (_, cmd: AddAddress) =>
           immutable.Seq(
             AddressStreetChanged(cmd.address.street, metadata(id, cmd)),
             AddressCityChanged(cmd.address.city, metadata(id, cmd)),
             AddressCountryChanged(cmd.address.country, metadata(id, cmd))
           )
-      }.acceptsEvents {
-        case (customer, e: NameChanged) => customer.copy(name = e.name)
-
-        case (customer, e: AddressStreetChanged) => customer.copy(address = customer.address.map(_.copy(street = e.street)))
-        case (customer, e: AddressCityChanged) => customer.copy(address = customer.address.map(_.copy(city = e.city)))
-        case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.map(_.copy(country = e.country)))
-
-        case (customer, e: VatNumberAdded) => customer.copy(vatNumber = Some(e.vat))
-        case (customer, e: VatNumberReplaced) => customer.copy(vatNumber = Some(e.vat))
-        case (customer, _: VatNumberRemoved) => customer.copy(vatNumber = None)
+      } acceptsEvents {
+        case (customer, e: NameChanged) =>
+          customer.copy(name = e.name)
+        case (customer, e: AddressStreetChanged) =>
+          customer.copy(address = customer.address.map(_.copy(street = e.street)))
+        case (customer, e: AddressCityChanged) =>
+          customer.copy(address = customer.address.map(_.copy(city = e.city)))
+        case (customer, e: AddressCountryChanged) =>
+          customer.copy(address = customer.address.map(_.copy(country = e.country)))
+        case (customer, e: VatNumberAdded) =>
+          customer.copy(vatNumber = Some(e.vat))
+        case (customer, e: VatNumberReplaced) =>
+          customer.copy(vatNumber = Some(e.vat))
+        case (customer, _: VatNumberRemoved) =>
+          customer.copy(vatNumber = None)
       }
     }
   }
