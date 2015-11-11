@@ -10,7 +10,7 @@ import scala.util.Random
 
 case class Lottery(name: String, participants: List[String] = List(),
                    winner: Option[String] = None,
-                   id: LotteryId) extends Aggregate {
+                   id: LotteryId) extends AggregateDef {
 
   type Id = LotteryId
   type Protocol = LotteryProtocol.type
@@ -111,7 +111,7 @@ object Lottery {
     import lotteryBehaviorDsl.behaviorBuilder._
 
     whenConstructing { it =>
-      it.processesCommands {
+      it processesCommands {
         case cmd: CreateLottery =>
           println(s"[debug] - whenConstructing processesCommands $cmd")
           LotteryCreated(cmd.name, metadata(id, cmd))
@@ -121,7 +121,7 @@ object Lottery {
           Lottery(name = evt.name, id = id)
       }
     } whenUpdating { it =>
-      it.processesCommands {
+      it processesCommands {
         case (lottery, cmd) if lottery.hasWinner =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           new CommandException("Lottery has already a winner")

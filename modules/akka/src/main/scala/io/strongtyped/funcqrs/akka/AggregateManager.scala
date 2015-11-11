@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
-import io.strongtyped.funcqrs.{ Aggregate, AggregateID, Behavior }
+import io.strongtyped.funcqrs.{ AggregateDef, AggregateID, Behavior }
 import scala.concurrent.duration.Duration
 
 object AggregateManager {
@@ -19,11 +19,11 @@ case class AggregatePassivationStrategy(
   * Handles communication between client and aggregate.
   * It is also capable of aggregates creation and removal.
   */
-trait AggregateManager extends Actor with ActorLogging {
+trait AggregateManager[AggregateType <: AggregateDef] extends Actor with ActorLogging {
 
   import scala.collection.immutable._
 
-  type AggregateType <: Aggregate
+  // type AggregateType <: AggregateDef
 
   case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand)
 

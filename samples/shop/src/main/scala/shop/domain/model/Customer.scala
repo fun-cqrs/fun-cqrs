@@ -12,7 +12,7 @@ import scala.collection.immutable
 case class Customer(name: String,
                     address: Option[Address],
                     vatNumber: Option[VAT],
-                    id: CustomerId) extends Aggregate {
+                    id: CustomerId) extends AggregateDef {
 
   type Protocol = CustomerProtocol.type
   type Id = CustomerId

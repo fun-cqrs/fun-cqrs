@@ -1,38 +1,39 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{Aggregate, _}
+import io.strongtyped.funcqrs.{AggregateDef, _}
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
 
-class BehaviorDsl[A <: Aggregate] {
+class BehaviorDsl[Aggregate <: AggregateDef] extends AggregateTypes[Aggregate] {
+
+  type CreationCommandToEventMagnet = CreationBuilder#CommandToEventMagnet
+  type CreationEventToAggregate = CreationBuilder#EventToAggregate
 
   case class CreationBuilder
-  (processCommandFunction: CreationBuilder#CommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: CreationBuilder#EventToAggregate = PartialFunction.empty) {
-
-    type Protocol = A#Protocol
-
+  (processCommandFunction: CreationCommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: CreationEventToAggregate = PartialFunction.empty) {
+    
     sealed trait EventMagnet {
 
-      def apply(): Future[Protocol#ProtocolEvent]
+      def apply(): Future[Event]
     }
 
     object EventMagnet {
 
-      implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
+      implicit def fromSingleEvent(event: Event): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(event)
         }
 
-      implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromTrySingleEvent(event: Try[Event]): EventMagnet =
         new EventMagnet {
           def apply() = Future.fromTry(event)
         }
 
-      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromAsyncSingleEvent(event: Future[Event]): EventMagnet =
         new EventMagnet {
           def apply() = event
         }
@@ -44,10 +45,10 @@ class BehaviorDsl[A <: Aggregate] {
     }
 
     // from Cmd to EventMagnet
-    type CommandToEventMagnet = PartialFunction[Protocol#ProtocolCommand, EventMagnet]
+    type CommandToEventMagnet = PartialFunction[Command, EventMagnet]
 
     // from Event to new Aggregate
-    type EventToAggregate = PartialFunction[Protocol#ProtocolEvent, A]
+    type EventToAggregate = PartialFunction[Event, Aggregate]
 
     def processesCommands(pf: CommandToEventMagnet): CreationBuilder = {
       copy(processCommandFunction = processCommandFunction orElse pf)
@@ -63,46 +64,48 @@ class BehaviorDsl[A <: Aggregate] {
 
   }
 
+  type UpdatesCommandToEventMagnet = UpdatesBuilder#CommandToEventMagnet
+  type UpdatesEventToAggregate = UpdatesBuilder#EventToAggregate
+
   case class UpdatesBuilder
-  (processCommandFunction: UpdatesBuilder#CommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: UpdatesBuilder#EventToAggregate = PartialFunction.empty) {
+  (processCommandFunction: UpdatesCommandToEventMagnet = PartialFunction.empty,
+   handleEventFunction: UpdatesEventToAggregate = PartialFunction.empty) {
 
     private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
-    type Protocol = A#Protocol
 
     sealed trait EventMagnet {
 
-      def apply(): Future[immutable.Seq[Protocol#ProtocolEvent]]
+      def apply(): Future[Events]
     }
 
     object EventMagnet {
 
-      implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
+      implicit def fromSingleEvent(event: Event): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(immutable.Seq(event))
         }
 
-      implicit def fromImmutableEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromImmutableEvents(events: Events): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(events)
         }
 
-      implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromTrySingleEvent(event: Try[Event]): EventMagnet =
         new EventMagnet {
           def apply() = Future.fromTry(event.map(immutable.Seq(_)))
         }
 
-      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromAsyncSingleEvent(event: Future[Event]): EventMagnet =
         new EventMagnet {
           def apply() = event.map(immutable.Seq(_))
         }
 
-      implicit def fromTryImmutableEventSeq(events: Try[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+      implicit def fromTryImmutableEvents(events: Try[Events]): EventMagnet =
         new EventMagnet {
           def apply() = Future.fromTry(events)
         }
 
-      implicit def fromAsyncImmutableEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+      implicit def fromAsyncImmutableEvents(events: Future[Events]): EventMagnet =
         new EventMagnet {
           def apply() = events
         }
@@ -114,9 +117,9 @@ class BehaviorDsl[A <: Aggregate] {
     }
 
     // from Aggregate + Cmd to EventMagnet
-    type CommandToEventMagnet = PartialFunction[(A, Protocol#ProtocolCommand), EventMagnet]
+    type CommandToEventMagnet = PartialFunction[(Aggregate, Command), EventMagnet]
 
-    type EventToAggregate = PartialFunction[(A, Protocol#ProtocolEvent), A]
+    type EventToAggregate = PartialFunction[(Aggregate, Event), Aggregate]
 
     def processesCommands(pf: CommandToEventMagnet): UpdatesBuilder = {
       copy(processCommandFunction = processCommandFunction orElse pf)
@@ -137,13 +140,13 @@ class BehaviorDsl[A <: Aggregate] {
       copy(creation = creationBlock(creation))
     }
 
-    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[A] = {
+    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[Aggregate] = {
       copy(updates = updateBlock(updates)).build
     }
 
-    private def build: Behavior[A] = {
+    private def build: Behavior[Aggregate] = {
 
-      new Behavior[A] {
+      new Behavior[Aggregate] {
 
         private val processCreationalCommands = creation.processCommandFunction
         private val fallbackOnCreation = creation.fallbackFunction
@@ -160,18 +163,18 @@ class BehaviorDsl[A <: Aggregate] {
             .apply()
         }
 
-        def validateAsync(cmd: Command, aggregate: A)(implicit ec: ExecutionContext): Future[Events] = {
+        def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] = {
           processUpdateCommands
             .lift(aggregate, cmd)
             .getOrElse(fallbackOnUpdate(aggregate, cmd))
             .apply()
         }
 
-        def applyEvent(evt: Event): A = {
+        def applyEvent(evt: Event): Aggregate = {
           handleCreationalEvents(evt)
         }
 
-        def applyEvent(evt: Event, aggregate: A): A = {
+        def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
           handleEvents.lift(aggregate, evt).getOrElse(aggregate)
         }
       }

@@ -2,7 +2,9 @@ package io.strongtyped.funcqrs
 
 import java.util.UUID
 
-trait Aggregate {
+import scala.collection.immutable
+
+trait AggregateDef {
 
   type Id <: AggregateID
 
@@ -10,6 +12,14 @@ trait Aggregate {
 
   def id: Id
 
+}
+
+trait AggregateTypes[Aggregate <: AggregateDef] {
+  type Id = Aggregate#Id
+  type Protocol = Aggregate#Protocol
+  type Command = Protocol#ProtocolCommand
+  type Event = Protocol#ProtocolEvent
+  type Events = immutable.Seq[Event]
 }
 
 /** Base trait for definitions of type-safe aggregate ids */
