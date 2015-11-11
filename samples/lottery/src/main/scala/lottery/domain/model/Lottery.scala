@@ -108,20 +108,19 @@ object Lottery {
 
     val lotteryBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Lottery]
 
-    import lotteryBehaviorDsl.behaviorFor._
+    import lotteryBehaviorDsl.behaviorBuilder._
 
     whenConstructing { it =>
       it.processesCommands {
         case cmd: CreateLottery =>
           println(s"[debug] - whenConstructing processesCommands $cmd")
           LotteryCreated(cmd.name, metadata(id, cmd))
-      }.acceptsEvents {
+      } acceptsEvents {
         case evt: LotteryCreated =>
           println(s"[debug] - whenConstructing acceptsEvents $evt")
           Lottery(name = evt.name, id = id)
       }
-
-    }.whenUpdating { it =>
+    } whenUpdating { it =>
       it.processesCommands {
         case (lottery, cmd) if lottery.hasWinner =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
@@ -129,11 +128,9 @@ object Lottery {
         case (lottery, cmd: Run.type) if lottery.hasNoParticipants =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           new CommandException("Lottery has no participants")
-
         case (lottery, cmd: AddParticipant) if lottery.hasParticipant(cmd.name) =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           new IllegalArgumentException(s"Participant ${cmd.name} already added!")
-
         case (lottery, cmd: AddParticipant) =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           ParticipantAdded(cmd.name, metadata(id, cmd))
@@ -143,7 +140,7 @@ object Lottery {
         case (lottery, cmd: Run.type) =>
           println(s"[debug] - whenUpdating processesCommands $cmd")
           WinnerSelected(lottery.selectParticipant(), metadata(id, cmd))
-      }.acceptsEvents {
+      } acceptsEvents {
         case (lottery, evt: ParticipantAdded) =>
           println(s"[debug] - whenUpdating acceptsEvents $evt")
           lottery.addParticipant(evt.name)
