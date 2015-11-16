@@ -24,7 +24,9 @@ trait ProductModule extends AkkaModule {
 
 }
 
-class ProductAggregateManager extends AggregateManager[Product] with AssignedAggregateId[Product] {
+class ProductAggregateManager extends AggregateManager with AssignedAggregateId {
+
+  type Aggregate = Product
   def behavior(id: ProductNumber): Behavior[Product] = Product.behavior(id)
 
   override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))

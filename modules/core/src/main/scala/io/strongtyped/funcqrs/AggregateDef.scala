@@ -14,7 +14,8 @@ trait AggregateDef {
 
 }
 
-trait AggregateTypes[Aggregate <: AggregateDef] {
+trait AggregateTypes {
+  type Aggregate <: AggregateDef
   type Id = Aggregate#Id
   type Protocol = Aggregate#Protocol
   type Command = Protocol#ProtocolCommand

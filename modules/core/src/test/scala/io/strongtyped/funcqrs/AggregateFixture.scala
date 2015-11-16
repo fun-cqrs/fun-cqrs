@@ -2,7 +2,9 @@ package io.strongtyped.funcqrs
 
 import scala.concurrent.{ Future, ExecutionContext }
 
-abstract class AggregateFixture[Aggregate <: AggregateDef](eventBus: EventBus) extends AggregateTypes[Aggregate] {
+abstract class AggregateFixture[A <: AggregateDef](eventBus: EventBus) extends AggregateTypes {
+
+  type Aggregate = A
 
   val behavior: Behavior[Aggregate]
   

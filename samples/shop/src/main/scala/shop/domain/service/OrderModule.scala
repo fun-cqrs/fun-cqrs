@@ -31,7 +31,9 @@ trait OrderModule extends AkkaModule {
 
 }
 
-class OrderAggregateManager extends AggregateManager[Order] with AssignedAggregateId[Order] {
+class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
+
+  type Aggregate = Order
 
   def behavior(id: OrderNumber): Behavior[Order] = Order.behavior(id)
 
