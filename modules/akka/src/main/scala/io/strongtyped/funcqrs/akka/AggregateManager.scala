@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
-import io.strongtyped.funcqrs.{Aggregate, AggregateID, Behavior}
+import io.strongtyped.funcqrs.{ Aggregate, AggregateID, Behavior }
 import scala.concurrent.duration.Duration
 
 object AggregateManager {
@@ -15,11 +15,10 @@ case class AggregatePassivationStrategy(
   inactivityTimeout: Option[Duration] = None,
   maxChildren: Option[MaxChildren] = None)
 
-/**
- * Base aggregate manager.
- * Handles communication between client and aggregate.
- * It is also capable of aggregates creation and removal.
- */
+/** Base aggregate manager.
+  * Handles communication between client and aggregate.
+  * It is also capable of aggregates creation and removal.
+  */
 trait AggregateManager extends Actor with ActorLogging {
 
   import scala.collection.immutable._
@@ -33,11 +32,10 @@ trait AggregateManager extends Actor with ActorLogging {
 
   def aggregatePassivationStrategy: AggregatePassivationStrategy
 
-  /**
-   * Processes command.
-   * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
-   * and call [[AggregateManager.processAggregateCommand]]
-   */
+  /** Processes command.
+    * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
+    * and call [[AggregateManager.processAggregateCommand]]
+    */
   def processCommand: Receive = PartialFunction.empty
 
   override def receive: PartialFunction[Any, Unit] = {
@@ -50,7 +48,7 @@ trait AggregateManager extends Actor with ActorLogging {
   def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (id: AggregateType#Id@unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
+    case (id: AggregateType#Id @unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
   }
 
   private def defaultProcessCommand: Receive = {
@@ -58,7 +56,7 @@ trait AggregateManager extends Actor with ActorLogging {
     case Terminated(actor)             => handleTermination(actor)
     case AggregateManager.GetState(id) => getState(id.value)
 
-    case x => sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
+    case x                             => sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
   def getState(id: String) = {
@@ -82,13 +80,12 @@ trait AggregateManager extends Actor with ActorLogging {
     }
   }
 
-  /**
-   * Processes aggregate command.
-   * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
-   *
-   * @param aggregateId Aggregate id
-   * @param command DomainCommand that should be passed to aggregate
-   */
+  /** Processes aggregate command.
+    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
+    *
+    * @param aggregateId Aggregate id
+    * @param command DomainCommand that should be passed to aggregate
+    */
   def processAggregateCommand(aggregateId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand): Unit = {
 
     val maybeChild = context child aggregateId.value
@@ -124,23 +121,23 @@ trait AggregateManager extends Actor with ActorLogging {
 
   def behavior(id: AggregateType#Id): Behavior[AggregateType]
 
-  /**
-   * Build Props for a new Aggregate Actor with the passed Id
-   */
+  /** Build Props for a new Aggregate Actor with the passed Id
+    */
   def aggregateActorProps(id: AggregateType#Id): Props = {
     Props(classOf[AggregateActor[AggregateType]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
   }
 
   private def killChildrenIfNecessary() = {
-    aggregatePassivationStrategy.maxChildren.foreach { case MaxChildren(maxChildren, childrenToKillAtOnce) =>
-      val childrenCount = context.children.size - childrenBeingTerminated.size
-      if (childrenCount >= maxChildren) {
-        log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
-        val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
-        val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
-        childrenToKill foreach (_ ! KillAggregate)
-        childrenBeingTerminated ++= childrenToKill
-      }
+    aggregatePassivationStrategy.maxChildren.foreach {
+      case MaxChildren(maxChildren, childrenToKillAtOnce) =>
+        val childrenCount = context.children.size - childrenBeingTerminated.size
+        if (childrenCount >= maxChildren) {
+          log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
+          val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
+          val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
+          childrenToKill foreach (_ ! KillAggregate)
+          childrenBeingTerminated ++= childrenToKill
+        }
     }
   }
 }

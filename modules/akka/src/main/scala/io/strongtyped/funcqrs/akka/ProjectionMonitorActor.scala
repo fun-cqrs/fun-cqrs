@@ -1,16 +1,15 @@
 package io.strongtyped.funcqrs.akka
 
 import akka.actor._
-import akka.event.{ActorEventBus, LookupClassification}
+import akka.event.{ ActorEventBus, LookupClassification }
 import io.strongtyped.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.strongtyped.funcqrs.akka.ProjectionMonitorActor._
-import io.strongtyped.funcqrs.{CommandId, DomainEvent}
+import io.strongtyped.funcqrs.{ CommandId, DomainEvent }
 
-import scala.concurrent.duration.{FiniteDuration, _}
+import scala.concurrent.duration.{ FiniteDuration, _ }
 
-/**
- * Parent actor for all ProjectionActors
- */
+/** Parent actor for all ProjectionActors
+  */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   // internal EventBus to dispatch events to subscribed EventsMonitor
@@ -27,22 +26,21 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     protected def classify(event: DomainEvent): CommandId = event.commandId
   }
 
-
   def receive = {
     // start new projections child on demand
-    case CreateProjection(props, name) => createNewProjection(props, name)
+    case CreateProjection(props, name)   => createNewProjection(props, name)
 
     // receive status from child projection
     // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent => receivedEventFromProjection(evt)
+    case evt: DomainEvent                => receivedEventFromProjection(evt)
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId) => createEventMonitor(commandId)
 
     // child EventsMonitor is ready, can be removed
-    case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
+    case RemoveMe(eventsMonitor)         => removeEventMonitor(eventsMonitor)
 
-    case anyOther => log.warning(s"Unknown message: $anyOther")
+    case anyOther                        => log.warning(s"Unknown message: $anyOther")
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {
@@ -72,7 +70,6 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // sends monitor back
     sender() ! monitor
   }
-
 
   def removeEventMonitor(eventsMonitor: ActorRef): Unit = {
     log.debug(s"Removing EventMonitor $eventsMonitor")
@@ -140,7 +137,6 @@ object ProjectionMonitorActor {
 
 object EventsMonitorActor {
 
-
   case class Subscribe(events: Seq[DomainEvent])
 
   case object Done
@@ -148,7 +144,4 @@ object EventsMonitorActor {
   case class RemoveMe(actorRef: ActorRef)
 
 }
-
-
-
 

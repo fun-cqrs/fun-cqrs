@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
 import io.strongtyped.funcqrs.akka.EventsMonitorActor.Subscribe
-import io.strongtyped.funcqrs.{CommandId, DomainCommand, DomainEvent}
+import io.strongtyped.funcqrs.{ CommandId, DomainCommand, DomainEvent }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -12,13 +12,11 @@ import scala.concurrent.duration._
 
 class CQRSContext(projectionMonitorActor: ActorRef) {
 
-
-  /**
-   * Builds a EventsMonitor actor that can inform when events from a given command have been applied
-   * to the read model.
-   *
-   * @param commandId - id of DomainCommand that generated the DomainEvents
-   */
+  /** Builds a EventsMonitor actor that can inform when events from a given command have been applied
+    * to the read model.
+    *
+    * @param commandId - id of DomainCommand that generated the DomainEvents
+    */
   private def newEventsMonitor(commandId: CommandId): Future[ActorRef] = {
     // Timeout for the actor creation response. Certainly exaggerated!!
     implicit val timeout = Timeout(3.seconds)

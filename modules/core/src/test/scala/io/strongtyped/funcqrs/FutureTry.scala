@@ -1,9 +1,10 @@
 package io.strongtyped.funcqrs
 
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.ScalaFutures
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{ Await, Future }
 import scala.language.postfixOps
 import scala.util.Try
 
@@ -14,5 +15,4 @@ trait FutureTry extends ScalaFutures {
       Try(Await.result(fut, 3 seconds))
     }
   }
-
 }

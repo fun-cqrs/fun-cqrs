@@ -1,9 +1,10 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{Aggregate, _}
+import io.strongtyped.funcqrs.{ Aggregate, _ }
 import scala.collection.immutable
-import scala.concurrent.{Future, ExecutionContext}
+import scala.concurrent.{ Future, ExecutionContext }
 import scala.language.implicitConversions
+import scala.util.Try
 
 object BehaviorDsl {
 
@@ -12,13 +13,20 @@ object BehaviorDsl {
     type Protocol = A#Protocol
 
     sealed trait EventMagnet {
+
       def apply(): Future[Protocol#ProtocolEvent]
     }
 
     object EventMagnet {
+
       implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(event)
+        }
+
+      implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.fromTry(event)
         }
 
       implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
@@ -26,7 +34,7 @@ object BehaviorDsl {
           def apply() = event
         }
 
-      implicit def fromException(ex: CommandException): EventMagnet =
+      implicit def fromException(ex: Exception): EventMagnet =
         new EventMagnet {
           def apply() = Future.failed(ex)
         }
@@ -66,31 +74,43 @@ object BehaviorDsl {
     type Protocol = A#Protocol
 
     sealed trait EventMagnet {
-      def apply(): Future[Seq[Protocol#ProtocolEvent]]
+
+      def apply(): Future[immutable.Seq[Protocol#ProtocolEvent]]
     }
 
     object EventMagnet {
+
       implicit def fromSingleEvent(event: Protocol#ProtocolEvent): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(immutable.Seq(event))
         }
 
-      implicit def fromEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromImmutableEventSeq(events: immutable.Seq[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
           def apply() = Future.successful(events)
         }
 
-      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
+      implicit def fromTrySingleEvent(event: Try[Protocol#ProtocolEvent]): EventMagnet =
         new EventMagnet {
-          def apply() = event.map(Seq(_))
+          def apply() = Future.fromTry(event.map(immutable.Seq(_)))
         }
 
-      implicit def fromAsyncEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+      implicit def fromAsyncSingleEvent(event: Future[Protocol#ProtocolEvent]): EventMagnet =
+        new EventMagnet {
+          def apply() = event.map(immutable.Seq(_))
+        }
+
+      implicit def fromTryImmutableEventSeq(events: Try[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
+        new EventMagnet {
+          def apply() = Future.fromTry(events)
+        }
+
+      implicit def fromAsyncImmutableEventSeq(events: Future[immutable.Seq[Protocol#ProtocolEvent]]): EventMagnet =
         new EventMagnet {
           def apply() = events
         }
 
-      implicit def fromException(ex: CommandException): EventMagnet =
+      implicit def fromException(ex: Exception): EventMagnet =
         new EventMagnet {
           def apply() = Future.failed(ex)
         }
@@ -134,7 +154,6 @@ object BehaviorDsl {
       build
     }
 
-
     private def build: Behavior[A] = {
 
       new Behavior[A] {
@@ -171,7 +190,6 @@ object BehaviorDsl {
       }
     }
   }
-
 
   def behaviorFor[A <: Aggregate]: BehaviorBuilder[A] =
     new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)

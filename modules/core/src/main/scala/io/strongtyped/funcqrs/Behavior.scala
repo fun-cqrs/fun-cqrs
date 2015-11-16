@@ -1,25 +1,24 @@
 package io.strongtyped.funcqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.immutable
 
 trait Behavior[A <: Aggregate] {
 
   type AggregateType = A
   type Command = A#Protocol#ProtocolCommand
   type Event = A#Protocol#ProtocolEvent
-  type Events = Seq[Event]
+  type Events = immutable.Seq[Event]
 
-
-  /**
-   * The ExecutionContext to be used when calling validateAsync methods. Defaults to [[scala.concurrent.ExecutionContext.global]]
-   *
-   * Override this method if you prefer to use another ExecutionContext.
-   *
-   * Note: this is done on purpose to avoid using the EC from Akka for instance.
-   * It's recommended to avoid using Akka's context.dispatcher to run client code.
-   *
-   * @return - ExecutionContext to be used when calling validateAsync methods.
-   */
+  /** The ExecutionContext to be used when calling validateAsync methods. Defaults to [[scala.concurrent.ExecutionContext.global]]
+    *
+    * Override this method if you prefer to use another ExecutionContext.
+    *
+    * Note: this is done on purpose to avoid using the EC from Akka for instance.
+    * It's recommended to avoid using Akka's context.dispatcher to run client code.
+    *
+    * @return - ExecutionContext to be used when calling validateAsync methods.
+    */
   def executionContext: ExecutionContext = {
     scala.concurrent.ExecutionContext.global
   }
@@ -28,10 +27,9 @@ trait Behavior[A <: Aggregate] {
 
   def applyEvent(event: Event, aggregate: AggregateType): AggregateType
 
-  /**
-   * Apply a list of events to an Aggregate
-   * @return the updated Aggregate
-   */
+  /** Apply a list of events to an Aggregate
+    * @return the updated Aggregate
+    */
   final def applyEvents(events: Events, aggregate: AggregateType): AggregateType = {
     events.foldLeft(aggregate) { (aggregate, event) =>
       applyEvent(event, aggregate)
@@ -54,12 +52,10 @@ trait Behavior[A <: Aggregate] {
     applyAsyncCommand(cmd, aggregate)(executionContext)
   }
 
-
   // async behavior
   protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event]
 
   protected def validateAsync(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[Events]
-
 
   protected def applyAsyncCommand(cmd: Command)(implicit ec: ExecutionContext): Future[(Event, AggregateType)] = {
     validateAsync(cmd).map { event =>
@@ -74,17 +70,16 @@ trait Behavior[A <: Aggregate] {
   }
 }
 
-
 object Behavior {
   def empty[A <: Aggregate]: Behavior[A] = new Behavior[A] {
     def applyEvent(event: Event): AggregateType = ???
     def applyEvent(event: Event, aggregate: AggregateType): AggregateType = ???
     // async behavior
     protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] =
-      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
 
     protected def validateAsync(cmd: Command, aggregate: AggregateType)(implicit ec: ExecutionContext): Future[Events] =
-      Future.failed(new CommandException(s"Empty Behavior, can't command $cmd"))
+      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
 
   }
 }

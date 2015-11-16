@@ -1,6 +1,6 @@
 package io.strongtyped.funcqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait Repository {
 
@@ -13,5 +13,9 @@ trait Repository {
 
   def updateById(id: Identifier)(updateFunc: Model => Model)(implicit ec: ExecutionContext): Future[Model]
 
+  def updateByIdAsync(id: Identifier)(updateFunc: Model => Future[Model])(implicit ec: ExecutionContext): Future[Model]
+
   def fetchAll(implicit ec: ExecutionContext): Future[Seq[Model]]
+
+  def deleteById(id: Identifier): Future[Unit]
 }
