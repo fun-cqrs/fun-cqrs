@@ -7,7 +7,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
 
-class BehaviorDsl[A <: AggregateDef] extends AggregateTypes {
+class BehaviorDsl[A <: AggregateDef] extends AggregateAliases {
 
   type Aggregate = A
   type CreationCommandToEventMagnet = CreationBuilder#CommandToEventMagnet

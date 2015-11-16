@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 class AggregateActor[A <: AggregateDef](identifier: A#Id,
                                                 behavior: Behavior[A],
                                                 inactivityTimeout: Option[Duration] = None)
-  extends AggregateTypes with PersistentActor with ActorLogging {
+  extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
   import context.dispatcher

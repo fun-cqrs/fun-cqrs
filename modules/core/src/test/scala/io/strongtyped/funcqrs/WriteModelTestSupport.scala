@@ -6,7 +6,7 @@ import scala.collection.immutable
 trait WriteModelTestSupport {
 
 
-  implicit class BehaviorOps[A <: AggregateDef](behavior: Behavior[A]) extends AggregateTypes {
+  implicit class BehaviorOps[A <: AggregateDef](behavior: Behavior[A]) extends AggregateAliases {
 
     type Aggregate = A
 
