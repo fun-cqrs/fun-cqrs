@@ -6,7 +6,9 @@ import scala.collection.immutable
 trait WriteModelTestSupport {
 
 
-  implicit class BehaviorOps[Aggregate <: AggregateDef](behavior: Behavior[Aggregate]) extends AggregateTypes[Aggregate] {
+  implicit class BehaviorOps[A <: AggregateDef](behavior: Behavior[A]) extends AggregateTypes {
+
+    type Aggregate = A
 
     def applyCommands(cmd: Command, cmds: Command*)(implicit ec: ExecutionContext): Future[(Seq[Event], Aggregate)] = {
       behavior.applyCommand(cmd).flatMap {

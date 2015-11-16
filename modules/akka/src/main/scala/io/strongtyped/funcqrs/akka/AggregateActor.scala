@@ -10,10 +10,12 @@ import scala.collection.immutable
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[Aggregate <: AggregateDef](identifier: Aggregate#Id,
-                                                behavior: Behavior[Aggregate],
-                                                inactivityTimeout: Option[Duration] = None) extends AggregateTypes[Aggregate] with PersistentActor with ActorLogging {
+class AggregateActor[A <: AggregateDef](identifier: A#Id,
+                                                behavior: Behavior[A],
+                                                inactivityTimeout: Option[Duration] = None)
+  extends AggregateTypes with PersistentActor with ActorLogging {
 
+  type Aggregate = A
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier

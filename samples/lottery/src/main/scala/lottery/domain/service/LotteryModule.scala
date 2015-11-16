@@ -24,7 +24,9 @@ trait LotteryModule extends AkkaModule {
 
 }
 
-class LotteryAggregateManager extends AggregateManager[Lottery] with AssignedAggregateId[Lottery] {
+class LotteryAggregateManager extends AggregateManager with AssignedAggregateId {
+
+  type Aggregate = Lottery
 
   def behavior(id: LotteryId): Behavior[Lottery] = Lottery.behavior(id)
 

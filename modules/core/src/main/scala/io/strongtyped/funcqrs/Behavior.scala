@@ -3,7 +3,9 @@ package io.strongtyped.funcqrs
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 
-trait Behavior[Aggregate <: AggregateDef] extends AggregateTypes[Aggregate] {
+trait Behavior[A <: AggregateDef] extends AggregateTypes {
+
+  type Aggregate = A
 
   /** The ExecutionContext to be used when calling validateAsync methods. Defaults to [[scala.concurrent.ExecutionContext.global]]
     *
