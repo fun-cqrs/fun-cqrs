@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 class AggregateActor[A <: AggregateDef](identifier: A#Id,
                                                 behavior: Behavior[A],
                                                 inactivityTimeout: Option[Duration] = None)
-  extends AggregateTypes with PersistentActor with ActorLogging {
+  extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
   import context.dispatcher
@@ -173,9 +173,6 @@ class AggregateActor[A <: AggregateDef](identifier: A#Id,
       eventsSinceLastSnapshot = 0
       log.debug("recovering aggregate from snapshot")
       restoreState(metadata, state, data)
-
-    case SaveSnapshotSuccess(metadata) =>
-      log.debug("snapshot saved")
 
     case RecoveryCompleted =>
       log.debug(s"aggregate '$persistenceId' has recovered, state = '$state'")

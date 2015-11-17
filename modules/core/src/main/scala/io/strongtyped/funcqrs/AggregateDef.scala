@@ -14,12 +14,28 @@ trait AggregateDef {
 
 }
 
-trait AggregateTypes {
+trait AggregateAliases {
+
+  /** The Aggregate type.
+    * This is the only (abstract) type member to be defined.
+    *
+    * All other type members are aliases defined by type projection of inner types from Aggregate type itself.
+    */
   type Aggregate <: AggregateDef
+
+  /** Alias for Aggregate#Id */
   type Id = Aggregate#Id
+
+  /** Alias for Aggregate#Protocol */
   type Protocol = Aggregate#Protocol
+
+  /** Alias for Aggregate's ProtocolCommand */
   type Command = Protocol#ProtocolCommand
+
+  /** Alias for Aggregate's ProtocolEvent */
   type Event = Protocol#ProtocolEvent
+
+  /** Alias for an immutable Seq of Aggregate's ProtocolEvent */
   type Events = immutable.Seq[Event]
 }
 

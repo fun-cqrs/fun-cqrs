@@ -3,7 +3,7 @@ package io.strongtyped.funcqrs
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 
-trait Behavior[A <: AggregateDef] extends AggregateTypes {
+trait Behavior[A <: AggregateDef] extends AggregateAliases {
 
   type Aggregate = A
 

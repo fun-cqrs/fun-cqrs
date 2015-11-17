@@ -1,8 +1,8 @@
 package io.strongtyped.funcqrs.akka
 
-import io.strongtyped.funcqrs.{AggregateTypes, AggregateDef}
+import io.strongtyped.funcqrs.{AggregateAliases, AggregateDef}
 
-trait AssignedAggregateId extends AggregateTypes {
+trait AssignedAggregateId {
   this: AggregateManager =>
 
   override def processCreation: Receive = {
