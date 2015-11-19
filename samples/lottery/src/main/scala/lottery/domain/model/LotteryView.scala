@@ -4,7 +4,6 @@ import java.time.OffsetDateTime
 
 import play.api.libs.json._
 
-
 case class LotteryView(name: String,
                        participants: List[LotteryView.Participant] = List(),
                        winner: Option[String] = None,

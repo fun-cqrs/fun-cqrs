@@ -13,7 +13,7 @@ import scala.util.control.NonFatal
 class AggregateActor[A <: AggregateLike](identifier: A#Id,
                                          behavior: Behavior[A],
                                          inactivityTimeout: Option[Duration] = None)
-  extends AggregateAliases with PersistentActor with ActorLogging {
+    extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
   import context.dispatcher
@@ -91,10 +91,10 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case GetState => respond()
+    case GetState                     => respond()
     case result: CompletedCreationCmd => onSuccessfulCreation(result)
-    case result: CompletedUpdateCmd => onSuccessfulUpdate(result)
-    case failedCmd: FailedCommand => onCommandFailure(failedCmd)
+    case result: CompletedUpdateCmd   => onSuccessfulUpdate(result)
+    case failedCmd: FailedCommand     => onCommandFailure(failedCmd)
 
     case anyOther =>
       log.debug(s"received $anyOther while processing another command")
@@ -130,7 +130,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   protected def respond(replyTo: ActorRef = context.sender()): Unit = {
     aggregateOpt match {
       case Some(data) => replyTo ! data
-      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case None       => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -146,7 +146,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     (aggregateOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Event) => Some(behavior.applyEvent(evt))
+      case (None, evt: Event)            => Some(behavior.applyEvent(evt))
 
       // Update events are applied on current state
       case (Some(aggregate), evt: Event) => Some(behavior.applyEvent(evt, aggregate))
@@ -154,7 +154,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
       // in both cases we must ignore it and return current state
-      case _ => aggregateOpt
+      case _                             => aggregateOpt
     }
   }
 
@@ -179,7 +179,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
     case event: DomainEvent => onEvent(event)
 
-    case unknown => log.debug(s"Unknown message on recovery")
+    case unknown            => log.debug(s"Unknown message on recovery")
   }
 
   protected def onEvent(evt: DomainEvent): Unit = {

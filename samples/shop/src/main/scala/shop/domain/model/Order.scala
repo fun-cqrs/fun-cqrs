@@ -3,7 +3,7 @@ package shop.domain.model
 import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
-import funcqrs.json.TypedJson.{TypeHintFormat, _}
+import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.strongtyped.funcqrs._
 import play.api.libs.json._
 
@@ -38,7 +38,7 @@ case class Order(number: OrderNumber,
       products.get(productNumber).flatMap {
         case Quantity(1) => None
         case Quantity(0) => None
-        case qty => Some(qty.minusOne)
+        case qty         => Some(qty.minusOne)
       }
 
     val newProducts =

@@ -7,7 +7,7 @@ abstract class AggregateFixture[A <: AggregateLike](eventBus: EventBus) extends 
   type Aggregate = A
 
   val behavior: Behavior[Aggregate]
-  
+
   def projection: Projection
 
   eventBus.addHandler {

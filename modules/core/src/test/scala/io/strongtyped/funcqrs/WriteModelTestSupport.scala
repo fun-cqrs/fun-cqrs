@@ -1,10 +1,9 @@
 package io.strongtyped.funcqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 
 trait WriteModelTestSupport {
-
 
   implicit class BehaviorOps[A <: AggregateLike](behavior: Behavior[A]) extends AggregateAliases {
 

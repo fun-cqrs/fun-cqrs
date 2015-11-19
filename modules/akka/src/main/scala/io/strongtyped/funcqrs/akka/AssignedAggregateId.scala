@@ -1,6 +1,6 @@
 package io.strongtyped.funcqrs.akka
 
-import io.strongtyped.funcqrs.{AggregateAliases, AggregateLike}
+import io.strongtyped.funcqrs.{ AggregateAliases, AggregateLike }
 
 trait AssignedAggregateId {
   this: AggregateManager =>

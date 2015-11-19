@@ -1,9 +1,9 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{AggregateLike, _}
+import io.strongtyped.funcqrs.{ AggregateLike, _ }
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -13,10 +13,9 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
   type CreationCommandToEventMagnet = CreationBuilder#CommandToEventMagnet
   type CreationEventToAggregate = CreationBuilder#EventToAggregate
 
-  case class CreationBuilder
-  (processCommandFunction: CreationCommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: CreationEventToAggregate = PartialFunction.empty) {
-    
+  case class CreationBuilder(processCommandFunction: CreationCommandToEventMagnet = PartialFunction.empty,
+                             handleEventFunction: CreationEventToAggregate = PartialFunction.empty) {
+
     sealed trait EventMagnet {
 
       def apply(): Future[Event]
@@ -68,9 +67,8 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
   type UpdatesCommandToEventMagnet = UpdatesBuilder#CommandToEventMagnet
   type UpdatesEventToAggregate = UpdatesBuilder#EventToAggregate
 
-  case class UpdatesBuilder
-  (processCommandFunction: UpdatesCommandToEventMagnet = PartialFunction.empty,
-   handleEventFunction: UpdatesEventToAggregate = PartialFunction.empty) {
+  case class UpdatesBuilder(processCommandFunction: UpdatesCommandToEventMagnet = PartialFunction.empty,
+                            handleEventFunction: UpdatesEventToAggregate = PartialFunction.empty) {
 
     private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
 

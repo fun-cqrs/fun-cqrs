@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
-import io.strongtyped.funcqrs.{AggregateAliases, AggregateLike, AggregateID, Behavior}
+import io.strongtyped.funcqrs.{ AggregateAliases, AggregateLike, AggregateID, Behavior }
 import scala.concurrent.duration.Duration
 
 object AggregateManager {
@@ -23,7 +23,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   import scala.collection.immutable._
 
-   type Aggregate <: AggregateLike
+  type Aggregate <: AggregateLike
 
   case class PendingCommand(sender: ActorRef, targetProcessorId: Id, command: Command)
 

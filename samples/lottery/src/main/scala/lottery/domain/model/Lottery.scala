@@ -2,7 +2,7 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 
-import funcqrs.json.TypedJson.{TypeHintFormat, _}
+import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.strongtyped.funcqrs._
 import play.api.libs.json.Json
 
