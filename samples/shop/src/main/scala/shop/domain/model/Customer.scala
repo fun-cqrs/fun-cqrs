@@ -12,7 +12,7 @@ import scala.collection.immutable
 case class Customer(name: String,
                     address: Option[Address],
                     vatNumber: Option[VAT],
-                    id: CustomerId) extends AggregateDef {
+                    id: CustomerId) extends AggregateLike {
 
   type Protocol = CustomerProtocol.type
   type Id = CustomerId
@@ -66,7 +66,7 @@ object Address {
   implicit val formatAddress = Json.format[Address]
 }
 
-object CustomerProtocol extends ProtocolDef {
+object CustomerProtocol extends ProtocolLike {
 
   sealed trait CustomerCommand extends ProtocolCommand
 

@@ -1,13 +1,13 @@
 package io.strongtyped.funcqrs.dsl
 
-import io.strongtyped.funcqrs.{AggregateDef, _}
+import io.strongtyped.funcqrs.{AggregateLike, _}
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 import scala.util.Try
 
-class BehaviorDsl[A <: AggregateDef] extends AggregateAliases {
+class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
 
   type Aggregate = A
   type CreationCommandToEventMagnet = CreationBuilder#CommandToEventMagnet

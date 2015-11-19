@@ -11,7 +11,7 @@ import play.api.libs.json.Json
 case class Product(name: String,
                    description: String,
                    price: Double,
-                   id: ProductNumber) extends AggregateDef {
+                   id: ProductNumber) extends AggregateLike {
 
   type Id = ProductNumber
   type Protocol = ProductProtocol.type
@@ -33,7 +33,7 @@ object ProductNumber {
   }
 }
 
-object ProductProtocol extends ProtocolDef {
+object ProductProtocol extends ProtocolLike {
 
   case class ProductMetadata(aggregateId: ProductNumber,
                              commandId: CommandId,

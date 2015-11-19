@@ -18,7 +18,7 @@ case object Cancelled extends Status
 case class Order(number: OrderNumber,
                  customerId: CustomerId,
                  products: Map[ProductNumber, Quantity] = Map(),
-                 status: Status = Open) extends AggregateDef {
+                 status: Status = Open) extends AggregateLike {
 
   type Id = OrderNumber
 
@@ -129,7 +129,7 @@ object OrderNumber {
   def fromString(id: String) = OrderNumber(id)
 }
 
-object OrderProtocol extends ProtocolDef {
+object OrderProtocol extends ProtocolLike {
 
   sealed trait OrderCommand extends ProtocolCommand
 

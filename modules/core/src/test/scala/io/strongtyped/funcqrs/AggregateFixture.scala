@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs
 
 import scala.concurrent.{ Future, ExecutionContext }
 
-abstract class AggregateFixture[A <: AggregateDef](eventBus: EventBus) extends AggregateAliases {
+abstract class AggregateFixture[A <: AggregateLike](eventBus: EventBus) extends AggregateAliases {
 
   type Aggregate = A
 

@@ -3,7 +3,7 @@ package io.strongtyped.funcqrs
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.collection.immutable
 
-trait Behavior[A <: AggregateDef] extends AggregateAliases {
+trait Behavior[A <: AggregateLike] extends AggregateAliases {
 
   type Aggregate = A
 
@@ -68,7 +68,7 @@ trait Behavior[A <: AggregateDef] extends AggregateAliases {
 }
 
 object Behavior {
-  def empty[Aggregate <: AggregateDef]: Behavior[Aggregate] = new Behavior[Aggregate] {
+  def empty[Aggregate <: AggregateLike]: Behavior[Aggregate] = new Behavior[Aggregate] {
     def applyEvent(event: Event): Aggregate = ???
     def applyEvent(event: Event, aggregate: Aggregate): Aggregate = ???
     // async behavior

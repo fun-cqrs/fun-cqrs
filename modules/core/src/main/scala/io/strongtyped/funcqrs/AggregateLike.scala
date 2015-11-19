@@ -4,11 +4,11 @@ import java.util.UUID
 
 import scala.collection.immutable
 
-trait AggregateDef {
+trait AggregateLike {
 
   type Id <: AggregateID
 
-  type Protocol <: ProtocolDef
+  type Protocol <: ProtocolLike
 
   def id: Id
 
@@ -21,7 +21,7 @@ trait AggregateAliases {
     *
     * All other type members are aliases defined by type projection of inner types from Aggregate type itself.
     */
-  type Aggregate <: AggregateDef
+  type Aggregate <: AggregateLike
 
   /** Alias for Aggregate#Id */
   type Id = Aggregate#Id

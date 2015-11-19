@@ -10,9 +10,9 @@ import scala.collection.immutable
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: AggregateDef](identifier: A#Id,
-                                                behavior: Behavior[A],
-                                                inactivityTimeout: Option[Duration] = None)
+class AggregateActor[A <: AggregateLike](identifier: A#Id,
+                                         behavior: Behavior[A],
+                                         inactivityTimeout: Option[Duration] = None)
   extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
