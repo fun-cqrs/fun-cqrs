@@ -2,7 +2,7 @@ package io.strongtyped.funcqrs.akka
 
 import akka.actor._
 import io.strongtyped.funcqrs.akka.AggregateActor.KillAggregate
-import io.strongtyped.funcqrs.{ Aggregate, AggregateID, Behavior }
+import io.strongtyped.funcqrs.{ AggregateAliases, AggregateLike, AggregateID, Behavior }
 import scala.concurrent.duration.Duration
 
 object AggregateManager {
@@ -19,13 +19,13 @@ case class AggregatePassivationStrategy(
   * Handles communication between client and aggregate.
   * It is also capable of aggregates creation and removal.
   */
-trait AggregateManager extends Actor with ActorLogging {
+trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   import scala.collection.immutable._
 
-  type AggregateType <: Aggregate
+  type Aggregate <: AggregateLike
 
-  case class PendingCommand(sender: ActorRef, targetProcessorId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand)
+  case class PendingCommand(sender: ActorRef, targetProcessorId: Id, command: Command)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
@@ -48,7 +48,7 @@ trait AggregateManager extends Actor with ActorLogging {
   def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (id: AggregateType#Id @unchecked, cmd: AggregateType#Protocol#ProtocolCommand) => processAggregateCommand(id, cmd)
+    case (id: Id @unchecked, cmd: Command) => processAggregateCommand(id, cmd)
   }
 
   private def defaultProcessCommand: Receive = {
@@ -86,7 +86,7 @@ trait AggregateManager extends Actor with ActorLogging {
     * @param aggregateId Aggregate id
     * @param command DomainCommand that should be passed to aggregate
     */
-  def processAggregateCommand(aggregateId: AggregateType#Id, command: AggregateType#Protocol#ProtocolCommand): Unit = {
+  def processAggregateCommand(aggregateId: Id, command: Command): Unit = {
 
     val maybeChild = context child aggregateId.value
 
@@ -105,13 +105,13 @@ trait AggregateManager extends Actor with ActorLogging {
     }
   }
 
-  protected def findOrCreate(id: AggregateType#Id): ActorRef =
+  protected def findOrCreate(id: Id): ActorRef =
     context.child(id.value) getOrElse {
       log.debug(s"creating $id")
       create(id)
     }
 
-  protected def create(id: AggregateType#Id): ActorRef = {
+  protected def create(id: Id): ActorRef = {
     killChildrenIfNecessary()
     log.debug(s"creating $id")
     val agg = context.actorOf(aggregateActorProps(id), id.value)
@@ -119,12 +119,12 @@ trait AggregateManager extends Actor with ActorLogging {
     agg
   }
 
-  def behavior(id: AggregateType#Id): Behavior[AggregateType]
+  def behavior(id: Id): Behavior[Aggregate]
 
   /** Build Props for a new Aggregate Actor with the passed Id
     */
-  def aggregateActorProps(id: AggregateType#Id): Props = {
-    Props(classOf[AggregateActor[AggregateType]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
+  def aggregateActorProps(id: Id): Props = {
+    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
   }
 
   private def killChildrenIfNecessary() = {

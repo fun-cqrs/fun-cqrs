@@ -1,23 +1,22 @@
 package io.strongtyped.funcqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
+import scala.collection.immutable
 
 trait WriteModelTestSupport {
 
+  implicit class BehaviorOps[A <: AggregateLike](behavior: Behavior[A]) extends AggregateAliases {
 
-  implicit class BehaviorOps[A <: Aggregate](behavior: Behavior[A]) {
+    type Aggregate = A
 
-    type Command = A#Protocol#ProtocolCommand
-    type Event = A#Protocol#ProtocolEvent
-
-    def applyCommands(cmd: Command, cmds: Command*)(implicit ec: ExecutionContext): Future[(Seq[Event], A)] = {
+    def applyCommands(cmd: Command, cmds: Command*)(implicit ec: ExecutionContext): Future[(Seq[Event], Aggregate)] = {
       behavior.applyCommand(cmd).flatMap {
         case (evt, agg) =>
-          applyCommands(Seq(evt), agg, cmds: _*)
+          applyCommands(immutable.Seq(evt), agg, cmds: _*)
       }
     }
 
-    private def applyCommands(events: Seq[Event], aggregate: A, cmds: Command*)(implicit ec: ExecutionContext): Future[(Seq[Event], A)] = {
+    private def applyCommands(events: Events, aggregate: Aggregate, cmds: Command*)(implicit ec: ExecutionContext): Future[(Events, Aggregate)] = {
       cmds.toList match {
         case head :: Nil => behavior.applyCommand(head, aggregate).map {
           case (evts, agg) =>

@@ -1,6 +1,6 @@
 package io.strongtyped.funcqrs
 
-trait ProtocolDef {
+trait ProtocolLike {
   trait ProtocolCommand extends DomainCommand
   trait ProtocolEvent extends DomainEvent
 }

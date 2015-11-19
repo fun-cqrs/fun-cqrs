@@ -3,7 +3,7 @@ package lottery.api
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
-import io.strongtyped.funcqrs.{ Aggregate, DomainCommand }
+import io.strongtyped.funcqrs.{ AggregateLike, DomainCommand }
 import play.api.libs.json._
 import play.api.mvc.{ Action, Controller }
 
@@ -16,7 +16,7 @@ trait CommandController extends Controller {
 
   implicit def timeout: Timeout = Timeout(300 millis)
 
-  type AggregateType <: Aggregate
+  type AggregateType <: AggregateLike
 
   def aggregateManager: ActorRef
 

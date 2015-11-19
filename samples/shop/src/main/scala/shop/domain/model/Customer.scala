@@ -3,17 +3,16 @@ package shop.domain.model
 import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
+import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{ TypeHintFormat, _ }
 import play.api.libs.json.Json
-import shop.domain.model.ProductProtocol.ProductMetadata
+
 import scala.collection.immutable
 
 case class Customer(name: String,
                     address: Option[Address],
                     vatNumber: Option[VAT],
-                    id: CustomerId) extends Aggregate {
+                    id: CustomerId) extends AggregateLike {
 
   type Protocol = CustomerProtocol.type
   type Id = CustomerId
@@ -67,7 +66,7 @@ object Address {
   implicit val formatAddress = Json.format[Address]
 }
 
-object CustomerProtocol extends ProtocolDef {
+object CustomerProtocol extends ProtocolLike {
 
   sealed trait CustomerCommand extends ProtocolCommand
 
@@ -152,48 +151,51 @@ object Customer {
       CustomerMetadata(customerId, cmd.id, tags = Set(tag, Order.dependentView))
     }
 
-    behaviorFor[Customer].whenConstructing { it =>
+    val customerBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Customer]
+
+    import customerBehaviorDsl.behaviorBuilder._
+
+    whenConstructing { it =>
       it.processesCommands {
         case cmd: CreateCustomer =>
           CustomerCreated(cmd.name, cmd.vatNumber, metadata(id, cmd))
-      }
-
-      it.acceptsEvents {
+      } acceptsEvents {
         case e: CustomerCreated =>
           Customer(e.name, address = None, e.vatNumber, id)
       }
-
-    }.whenUpdating { it =>
-
+    } whenUpdating { it =>
       it.processesCommands {
-
-        case (_, cmd: ChangeName)          => NameChanged(cmd.name, metadata(id, cmd))
-        case (_, cmd: ChangeAddressStreet) => AddressStreetChanged(cmd.street, metadata(id, cmd))
-
+        case (_, cmd: ChangeName) =>
+          NameChanged(cmd.name, metadata(id, cmd))
+        case (_, cmd: ChangeAddressStreet) =>
+          AddressStreetChanged(cmd.street, metadata(id, cmd))
         case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
           VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
-
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber => VatNumberAdded(cmd.vat, metadata(id, cmd))
-        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber => VatNumberRemoved(metadata(id, cmd))
-
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber =>
+          VatNumberAdded(cmd.vat, metadata(id, cmd))
+        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber =>
+          VatNumberRemoved(metadata(id, cmd))
         case (_, cmd: AddAddress) =>
           immutable.Seq(
             AddressStreetChanged(cmd.address.street, metadata(id, cmd)),
             AddressCityChanged(cmd.address.city, metadata(id, cmd)),
             AddressCountryChanged(cmd.address.country, metadata(id, cmd))
           )
-      }
-
-      it.acceptsEvents {
-        case (customer, e: NameChanged)           => customer.copy(name = e.name)
-
-        case (customer, e: AddressStreetChanged)  => customer.copy(address = customer.address.map(_.copy(street = e.street)))
-        case (customer, e: AddressCityChanged)    => customer.copy(address = customer.address.map(_.copy(city = e.city)))
-        case (customer, e: AddressCountryChanged) => customer.copy(address = customer.address.map(_.copy(country = e.country)))
-
-        case (customer, e: VatNumberAdded)        => customer.copy(vatNumber = Some(e.vat))
-        case (customer, e: VatNumberReplaced)     => customer.copy(vatNumber = Some(e.vat))
-        case (customer, _: VatNumberRemoved)      => customer.copy(vatNumber = None)
+      } acceptsEvents {
+        case (customer, e: NameChanged) =>
+          customer.copy(name = e.name)
+        case (customer, e: AddressStreetChanged) =>
+          customer.copy(address = customer.address.map(_.copy(street = e.street)))
+        case (customer, e: AddressCityChanged) =>
+          customer.copy(address = customer.address.map(_.copy(city = e.city)))
+        case (customer, e: AddressCountryChanged) =>
+          customer.copy(address = customer.address.map(_.copy(country = e.country)))
+        case (customer, e: VatNumberAdded) =>
+          customer.copy(vatNumber = Some(e.vat))
+        case (customer, e: VatNumberReplaced) =>
+          customer.copy(vatNumber = Some(e.vat))
+        case (customer, _: VatNumberRemoved) =>
+          customer.copy(vatNumber = None)
       }
     }
   }

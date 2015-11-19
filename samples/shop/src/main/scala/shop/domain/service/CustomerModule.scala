@@ -24,7 +24,7 @@ trait CustomerModule extends AkkaModule {
 
 class CustomerAggregateManager extends AggregateManager with AssignedAggregateId {
 
-  type AggregateType = Customer
+  type Aggregate = Customer
 
   def behavior(id: CustomerId): Behavior[Customer] = Customer.behavior(id)
 

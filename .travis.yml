@@ -11,7 +11,7 @@ notifications:
     on_failure: always
     on_start: false
 after_success:
-- ! '[[ $TRAVIS_BRANCH == "develop" ]] && { sbt "publish" ; };'
+  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "develop" && sbt publish
 env:
   global:
   - secure: c0dhTH8MG/yLjvbW/JEjknAjjUDQuzk8e8mQ8vdfcfVybaCTzfOrl7LOjpZIgugbtYfL1E0whT/AepahqFkV6zy2rNTV66UTrdxgGR78vyFROFV0tNHd6HfoFoyJBcYWrXRiFz34JwM3rZAPZsonfMu1sUc55Iql0YvB3Sraxq3wis+0+FIg6v6PdPdcVGERwKZFXFOdRAAcIg056I0qdKk+hLuj4H+WB3RujopFnc6DvJcE8Un3So0tEYbp9cTjMWGZz+rfgdHC8dvlD/rKb3zvhfeLxj/wXbTFqZomxc1NHkYyClE1gjkeL485C099skRfvNinyOxxa/iJX8vbSy/GqdRGCeCtCFjB686+ZvPl1Y+nviSVUVExgRxDRWjAnDBWtl8tuVWs/SX9VgYYtw3iD9Nf1LU2LDRlJ3vFHUsh+7R4k/nktbITVMAf5CpsSHIc+1InZRvQQqTENvuWwbThyMTCf5IgZToVQmfEY4/tgPjf/46cWpTzSq6dbvSlthiBUxgyJ+6/oaOq/gUX6dnbAK4pk9KPwNZVNnZa8p4TSwKReYuNYbGGVcKOKzai1DXF/gwMi9HrOlXOAlaJoWnumg2RUxzKPRoEayB/mo3OqBO59ThaJT20MQHD7uVfFwZ+Elnz42EQbogOVyqVqZBFxkhhGA+PaNCKuhvvw+Q=
