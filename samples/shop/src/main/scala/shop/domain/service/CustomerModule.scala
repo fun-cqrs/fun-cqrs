@@ -2,8 +2,8 @@ package shop.domain.service
 
 import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.Behavior
-import io.strongtyped.funcqrs.akka._
+import io.funcqrs.Behavior
+import io.funcqrs.akka._
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{ Customer, CustomerId, CustomerView }

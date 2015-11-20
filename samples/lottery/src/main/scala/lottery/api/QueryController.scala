@@ -1,6 +1,6 @@
 package lottery.api
 
-import io.strongtyped.funcqrs.Repository
+import io.funcqrs.Repository
 import play.api.libs.json.{ Writes, JsValue, Json }
 import play.api.mvc.{ Action, Controller }
 

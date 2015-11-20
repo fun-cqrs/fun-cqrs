@@ -1,7 +1,7 @@
 package shop.domain.service
 
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.Projection
+import io.funcqrs.Projection
 import shop.domain.model.CustomerProtocol._
 import shop.domain.model.CustomerView
 

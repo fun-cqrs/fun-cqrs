@@ -2,7 +2,8 @@ package shop.domain.service
 
 import com.softwaremill.macwire._
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.{ HandleEvent, Projection }
+import io.funcqrs.Projection
+import io.funcqrs.HandleEvent
 import shop.domain.model.OrderProtocol.{ OrderCreated, ProductAdded, ProductRemoved }
 import shop.domain.model._
 

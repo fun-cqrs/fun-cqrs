@@ -1,7 +1,8 @@
 package lottery.domain.service
 
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.{ HandleEvent, Projection }
+import io.funcqrs.Projection
+import io.funcqrs.HandleEvent
 import lottery.domain.model.LotteryProtocol._
 import lottery.domain.model.LotteryView
 

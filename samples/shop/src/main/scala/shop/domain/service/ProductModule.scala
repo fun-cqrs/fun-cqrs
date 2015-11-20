@@ -2,8 +2,10 @@ package shop.domain.service
 
 import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.akka._
-import io.strongtyped.funcqrs.{ Behavior, Tag }
+import io.funcqrs
+import io.funcqrs.Behavior
+import io.funcqrs.akka._
+import io.funcqrs.Tag
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{ Product, ProductNumber, ProductView }
@@ -37,5 +39,5 @@ class ProductViewProjectionActor(name: String, projection: ProductViewProjection
     with LevelDbTaggedEventsSource // mixin the source
     with OffsetNotPersisted { // no offset persistence, replay full-stream
 
-  val tag: Tag = Product.tag
+  val tag: funcqrs.Tag = Product.tag
 }

@@ -1,7 +1,7 @@
 package lottery.api
 
 import akka.actor.ActorSystem
-import io.strongtyped.funcqrs.akka.FunCQRS
+import io.funcqrs.akka.FunCQRS
 
 trait AkkaModule {
 

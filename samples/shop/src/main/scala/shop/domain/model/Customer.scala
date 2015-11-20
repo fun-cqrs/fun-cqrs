@@ -4,8 +4,9 @@ import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
-import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
+import io.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
 import play.api.libs.json.Json
 
 import scala.collection.immutable
@@ -152,7 +153,7 @@ object Customer {
       CustomerMetadata(customerId, cmd.id, tags = Set(tag, Order.dependentView))
     }
 
-    val customerBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Customer]
+    val customerBehaviorDsl = new BehaviorDsl[Customer]
 
     import customerBehaviorDsl.behaviorBuilder._
 

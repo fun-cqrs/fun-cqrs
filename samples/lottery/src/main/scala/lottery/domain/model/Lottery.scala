@@ -3,7 +3,9 @@ package lottery.domain.model
 import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
-import io.strongtyped.funcqrs._
+import io.funcqrs._
+import io.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
 import play.api.libs.json.Json
 
 import scala.util.Random
@@ -106,7 +108,7 @@ object Lottery {
       LotteryMetadata(id, cmd.id, tags = Set(tag))
     }
 
-    val lotteryBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Lottery]
+    val lotteryBehaviorDsl = new BehaviorDsl[Lottery]
 
     import lotteryBehaviorDsl.behaviorBuilder._
 

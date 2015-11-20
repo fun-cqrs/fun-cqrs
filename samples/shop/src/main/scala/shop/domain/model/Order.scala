@@ -4,7 +4,9 @@ import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
-import io.strongtyped.funcqrs._
+import io.funcqrs._
+import io.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
 import play.api.libs.json._
 
 sealed trait Status
@@ -77,7 +79,7 @@ object Order {
       OrderMetadata(orderNum, orderCommand.id, tags = Set(tag, dependentView))
     }
 
-    val orderBehaviorDsl = new io.strongtyped.funcqrs.dsl.BehaviorDsl[Order]
+    val orderBehaviorDsl = new BehaviorDsl[Order]
 
     import orderBehaviorDsl.behaviorBuilder._
 

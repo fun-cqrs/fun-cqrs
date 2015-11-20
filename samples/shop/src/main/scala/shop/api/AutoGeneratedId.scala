@@ -1,8 +1,8 @@
 package shop.api
 
 import akka.pattern._
-import io.strongtyped.funcqrs.DomainEvent
-import io.strongtyped.funcqrs.akka.AggregateActor.SuccessfulCommand
+import io.funcqrs.DomainEvent
+import io.funcqrs.akka.AggregateActor.SuccessfulCommand
 import play.api.libs.json.{ JsError, JsSuccess }
 import play.api.mvc.Action
 

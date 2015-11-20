@@ -1,7 +1,8 @@
 package shop.domain.service
 
 import com.typesafe.scalalogging.LazyLogging
-import io.strongtyped.funcqrs.{ HandleEvent, Projection }
+import io.funcqrs.Projection
+import io.funcqrs.HandleEvent
 import shop.domain.model.ProductProtocol._
 import shop.domain.model.ProductView
 

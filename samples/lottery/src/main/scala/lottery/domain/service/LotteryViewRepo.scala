@@ -1,6 +1,6 @@
 package lottery.domain.service
 
-import io.strongtyped.funcqrs.InMemoryRepository
+import io.funcqrs.InMemoryRepository
 import lottery.domain.model.{ LotteryId, LotteryView }
 
 class LotteryViewRepo extends InMemoryRepository {

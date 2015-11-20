@@ -1,6 +1,6 @@
 package shop.app
 
-import io.strongtyped.funcqrs.CommandException
+import io.funcqrs.CommandException
 import play.api.http.{ Status, HttpErrorHandler }
 import play.api.libs.json.Json
 import play.api.mvc.{ Results, Result, RequestHeader }
