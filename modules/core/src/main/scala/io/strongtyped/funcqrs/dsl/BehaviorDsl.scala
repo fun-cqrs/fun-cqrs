@@ -133,17 +133,14 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  case class BehaviorBuilder(creation: CreationBuilder, updates: UpdatesBuilder) {
+  trait BuildState
+  trait Pending extends BuildState
+  trait CreationDefined extends BuildState
+  trait UpdatesDefined extends BuildState
 
-    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder = {
-      copy(creation = creationBlock(creation))
-    }
-
-    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[Aggregate] = {
-      copy(updates = updateBlock(updates)).build
-    }
-
-    private def build: Behavior[Aggregate] = {
+  object BehaviorBuilder {
+    implicit def build(builder: BehaviorBuilder[CreationDefined, UpdatesDefined]): Behavior[Aggregate] = {
+      import builder._
 
       new Behavior[Aggregate] {
 
@@ -180,8 +177,16 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  val behaviorBuilder: BehaviorBuilder =
-    new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
+  case class BehaviorBuilder[C <: BuildState, U <: BuildState](creation: CreationBuilder, updates: UpdatesBuilder) {
+    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder[CreationDefined, U] =
+      BehaviorBuilder[CreationDefined, U](creation = creationBlock(creation), updates)
+
+    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): BehaviorBuilder[C, UpdatesDefined] =
+      BehaviorBuilder[C, UpdatesDefined](creation, updates = updateBlock(updates))
+  }
+
+  val behaviorBuilder: BehaviorBuilder[Pending, Pending] =
+    new BehaviorBuilder[Pending, Pending](new CreationBuilder, new UpdatesBuilder)
 
 }
 

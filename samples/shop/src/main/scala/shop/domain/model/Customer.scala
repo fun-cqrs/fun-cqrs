@@ -5,6 +5,7 @@ import java.time.OffsetDateTime
 import funcqrs.json.TypedJson
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.strongtyped.funcqrs._
+import io.strongtyped.funcqrs.dsl.BehaviorDsl
 import play.api.libs.json.Json
 
 import scala.collection.immutable
@@ -169,12 +170,6 @@ object Customer {
           NameChanged(cmd.name, metadata(id, cmd))
         case (_, cmd: ChangeAddressStreet) =>
           AddressStreetChanged(cmd.street, metadata(id, cmd))
-        case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
-          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
-        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber =>
-          VatNumberAdded(cmd.vat, metadata(id, cmd))
-        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber =>
-          VatNumberRemoved(metadata(id, cmd))
         case (_, cmd: AddAddress) =>
           immutable.Seq(
             AddressStreetChanged(cmd.address.street, metadata(id, cmd)),
@@ -190,6 +185,16 @@ object Customer {
           customer.copy(address = customer.address.map(_.copy(city = e.city)))
         case (customer, e: AddressCountryChanged) =>
           customer.copy(address = customer.address.map(_.copy(country = e.country)))
+      }
+    } whenUpdating { it =>
+      it.processesCommands {
+        case (customer, cmd: ReplaceVatNumber) if customer.hasVatNumber =>
+          VatNumberReplaced(cmd.vat, customer.vatNumber.get, metadata(id, cmd))
+        case (customer, cmd: AddVatNumber) if customer.doesNotHaveVatNumber =>
+          VatNumberAdded(cmd.vat, metadata(id, cmd))
+        case (customer, cmd: RemoveVatNumber.type) if customer.hasVatNumber =>
+          VatNumberRemoved(metadata(id, cmd))
+      } acceptsEvents {
         case (customer, e: VatNumberAdded) =>
           customer.copy(vatNumber = Some(e.vat))
         case (customer, e: VatNumberReplaced) =>
@@ -199,6 +204,5 @@ object Customer {
       }
     }
   }
-
 }
 
