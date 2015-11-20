@@ -133,48 +133,49 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  case class BehaviorBuilder(creation: CreationBuilder, updates: UpdatesBuilder) {
+  // Todo (lucd): renaming makes sense
+  case class BehaviorBuilder(creationBuilder: CreationBuilder, updatesBuilder: UpdatesBuilder) {
 
-    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder = {
-      copy(creation = creationBlock(creation))
+    // Todo (lucd): renaming makes sense
+    def whenConstructing(creationBuilderTransformer: CreationBuilder => CreationBuilder): BehaviorBuilder = {
+      copy(creationBuilder = creationBuilderTransformer(creationBuilder))
     }
 
-    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[Aggregate] = {
-      copy(updates = updateBlock(updates)).build
+    // Todo (lucd): renaming makes sense
+    def whenUpdating(updatedBuilderTransformer: UpdatesBuilder => UpdatesBuilder): Behavior[Aggregate] = {
+      copy(updatesBuilder = updatedBuilderTransformer(updatesBuilder)).build
     }
 
     private def build: Behavior[Aggregate] = {
 
       new Behavior[Aggregate] {
 
-        private val processCreationalCommands = creation.processCommandFunction
-        private val fallbackOnCreation = creation.fallbackFunction
-        private val handleCreationalEvents = creation.handleEventFunction
+        private val processCreationalCommands = creationBuilder.processCommandFunction
+        private val fallbackOnCreation = creationBuilder.fallbackFunction
+        private val handleCreationalEvents = creationBuilder.handleEventFunction
 
-        private val processUpdateCommands = updates.processCommandFunction
-        private val fallbackOnUpdate = updates.fallbackFunction
-        private val handleEvents = updates.handleEventFunction
+        private val processUpdateCommands = updatesBuilder.processCommandFunction
+        private val fallbackOnUpdate = updatesBuilder.fallbackFunction
+        private val handleUpdateEvents = updatesBuilder.handleEventFunction
+        private val handleNothing: updatesBuilder.EventToAggregate = { case (aggregate, _) => aggregate }
 
+        // Todo (lucd): why not using orElse
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-          processCreationalCommands
-            .lift(cmd)
-            .getOrElse(fallbackOnCreation(cmd))
-            .apply()
+          (processCreationalCommands orElse fallbackOnCreation)(cmd)()
         }
 
+        // Todo (lucd): why not using orElse
         def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] = {
-          processUpdateCommands
-            .lift(aggregate, cmd)
-            .getOrElse(fallbackOnUpdate(aggregate, cmd))
-            .apply()
+          (processUpdateCommands orElse fallbackOnUpdate)(aggregate, cmd)()
         }
 
         def applyEvent(evt: Event): Aggregate = {
           handleCreationalEvents(evt)
         }
 
+        // Todo (lucd): agreed, using orElse here is a bit more cumbersome
         def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
-          handleEvents.lift(aggregate, evt).getOrElse(aggregate)
+          (handleUpdateEvents orElse handleNothing)(aggregate, evt)
         }
       }
     }
