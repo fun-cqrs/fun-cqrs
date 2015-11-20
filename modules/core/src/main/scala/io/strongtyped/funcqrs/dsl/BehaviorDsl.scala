@@ -133,17 +133,13 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  case class BehaviorBuilder(creation: CreationBuilder, updates: UpdatesBuilder) {
+  abstract class STATE
+  abstract class TRUE extends STATE
+  abstract class FALSE extends STATE
 
-    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder = {
-      copy(creation = creationBlock(creation))
-    }
-
-    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): Behavior[Aggregate] = {
-      copy(updates = updateBlock(updates)).build
-    }
-
-    private def build: Behavior[Aggregate] = {
+  object BehaviorBuilder {
+    implicit def build(builder: BehaviorBuilder[TRUE, TRUE]): Behavior[Aggregate] = {
+      import builder._
 
       new Behavior[Aggregate] {
 
@@ -180,8 +176,16 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  val behaviorBuilder: BehaviorBuilder =
-    new BehaviorBuilder(new CreationBuilder, new UpdatesBuilder)
+  case class BehaviorBuilder[C <: STATE, U <: STATE](creation: CreationBuilder, updates: UpdatesBuilder) {
+    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder[TRUE, U] =
+      BehaviorBuilder[TRUE, U](creation = creationBlock(creation), updates)
+
+    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): BehaviorBuilder[C, TRUE] =
+      BehaviorBuilder[C, TRUE](creation, updates = updateBlock(updates))
+  }
+
+  val behaviorBuilder: BehaviorBuilder[FALSE, FALSE] =
+    new BehaviorBuilder[FALSE, FALSE](new CreationBuilder, new UpdatesBuilder)
 
 }
 
