@@ -1,6 +1,6 @@
 package io.funcqrs
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait Behavior[A <: AggregateLike] extends AggregateAliases {
 
@@ -19,8 +19,10 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
     scala.concurrent.ExecutionContext.global
   }
 
+  def isEventDefined(event: Event): Boolean
   def applyEvent(event: Event): Aggregate
 
+  def isEventDefined(event: Event, aggregate: Aggregate): Boolean
   def applyEvent(event: Event, aggregate: Aggregate): Aggregate
 
   /** Apply a list of events to an Aggregate
@@ -67,15 +69,24 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
 }
 
 object Behavior {
-  def empty[Aggregate <: AggregateLike]: Behavior[Aggregate] = new Behavior[Aggregate] {
-    def applyEvent(event: Event): Aggregate = ???
-    def applyEvent(event: Event, aggregate: Aggregate): Aggregate = ???
-    // async behavior
-    protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] =
-      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
+  def empty[Aggregate <: AggregateLike]: Behavior[Aggregate] = {
 
-    protected def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] =
-      Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
+    new Behavior[Aggregate] {
 
+      def isEventDefined(event: Event): Boolean = false
+      def applyEvent(event: Event): Aggregate = ???
+
+      def isEventDefined(event: Event, aggregate: Aggregate): Boolean = false
+      def applyEvent(event: Event, aggregate: Aggregate): Aggregate = ???
+
+      // async behavior
+      protected def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] =
+        Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
+
+      protected def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] =
+        Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
+
+
+    }
   }
 }

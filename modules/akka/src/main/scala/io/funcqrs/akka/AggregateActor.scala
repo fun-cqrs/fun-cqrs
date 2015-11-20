@@ -226,11 +226,20 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     * - notify the original sender
     */
   private def onSuccessfulCreation(result: CompletedCreationCmd): Unit = {
-    persist(result.event) { evt =>
-      afterEventPersisted(evt)
+
+    if (behavior.isEventDefined(result.event)) {
+      // persist it only if Behavior is defined for it
+      persist(result.event) { evt =>
+        afterEventPersisted(evt)
+      }
+      result.origSender ! SuccessfulCommand(Seq(result.event))
+
+    }  else {
+      result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
     }
-    result.origSender ! SuccessfulCommand(Seq(result.event))
+
     changeState(Available)
+
   }
 
   /** When a Update Command completes we must:
@@ -239,11 +248,26 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     * - notify the original sender
     */
   private def onSuccessfulUpdate(result: CompletedUpdateCmd): Unit = {
+
+    val aggregate = aggregateOpt.get
     val events = immutable.Seq(result.events).flatten
-    persistAll(events) { evt =>
-      afterEventPersisted(evt)
+
+    if (events.forall(behavior.isEventDefined(_, aggregate))) {
+
+      // persist it only if Behavior is defined for it
+      persistAll(events) { evt =>
+        afterEventPersisted(evt)
+      }
+      result.origSender ! SuccessfulCommand(result.events)
+
+    } else {
+
+      // collect events with handler
+      val badEventsNames = events.collect {
+        case e if !behavior.isEventDefined(e, aggregate) => e.getClass.getSimpleName
+      }
+      result.origSender ! Status.Failure(new CommandException(s"No handler defined for events: ${badEventsNames.mkString(",")}"))
     }
-    result.origSender ! SuccessfulCommand(result.events)
     changeState(Available)
   }
 

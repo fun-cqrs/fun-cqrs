@@ -1,7 +1,6 @@
 package io.funcqrs.dsl
 
-import io.funcqrs.{CommandException, Behavior, AggregateAliases, AggregateLike}
-import io.funcqrs.{ _ }
+import io.funcqrs.{ AggregateAliases, AggregateLike, Behavior, CommandException }
 
 import scala.collection.immutable
 import scala.concurrent.{ ExecutionContext, Future }
@@ -154,17 +153,15 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
         private val handleEvents = updates.handleEventFunction
 
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-          processCreationalCommands
-            .lift(cmd)
-            .getOrElse(fallbackOnCreation(cmd))
-            .apply()
+          (processCreationalCommands orElse fallbackOnCreation)
+            .apply(cmd) // apply cmd
+            .apply() // apply magnet
         }
 
         def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] = {
-          processUpdateCommands
-            .lift(aggregate, cmd)
-            .getOrElse(fallbackOnUpdate(aggregate, cmd))
-            .apply()
+          (processUpdateCommands orElse fallbackOnUpdate)
+            .apply(aggregate, cmd) // apply cmd
+            .apply() // apply magnet
         }
 
         def applyEvent(evt: Event): Aggregate = {
@@ -174,6 +171,12 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
         def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
           handleEvents.lift(aggregate, evt).getOrElse(aggregate)
         }
+
+        def isEventDefined(event: Event): Boolean =
+          handleCreationalEvents.isDefinedAt(event)
+
+        def isEventDefined(event: Event, aggregate: Aggregate): Boolean =
+          handleEvents.isDefinedAt(aggregate, event)
       }
     }
   }
