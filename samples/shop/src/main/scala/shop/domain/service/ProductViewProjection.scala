@@ -21,13 +21,13 @@ class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyL
     repo.save(ProductView(e.name, e.description, e.price, e.metadata.aggregateId))
   }
 
-  def update(e: ProductUpdateEvent): Future[Unit] = {
+  def update(e: ProductUpdateEvent): Future[_] = {
 
     logger.debug(s"Updating product $e")
 
     repo.updateById(e.aggregateId) { prod =>
       updateFunc(prod, e)
-    }.map(_ => ())
+    }
 
   }
 
