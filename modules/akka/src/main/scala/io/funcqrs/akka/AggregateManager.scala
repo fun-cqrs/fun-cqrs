@@ -31,7 +31,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
-  def aggregatePassivationStrategy: AggregatePassivationStrategy
+  def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
   /** Processes command.
     * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
