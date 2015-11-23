@@ -4,7 +4,7 @@ import java.util.UUID
 
 import scala.collection.immutable
 
-trait AggregateLike {
+trait AggregateLike extends ProtocolAliases {
 
   type Id <: AggregateID
 
@@ -14,7 +14,7 @@ trait AggregateLike {
 
 }
 
-trait AggregateAliases {
+trait AggregateAliases extends ProtocolAliases {
 
   /** The Aggregate type.
     * This is the only (abstract) type member to be defined.
@@ -28,15 +28,7 @@ trait AggregateAliases {
 
   /** Alias for Aggregate#Protocol */
   type Protocol = Aggregate#Protocol
-
-  /** Alias for Aggregate's ProtocolCommand */
-  type Command = Protocol#ProtocolCommand
-
-  /** Alias for Aggregate's ProtocolEvent */
-  type Event = Protocol#ProtocolEvent
-
-  /** Alias for an immutable Seq of Aggregate's ProtocolEvent */
-  type Events = immutable.Seq[Event]
+  
 }
 
 /** Base trait for definitions of type-safe aggregate ids */
