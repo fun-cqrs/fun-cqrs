@@ -1,8 +1,8 @@
 package io.funcqrs.akka
 
-import akka.actor._
+import _root_.akka.actor._
 import io.funcqrs.akka.AggregateActor.KillAggregate
-import io.funcqrs.{AggregateAliases, AggregateID, AggregateLike, Behavior}
+import io.funcqrs._
 
 import scala.concurrent.duration.Duration
 
@@ -140,5 +140,19 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
           childrenBeingTerminated ++= childrenToKill
         }
     }
+  }
+}
+
+class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
+  extends AggregateManager with AggregateIdGenerator {
+
+  type Aggregate = A
+
+  def behavior(id: Id): Behavior[A] = behaviorCons(id)
+}
+
+object ConfigurableAggregateManager {
+  def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], idStrategy: AggregateIdStrategy[A]) = {
+    Props(new ConfigurableAggregateManager(behaviorCons, idStrategy))
   }
 }

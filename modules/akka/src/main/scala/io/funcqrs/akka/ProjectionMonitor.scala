@@ -50,7 +50,7 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
         // initialize an EventMonitor for the given command
         monitor <- newEventsMonitor(cmd.id)
         // send command to Write Model (AggregateManager)
-        event <- block(cmd).mapTo[SuccessfulCommand].map(_.events.head.asInstanceOf[Event])
+        event <- block(cmd).mapTo[Event]
       } yield (monitor, event)
 
     val resultOnRead =
@@ -86,7 +86,7 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
         monitor <- newEventsMonitor(cmd.id)
 
         // send command to Write Model (AggregateManager)
-        events <- block(cmd).mapTo[SuccessfulCommand].map(_.events.asInstanceOf[immutable.Seq[Event]])
+        events <- block(cmd).mapTo[Events]
       } yield (monitor, events)
 
     val resultOnRead =

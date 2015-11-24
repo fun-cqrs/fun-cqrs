@@ -1,6 +1,7 @@
 package lottery.domain.model
 
 import java.time.OffsetDateTime
+import java.util.UUID
 
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.funcqrs._
@@ -44,6 +45,8 @@ object LotteryId {
   def fromString(aggregateId: String): LotteryId = {
     LotteryId(aggregateId)
   }
+
+  def generate() : LotteryId = LotteryId(UUID.randomUUID().toString)
 }
 
 object LotteryProtocol extends ProtocolLike {

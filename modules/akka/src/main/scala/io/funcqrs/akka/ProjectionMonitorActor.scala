@@ -1,5 +1,7 @@
 package io.funcqrs.akka
 
+import java.util.UUID
+
 import akka.actor._
 import akka.event.{ ActorEventBus, LookupClassification }
 import io.funcqrs.CommandId
@@ -73,7 +75,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   private def createEventMonitor(commandId: CommandId, projectionName: String): Unit = {
 
-    val monitorName = s"events-monitor::$projectionName::${commandId.value}"
+    val monitorName = s"monitor::$projectionName::${commandId.value}::${UUID.randomUUID()}"
 
     // TODO this could be moved to property file eventually
     val shutdownEventsMonitorAfter = 10.seconds

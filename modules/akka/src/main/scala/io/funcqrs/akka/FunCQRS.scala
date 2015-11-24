@@ -1,16 +1,17 @@
 package io.funcqrs.akka
 
-import akka.actor.{ActorRef, ActorSystem, Props}
-import akka.pattern._
-import akka.util.Timeout
+import _root_.akka.actor.{ActorRef, ActorSystem, Props}
+import _root_.akka.pattern._
+import _root_.akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
-import io.funcqrs.{AggregateLike, CommandId, Projection}
+import io.funcqrs._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
-class FunCQRS(actorSystem: ActorSystem) extends LazyLogging {
+class FunCQRS(val actorSystem: ActorSystem) extends LazyLogging {
 
   // Timeout for the actor creation response. Certainly exaggerated!!
   implicit val actorCreationTimeout = Timeout(3.seconds)
@@ -47,4 +48,3 @@ class FunCQRS(actorSystem: ActorSystem) extends LazyLogging {
   }
 
 }
-

@@ -232,7 +232,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       persist(result.event) { evt =>
         afterEventPersisted(evt)
       }
-      result.origSender ! SuccessfulCommand(Seq(result.event))
+      result.origSender ! result.event
 
     }  else {
       result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
@@ -258,7 +258,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       persistAll(events) { evt =>
         afterEventPersisted(evt)
       }
-      result.origSender ! SuccessfulCommand(result.events)
+      result.origSender ! result.events
 
     } else {
 
@@ -318,7 +318,7 @@ object AggregateActor {
 
   case object GetState extends DomainCommand
 
-  case class SuccessfulCommand(events: Seq[DomainEvent])
+  case class SuccessfulCommand(events: immutable.Seq[DomainEvent])
 
   /** Specifies how many events should be processed before new snapshot is taken.
     * TODO: make configurable
