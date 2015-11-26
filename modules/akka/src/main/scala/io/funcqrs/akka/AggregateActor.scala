@@ -227,15 +227,15 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     */
   private def onSuccessfulCreation(result: CompletedCreationCmd): Unit = {
 
+    // extra check! persist it only if Behavior is defined for it
     if (behavior.isEventDefined(result.event)) {
-      // persist it only if Behavior is defined for it
+
       persist(result.event) { evt =>
         afterEventPersisted(evt)
       }
       result.origSender ! result.event
 
-    }
-    else {
+    } else {
       result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
     }
 
@@ -253,17 +253,19 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     val aggregate = aggregateOpt.get
     val events = immutable.Seq(result.events).flatten
 
+    // extra check! only persist it only if Behavior is defined for it
     if (events.forall(behavior.isEventDefined(_, aggregate))) {
 
-      // persist it only if Behavior is defined for it
-      persistAll(events) { evt =>
-        afterEventPersisted(evt)
+      // forall on an empty Seq always returns 'true' !!!!
+      // and akka-persistence throw exception if an empty list of events are sent!
+      if (events.nonEmpty) {
+        persistAll(events) { evt =>
+          afterEventPersisted(evt)
+        }
       }
       result.origSender ! result.events
 
-    }
-    else {
-
+    } else {
       // collect events with handler
       val badEventsNames = events.collect {
         case e if !behavior.isEventDefined(e, aggregate) => e.getClass.getSimpleName

@@ -9,8 +9,7 @@ trait Projection {
   final def onEvent(evt: DomainEvent): Future[Unit] = {
     if (receiveEvent.isDefinedAt(evt)) {
       receiveEvent(evt)
-    }
-    else {
+    } else {
       Future.successful(())
     }
   }

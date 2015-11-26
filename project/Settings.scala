@@ -22,7 +22,6 @@ object Settings {
     FormattingPreferences()
       .setPreference(AlignParameters, true)
       .setPreference(AlignSingleLineCaseStatements, true)
-      .setPreference(CompactControlReadability, true)
       .setPreference(DoubleIndentClassDeclaration, true)
       .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
       .setPreference(PreserveDanglingCloseParenthesis, true)
