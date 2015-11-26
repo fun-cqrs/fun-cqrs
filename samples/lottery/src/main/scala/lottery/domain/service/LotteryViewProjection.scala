@@ -14,18 +14,16 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyL
   def receiveEvent: HandleEvent = {
     case e: LotteryCreated     => create(e)
     case e: LotteryUpdateEvent => update(e)
-
   }
 
   def create(e: LotteryCreated): Future[Unit] = {
     repo.save(LotteryView(name = e.name, id = e.metadata.aggregateId))
   }
 
-  def update(e: LotteryUpdateEvent): Future[Unit] = {
+  def update(e: LotteryUpdateEvent): Future[LotteryView] = {
     repo.updateById(e.aggregateId) { lot =>
       updateFunc(lot, e)
-    }.map(_ => ())
-
+    }
   }
 
   private def updateFunc(view: LotteryView, evt: LotteryUpdateEvent): LotteryView = {
