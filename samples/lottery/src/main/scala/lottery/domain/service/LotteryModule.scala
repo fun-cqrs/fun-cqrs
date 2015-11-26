@@ -5,7 +5,7 @@ import io.funcqrs
 import io.funcqrs.akka._
 import lottery.api.AkkaModule
 import lottery.app.LevelDbTaggedEventsSource
-import lottery.domain.model.{Lottery, LotteryView}
+import lottery.domain.model.{ Lottery, LotteryView }
 
 trait LotteryModule extends AkkaModule {
 
@@ -18,7 +18,6 @@ trait LotteryModule extends AkkaModule {
         .withAssignedId
     }
 
-
   //----------------------------------------------------------------------
   // READ side wiring
   val lotteryViewRepo = wire[LotteryViewRepo].taggedWith[LotteryView.type]
@@ -26,7 +25,6 @@ trait LotteryModule extends AkkaModule {
   funCQRS.projection[LotteryViewProjectionActor]("LotteryViewProjectionActor", wire[LotteryViewProjection])
 
 }
-
 
 class LotteryViewProjectionActor(name: String, projection: LotteryViewProjection)
     extends ProjectionActor(name, projection) // receives events and forward to RaffleViewProjection

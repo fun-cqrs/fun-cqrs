@@ -1,7 +1,7 @@
 package io.funcqrs.akka
 
-import akka.persistence.journal.{Tagged, WriteEventAdapter}
-import io.funcqrs.{DomainEvent, MetadataFacet}
+import akka.persistence.journal.{ Tagged, WriteEventAdapter }
+import io.funcqrs.{ DomainEvent, MetadataFacet }
 
 class DomainEventTagAdapter extends WriteEventAdapter {
 

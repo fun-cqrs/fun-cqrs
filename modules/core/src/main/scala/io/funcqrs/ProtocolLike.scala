@@ -7,9 +7,8 @@ trait ProtocolLike {
   trait ProtocolEvent extends DomainEvent
 }
 
+trait ProtocolAliases {
 
-trait ProtocolAliases { 
-  
   type Protocol <: ProtocolLike
 
   /** Alias for Aggregate's ProtocolCommand */

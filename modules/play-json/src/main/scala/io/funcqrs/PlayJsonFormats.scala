@@ -38,7 +38,6 @@ trait PlayJsonFormats {
     override def writes(o: CommandId): JsValue = JsString(o.value.toString)
   }
 
-
   implicit val eventIdFormat = new Format[EventId] {
     override def reads(json: JsValue): JsResult[EventId] =
       readJsonId(json)(id => readUUID(id).map(EventId))
@@ -48,10 +47,8 @@ trait PlayJsonFormats {
 
   implicit val tagFormat = Json.format[Tag]
 
-
-  /**
-   * Json format for case classes that just wrap a String value. The json representation is just the string.
-   */
+  /** Json format for case classes that just wrap a String value. The json representation is just the string.
+    */
   def simpleStringWrapper[W](creator: (String) => W)(extractor: W => String): Format[W] = {
 
     new Format[W] {

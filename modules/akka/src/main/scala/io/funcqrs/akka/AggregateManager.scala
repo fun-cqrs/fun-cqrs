@@ -144,7 +144,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
-  extends AggregateManager with AggregateIdGenerator {
+    extends AggregateManager with AggregateIdGenerator {
 
   type Aggregate = A
 

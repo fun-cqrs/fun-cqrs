@@ -234,7 +234,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       }
       result.origSender ! result.event
 
-    }  else {
+    }
+    else {
       result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
     }
 
@@ -260,7 +261,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       }
       result.origSender ! result.events
 
-    } else {
+    }
+    else {
 
       // collect events with handler
       val badEventsNames = events.collect {

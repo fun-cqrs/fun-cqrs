@@ -1,7 +1,7 @@
 package io.funcqrs
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 
 trait FunCqrsTestSupport {
 
@@ -11,12 +11,11 @@ trait FunCqrsTestSupport {
     }
   }
 
-  def sendCommands[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command, cmds: behavior.Command*)
-                                              (implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
+  def sendCommands[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
 
     def applyCommands(events: behavior.Events, aggregate: behavior.Aggregate, cmds: behavior.Command*): Future[(behavior.Events, behavior.Aggregate)] = {
       cmds.toList match {
-        case head :: Nil  => behavior.applyCommand(head, aggregate).map {
+        case head :: Nil => behavior.applyCommand(head, aggregate).map {
           case (evts, agg) =>
             // concat previous events with events from last command
             val allEvents = events ++ evts
@@ -28,7 +27,7 @@ trait FunCqrsTestSupport {
             val allEvents = events ++ evts
             applyCommands(allEvents, agg, tail: _*)
         }
-        case Nil          => Future.failed(new RuntimeException("Not commands found!!"))
+        case Nil => Future.failed(new RuntimeException("Not commands found!!"))
       }
     }
 
@@ -52,7 +51,6 @@ trait FunCqrsTestSupport {
 
   }
 
-
   trait ReadModelTestSupport {
 
     implicit class ProjectionOps(projection: Projection)(implicit ec: ExecutionContext) {
@@ -64,7 +62,6 @@ trait FunCqrsTestSupport {
 
   }
 
-
   trait WriteModelTestSupport {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
@@ -74,9 +71,4 @@ trait FunCqrsTestSupport {
     }
   }
 }
-
-
-
-
-
 

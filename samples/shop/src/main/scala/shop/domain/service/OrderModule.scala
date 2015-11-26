@@ -3,7 +3,7 @@ package shop.domain.service
 import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
 import io.funcqrs
-import io.funcqrs.{Projection, Behavior}
+import io.funcqrs.{ Projection, Behavior }
 import io.funcqrs.akka._
 import io.funcqrs.Tag
 import shop.api.AkkaModule
