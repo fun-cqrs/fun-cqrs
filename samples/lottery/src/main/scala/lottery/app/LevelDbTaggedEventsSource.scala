@@ -4,8 +4,8 @@ import akka.actor.Actor
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.scaladsl.Source
-import io.strongtyped.funcqrs.Tag
-import io.strongtyped.funcqrs.akka.EventsSourceProvider
+import io.funcqrs.Tag
+import io.funcqrs.akka.EventsSourceProvider
 
 trait LevelDbTaggedEventsSource extends EventsSourceProvider {
   this: Actor =>

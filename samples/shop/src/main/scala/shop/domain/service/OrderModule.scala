@@ -2,8 +2,10 @@ package shop.domain.service
 
 import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.akka._
-import io.strongtyped.funcqrs.{ Projection, Behavior, Tag }
+import io.funcqrs
+import io.funcqrs.{Projection, Behavior}
+import io.funcqrs.akka._
+import io.funcqrs.Tag
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
 import shop.domain.model.{ Order, OrderNumber, OrderView }
@@ -32,7 +34,9 @@ trait OrderModule extends AkkaModule {
 }
 
 class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
-  type AggregateType = Order
+
+  type Aggregate = Order
+
   def behavior(id: OrderNumber): Behavior[Order] = Order.behavior(id)
 
   override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
@@ -42,7 +46,7 @@ class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
 class OrderViewProjectionActor(name: String, projection: Projection)
     extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
 
-  val tag: Tag = Order.dependentView
+  val tag: funcqrs.Tag = Order.dependentView
 
   override def onFailure = {
     // do nothing, ignore event

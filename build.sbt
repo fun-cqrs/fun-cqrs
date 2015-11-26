@@ -22,7 +22,7 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   ) ++ commonSettings
-) aggregate(funCqrs, funCqrsAkka, shopApp, lotteryApp)
+) aggregate(funCqrs, funCqrsAkka, funPlayJsonSupport, funCqrsTestKit, shopApp, lotteryApp)
 
 
 // Core ==========================================
@@ -39,6 +39,26 @@ lazy val funCqrsAkka = Project(
   id = "fun-cqrs-akka",
   base = file("modules/akka"),
   settings = mainDeps ++ akkaDeps ++ commonSettings
+) dependsOn (funCqrs % "compile->compile;test->test")
+//================================================
+
+
+
+// Play Json support ==============================
+lazy val funPlayJsonSupport = Project(
+  id = "fun-cqrs-play-json",
+  base = file("modules/play-json"),
+  settings = mainDeps ++ Seq(libraryDependencies += playJson) ++ commonSettings
+) dependsOn (funCqrs % "compile->compile;test->test")
+//================================================
+
+
+
+// Play Json support ==============================
+lazy val funCqrsTestKit = Project(
+  id = "fun-cqrs-test-kit",
+  base = file("modules/tests"),
+  settings = mainDeps ++ commonSettings
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 

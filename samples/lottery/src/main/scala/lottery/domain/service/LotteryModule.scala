@@ -1,20 +1,23 @@
 package lottery.domain.service
 
-import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.akka._
-import io.strongtyped.funcqrs.{ Behavior, Tag }
+import io.funcqrs
+import io.funcqrs.akka._
 import lottery.api.AkkaModule
 import lottery.app.LevelDbTaggedEventsSource
-import lottery.domain.model.{ Lottery, LotteryId, LotteryView }
+import lottery.domain.model.{Lottery, LotteryView}
 
 trait LotteryModule extends AkkaModule {
 
+  import io.funcqrs.akka.dsl.FunCqrsDsl._
   // WRITE side wiring
-  val productAggregateManager: ActorRef @@ Lottery.type =
-    actorSystem
-      .actorOf(Props[LotteryAggregateManager], "LotteryAggregateManager")
-      .taggedWith[Lottery.type]
+  val lotteryService =
+    service {
+      aggregate[Lottery](Lottery.behavior)
+        .withName("LotteryManager")
+        .withAssignedId
+    }
+
 
   //----------------------------------------------------------------------
   // READ side wiring
@@ -24,14 +27,6 @@ trait LotteryModule extends AkkaModule {
 
 }
 
-class LotteryAggregateManager extends AggregateManager with AssignedAggregateId {
-
-  type AggregateType = Lottery
-
-  def behavior(id: LotteryId): Behavior[Lottery] = Lottery.behavior(id)
-
-  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
-}
 
 class LotteryViewProjectionActor(name: String, projection: LotteryViewProjection)
     extends ProjectionActor(name, projection) // receives events and forward to RaffleViewProjection
@@ -40,5 +35,5 @@ class LotteryViewProjectionActor(name: String, projection: LotteryViewProjection
 
   // no offset persistence, replay full-stream
 
-  val tag: Tag = Lottery.tag
+  val tag: funcqrs.Tag = Lottery.tag
 }

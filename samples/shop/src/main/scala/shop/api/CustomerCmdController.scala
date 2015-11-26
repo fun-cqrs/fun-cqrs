@@ -2,7 +2,7 @@ package shop.api
 
 import akka.actor.ActorRef
 import com.softwaremill.macwire._
-import io.strongtyped.funcqrs.DomainCommand
+import io.funcqrs.DomainCommand
 import play.api.libs.json.{ JsResult, JsValue }
 import play.api.mvc.RequestHeader
 import shop.api.routes.{ CustomerQueryController => ReverseQueryCtrl }

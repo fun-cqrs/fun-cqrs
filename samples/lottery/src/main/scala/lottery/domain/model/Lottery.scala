@@ -1,21 +1,22 @@
 package lottery.domain.model
 
 import java.time.OffsetDateTime
+import java.util.UUID
 
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
-import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
+import io.funcqrs._
+import io.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
 import play.api.libs.json.Json
 
-import scala.util.{ Try, Success, Failure, Random }
+import scala.util.Random
 
 case class Lottery(name: String, participants: List[String] = List(),
                    winner: Option[String] = None,
-                   id: LotteryId) extends Aggregate {
+                   id: LotteryId) extends AggregateLike {
 
   type Id = LotteryId
   type Protocol = LotteryProtocol.type
-  import LotteryProtocol._
 
   def addParticipant(name: String): Lottery =
     copy(participants = participants :+ name)
@@ -44,9 +45,11 @@ object LotteryId {
   def fromString(aggregateId: String): LotteryId = {
     LotteryId(aggregateId)
   }
+
+  def generate() : LotteryId = LotteryId(UUID.randomUUID().toString)
 }
 
-object LotteryProtocol extends ProtocolDef {
+object LotteryProtocol extends ProtocolLike {
 
   case class LotteryMetadata(aggregateId: LotteryId,
                              commandId: CommandId,
@@ -63,6 +66,7 @@ object LotteryProtocol extends ProtocolDef {
   case class CreateLottery(name: String) extends LotteryCommand
 
   case class AddParticipant(name: String) extends LotteryCommand
+
   case class RemoveParticipant(name: String) extends LotteryCommand
 
   case object Run extends LotteryCommand
@@ -76,6 +80,7 @@ object LotteryProtocol extends ProtocolDef {
 
   // Update Events
   case class ParticipantAdded(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
+
   case class ParticipantRemoved(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
 
   case class WinnerSelected(winner: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
@@ -106,36 +111,49 @@ object Lottery {
       LotteryMetadata(id, cmd.id, tags = Set(tag))
     }
 
-    behaviorFor[Lottery]
-      .whenConstructing { it =>
+    val lotteryBehaviorDsl = new BehaviorDsl[Lottery]
 
-        it.processesCommands {
-          case cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd))
-        }
+    import lotteryBehaviorDsl.behaviorBuilder._
 
-        it.acceptsEvents {
-          case evt: LotteryCreated => Lottery(name = evt.name, id = id)
-        }
+    whenConstructing { it =>
+      it processesCommands {
+        case cmd: CreateLottery =>
+          LotteryCreated(cmd.name, metadata(id, cmd))
 
-      }.whenUpdating { it =>
-
-        it.processesCommands {
-          case (lottery, _) if lottery.hasWinner                     => new CommandException("Lottery has already a winner")
-          case (lottery, cmd: Run.type) if lottery.hasNoParticipants => new CommandException("Lottery has no participants")
-
-          case (lottery, cmd: AddParticipant) if lottery.hasParticipant(cmd.name) =>
-            new IllegalArgumentException(s"Participant ${cmd.name} already added!")
-
-          case (lottery, cmd: AddParticipant) => ParticipantAdded(cmd.name, metadata(id, cmd))
-          case (_, cmd: RemoveParticipant)    => ParticipantRemoved(cmd.name, metadata(id, cmd))
-          case (lottery, cmd: Run.type)       => WinnerSelected(lottery.selectParticipant(), metadata(id, cmd))
-        }
-
-        it.acceptsEvents {
-          case (lottery, evt: ParticipantAdded)   => lottery.addParticipant(evt.name)
-          case (lottery, evt: ParticipantRemoved) => lottery.removeParticipant(evt.name)
-          case (lottery, evt: WinnerSelected)     => lottery.copy(winner = Option(evt.winner))
-        }
+      } acceptsEvents {
+        case evt: LotteryCreated =>
+          Lottery(name = evt.name, id = id)
       }
+    } whenUpdating { it =>
+      it processesCommands {
+        case (lottery, cmd) if lottery.hasWinner =>
+          new CommandException("Lottery has already a winner")
+
+        case (lottery, cmd: Run.type) if lottery.hasNoParticipants =>
+          new CommandException("Lottery has no participants")
+
+        case (lottery, cmd: AddParticipant) if lottery.hasParticipant(cmd.name) =>
+          new IllegalArgumentException(s"Participant ${cmd.name} already added!")
+
+        case (lottery, cmd: AddParticipant) =>
+          ParticipantAdded(cmd.name, metadata(id, cmd))
+
+        case (_, cmd: RemoveParticipant) =>
+          ParticipantRemoved(cmd.name, metadata(id, cmd))
+
+        case (lottery, cmd: Run.type) =>
+          WinnerSelected(lottery.selectParticipant(), metadata(id, cmd))
+
+      } acceptsEvents {
+        case (lottery, evt: ParticipantAdded) =>
+          lottery.addParticipant(evt.name)
+
+        case (lottery, evt: ParticipantRemoved) =>
+          lottery.removeParticipant(evt.name)
+
+        case (lottery, evt: WinnerSelected) =>
+          lottery.copy(winner = Option(evt.winner))
+      }
+    }
   }
 }

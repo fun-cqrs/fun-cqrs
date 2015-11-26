@@ -3,12 +3,11 @@ package shop.domain.model
 import java.time.OffsetDateTime
 
 import funcqrs.json.TypedJson
-import io.strongtyped.funcqrs._
-import io.strongtyped.funcqrs.dsl.BehaviorDsl._
-import TypedJson.{ TypeHintFormat, _ }
+import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
+import io.funcqrs._
+import io.funcqrs.dsl.BehaviorDsl
+import io.funcqrs._
 import play.api.libs.json._
-
-import scala.concurrent.ExecutionContext
 
 sealed trait Status
 
@@ -21,10 +20,12 @@ case object Cancelled extends Status
 case class Order(number: OrderNumber,
                  customerId: CustomerId,
                  products: Map[ProductNumber, Quantity] = Map(),
-                 status: Status = Open) extends Aggregate {
+                 status: Status = Open) extends AggregateLike {
 
   type Id = OrderNumber
+
   def id: Id = number
+
   type Protocol = OrderProtocol.type
 
   def addProduct(productNumber: ProductNumber): Order = {
@@ -57,6 +58,7 @@ case class Order(number: OrderNumber,
 
 case class Quantity(num: Int) {
   def plusOne = Quantity(num + 1)
+
   def minusOne = Quantity(num - 1)
 }
 
@@ -77,57 +79,45 @@ object Order {
       OrderMetadata(orderNum, orderCommand.id, tags = Set(tag, dependentView))
     }
 
-    behaviorFor[Order].whenConstructing { it =>
+    val orderBehaviorDsl = new BehaviorDsl[Order]
 
+    import orderBehaviorDsl.behaviorBuilder._
+
+    whenConstructing { it =>
       it.processesCommands {
         case cmd: CreateOrder => OrderCreated(cmd.customerId, metadata(orderNum, cmd))
-      }
-
-      it.acceptsEvents {
+      }.acceptsEvents {
         case evt: OrderCreated => Order(orderNum, evt.customerId)
       }
-
-    }.whenUpdating { it =>
-
+    } whenUpdating { it =>
       it.processesCommands {
-
         case (order, cmd: Execute.type) if order.status == Executed =>
           new CommandException(s"Order is already executed")
-
         case (order, cmd: Execute.type) if order.status == Cancelled =>
           new CommandException(s"Can't execute a cancelled order")
-
         case (order, cmd: Cancel.type) if order.status == Executed =>
           new CommandException(s"Can't cancel an executed order")
-
         case (order, _) if order.status == Executed =>
           new CommandException(s"Can't modify an executed order")
-
         case (order, _) if order.status == Cancelled =>
           new CommandException(s"Can't modify a cancelled order")
-
         case (order, cmd: AddProduct) if order.status == Open =>
           ProductAdded(cmd.productNumber, metadata(orderNum, cmd))
-
         case (order, cmd: RemoveProduct) if order.status == Open =>
           ProductRemoved(cmd.productNumber, metadata(orderNum, cmd))
-
         case (order, cmd: Execute.type) if order.status == Open =>
           OrderExecuted(metadata(orderNum, cmd))
-
         case (order, cmd: Cancel.type) if order.status == Open =>
           OrderCancelled(metadata(orderNum, cmd))
-
-      }
-
-      it.acceptsEvents {
-
-        case (order, evt: ProductAdded)   => order.addProduct(evt.productNumber)
-
-        case (order, evt: ProductRemoved) => order.removeProduct(evt.productNumber)
-
-        case (order, evt: OrderExecuted)  => order.copy(status = Executed)
-        case (order, evt: OrderCancelled) => order.copy(status = Cancelled)
+      } acceptsEvents {
+        case (order, evt: ProductAdded) =>
+          order.addProduct(evt.productNumber)
+        case (order, evt: ProductRemoved) =>
+          order.removeProduct(evt.productNumber)
+        case (order, evt: OrderExecuted) =>
+          order.copy(status = Executed)
+        case (order, evt: OrderCancelled) =>
+          order.copy(status = Cancelled)
       }
     }
   }
@@ -137,10 +127,11 @@ case class OrderNumber(value: String) extends AggregateID
 
 object OrderNumber {
   implicit val format = Json.format[OrderNumber]
+
   def fromString(id: String) = OrderNumber(id)
 }
 
-object OrderProtocol extends ProtocolDef {
+object OrderProtocol extends ProtocolLike {
 
   sealed trait OrderCommand extends ProtocolCommand
 

@@ -1,12 +1,11 @@
 package lottery.api
 
 import akka.actor.ActorSystem
-import io.strongtyped.funcqrs.akka.CQRSSystem
-import com.softwaremill.macwire._
+import io.funcqrs.akka.FunCQRS
 
 trait AkkaModule {
 
   def actorSystem: ActorSystem
 
-  val funCQRS = new CQRSSystem(actorSystem)
+  implicit val funCQRS = new FunCQRS(actorSystem)
 }
