@@ -3,18 +3,30 @@ package io.funcqrs.akka
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
+import io.funcqrs.akka.AggregateManager.GetState
 import io.funcqrs.{AggregateAliases, AggregateLike, CommandId}
 
 import scala.concurrent.Future
+import scala.util.control.NonFatal
+import scala.concurrent.ExecutionContext.Implicits.global
 
 trait AggregateService[A <: AggregateLike] extends AggregateAliases {
-  service =>
 
   type Aggregate = A
 
   def aggregateManager: ActorRef
 
   def projectionMonitorActorRef: ActorRef
+
+  def exists(id: Id)(implicit timeout: Timeout): Future[Boolean] = {
+    fetchState(id)
+      .map(_ => true)
+      .recover { case NonFatal(e) => false }
+  }
+
+  def fetchState(id: Id)(implicit timeout: Timeout): Future[Aggregate] = {
+    (aggregateManager ? GetState(id)).map(_.asInstanceOf[Aggregate])
+  }
 
   def sendCommand(id: Id)(cmd: Command): AggregateUpdateInvokerWriteModel = {
     AggregateUpdateInvokerWriteModel(id, cmd)
@@ -26,7 +38,7 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
       AggregateUpdateInvokerReadModel(projectionName, id, cmd)
 
     def result()(implicit timeout: Timeout): Future[Events] = {
-      (aggregateManager ? (id, cmd)).mapTo[Events]
+      (aggregateManager ?(id, cmd)).mapTo[Events]
     }
   }
 
@@ -34,7 +46,7 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
 
     def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionResult[ProjectionMonitor[A]#Event]] = {
       projectionMonitor(projectionName).watchEvents(cmd) { _ =>
-        (aggregateManager ? (id, cmd)).mapTo[Events]
+        (aggregateManager ?(id, cmd)).mapTo[Events]
       }
     }
   }
@@ -54,7 +66,6 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
 }
 
 trait AggregateServiceWithAssignedId[A <: AggregateLike] extends AggregateService[A] {
-  service =>
 
   def newInstance(id: Id, cmd: Command): AggregateConsInvokerWriteModel = {
     AggregateConsInvokerWriteModel(id, cmd)
@@ -66,7 +77,7 @@ trait AggregateServiceWithAssignedId[A <: AggregateLike] extends AggregateServic
       AggregateUpdateConsReadModel(projectionName, id, cmd)
 
     def result()(implicit timeout: Timeout): Future[Event] = {
-      (aggregateManager ? (id, cmd)).mapTo[Event]
+      (aggregateManager ?(id, cmd)).mapTo[Event]
     }
   }
 
@@ -74,14 +85,14 @@ trait AggregateServiceWithAssignedId[A <: AggregateLike] extends AggregateServic
 
     def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionResult[ProjectionMonitor[A]#Event]] = {
       projectionMonitor(projectionName).watchEvent(cmd) { _ =>
-        (aggregateManager ? (id, cmd)).mapTo[Event]
+        (aggregateManager ?(id, cmd)).mapTo[Event]
       }
     }
   }
+
 }
 
 trait AggregateServiceWithManagedId[A <: AggregateLike] extends AggregateService[A] {
-  service =>
 
   def newInstance(cmd: Command): AggregateConsInvokerWriteModel = {
     AggregateConsInvokerWriteModel(cmd)
@@ -105,4 +116,5 @@ trait AggregateServiceWithManagedId[A <: AggregateLike] extends AggregateService
       }
     }
   }
+
 }
