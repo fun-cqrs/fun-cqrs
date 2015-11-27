@@ -16,6 +16,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
+
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier
@@ -91,7 +92,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case GetState                     => respond()
+    case StateRequest(requester)      => sendState(requester)
     case result: CompletedCreationCmd => onSuccessfulCreation(result)
     case result: CompletedUpdateCmd   => onSuccessfulUpdate(result)
     case failedCmd: FailedCommand     => onCommandFailure(failedCmd)
@@ -102,7 +103,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   }
 
   protected def defaultReceive: Receive = {
-    case GetState => respond()
+    case StateRequest(requester) => sendState(requester)
   }
 
   /** This method should be used as a callback handler for persist() method.
@@ -125,12 +126,14 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   }
 
   /** send a message containing the aggregate's state back to the requester
-    * @param replyTo actor to send message to (by default the sender from where you received a command)
+    * @param replyTo actor to send message to
     */
-  protected def respond(replyTo: ActorRef = context.sender()): Unit = {
+  protected def sendState(replyTo: ActorRef): Unit = {
     aggregateOpt match {
-      case Some(data) => replyTo ! data
-      case None       => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case Some(aggregate) =>
+        log.debug(s"sending aggregate state $aggregate to $replyTo")
+        replyTo ! aggregate
+      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -320,9 +323,7 @@ object AggregateActor {
     */
   case object KillAggregate
 
-  case object GetState extends DomainCommand
-
-  case class SuccessfulCommand(events: immutable.Seq[DomainEvent])
+  case class StateRequest(requester: ActorRef)
 
   /** Specifies how many events should be processed before new snapshot is taken.
     * TODO: make configurable
