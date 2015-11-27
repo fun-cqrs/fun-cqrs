@@ -46,7 +46,7 @@ object LotteryId {
     LotteryId(aggregateId)
   }
 
-  def generate() : LotteryId = LotteryId(UUID.randomUUID().toString)
+  def generate(): LotteryId = LotteryId(UUID.randomUUID().toString)
 }
 
 object LotteryProtocol extends ProtocolLike {

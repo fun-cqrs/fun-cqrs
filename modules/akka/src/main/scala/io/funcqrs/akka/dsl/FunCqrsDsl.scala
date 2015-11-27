@@ -1,8 +1,8 @@
 package io.funcqrs.akka.dsl
 
-import _root_.akka.actor.{ActorRef, ActorSystem}
+import _root_.akka.actor.{ ActorRef, ActorSystem }
 import io.funcqrs._
-import io.funcqrs.akka.{AggregateServiceWithAssignedId, AggregateServiceWithManagedId, ConfigurableAggregateManager, FunCQRS}
+import io.funcqrs.akka.{ AggregateServiceWithAssignedId, AggregateServiceWithManagedId, ConfigurableAggregateManager, FunCQRS }
 
 import scala.language.implicitConversions
 
@@ -44,14 +44,12 @@ object FunCqrsDsl {
     def idStrategy: AggregateIdStrategy[A]
   }
   case class AggregateConfigWithAssignedId[A <: AggregateLike](name: Option[String],
-                                                 behavior: (A#Id) => Behavior[A],
-                                                 idStrategy: AggregateIdStrategy[A]) extends AggregateConfig[A]
-
-
-  case class AggregateConfigWithManagedId[A <: AggregateLike](name: Option[String],
                                                                behavior: (A#Id) => Behavior[A],
                                                                idStrategy: AggregateIdStrategy[A]) extends AggregateConfig[A]
 
+  case class AggregateConfigWithManagedId[A <: AggregateLike](name: Option[String],
+                                                              behavior: (A#Id) => Behavior[A],
+                                                              idStrategy: AggregateIdStrategy[A]) extends AggregateConfig[A]
 
   trait ProjectionConfig extends Config
 

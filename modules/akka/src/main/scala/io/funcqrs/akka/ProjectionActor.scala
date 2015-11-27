@@ -4,11 +4,11 @@ import akka.actor._
 import akka.pattern._
 import akka.persistence.query.EventEnvelope
 import akka.stream.ActorMaterializer
-import akka.stream.actor.ActorSubscriberMessage.{OnError, OnNext}
-import akka.stream.actor.{ActorSubscriber, RequestStrategy, WatermarkRequestStrategy}
+import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
+import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
-import io.funcqrs.{DomainEvent, Projection}
+import io.funcqrs.{ DomainEvent, Projection }
 
 import scala.concurrent.duration._
 import scala.language.postfixOps

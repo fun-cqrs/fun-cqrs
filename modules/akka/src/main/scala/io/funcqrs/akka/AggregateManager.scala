@@ -3,8 +3,10 @@ package io.funcqrs.akka
 import _root_.akka.actor._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs._
+import io.funcqrs.akka.AggregateManager.GetState
 
 import scala.concurrent.duration.Duration
+import scala.util.{ Success, Try }
 
 object AggregateManager {
   case class GetState(id: AggregateID)
@@ -54,20 +56,38 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   private def defaultProcessCommand: Receive = {
 
-    case Terminated(actor)             => handleTermination(actor)
-    case AggregateManager.GetState(id) => getState(id.value)
+    case Terminated(actor) => handleTermination(actor)
+    case GetStateTyped(id) => fetchState(id)
 
-    case x                             => sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
+    case BadId(id) =>
+      sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
+
+    case x =>
+      sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
-  def getState(id: String) = {
+  object GetStateTyped {
 
-    val maybeChild = context child id
-
-    maybeChild match {
-      case Some(child) => child forward AggregateActor.GetState
-      case None        => Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
+    def unapply(getState: GetState): Option[Id] = {
+      Try(getState.id.asInstanceOf[Id]) match {
+        case Success(id) => Some(id)
+        case _           => None
+      }
     }
+  }
+
+  object BadId {
+
+    def unapply(getState: GetState): Option[AggregateID] = {
+      Try(getState.id.asInstanceOf[Id]) match {
+        case Success(id) => None
+        case _           => Some(getState.id)
+      }
+    }
+  }
+
+  def fetchState(id: Id): Unit = {
+    findOrCreate(id) forward AggregateActor.StateRequest(sender())
   }
 
   private def handleTermination(actor: ActorRef) = {
@@ -144,7 +164,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
-  extends AggregateManager with AggregateIdGenerator {
+    extends AggregateManager with AggregateIdGenerator {
 
   type Aggregate = A
 
@@ -152,6 +172,7 @@ class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Beh
 }
 
 object ConfigurableAggregateManager {
+
   def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], idStrategy: AggregateIdStrategy[A]) = {
     Props(new ConfigurableAggregateManager(behaviorCons, idStrategy))
   }

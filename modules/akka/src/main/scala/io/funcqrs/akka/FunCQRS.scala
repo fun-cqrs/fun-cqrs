@@ -1,6 +1,6 @@
 package io.funcqrs.akka
 
-import _root_.akka.actor.{ActorRef, ActorSystem, Props}
+import _root_.akka.actor.{ ActorRef, ActorSystem, Props }
 import _root_.akka.pattern._
 import _root_.akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging

@@ -28,7 +28,7 @@ trait AggregateAliases extends ProtocolAliases {
 
   /** Alias for Aggregate#Protocol */
   type Protocol = Aggregate#Protocol
-  
+
 }
 
 /** Base trait for definitions of type-safe aggregate ids */

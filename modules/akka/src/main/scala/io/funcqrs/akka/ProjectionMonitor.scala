@@ -12,8 +12,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
-class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMonitor:(CommandId)=> Future[ActorRef])
-  extends AggregateAliases {
+class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMonitor: (CommandId) => Future[ActorRef])
+    extends AggregateAliases {
 
   type Aggregate = A
 

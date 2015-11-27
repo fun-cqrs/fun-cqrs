@@ -86,7 +86,6 @@ object Behavior {
       protected def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] =
         Future.failed(new CommandException(s"Empty Behavior, can't accept command $cmd"))
 
-
     }
   }
 }

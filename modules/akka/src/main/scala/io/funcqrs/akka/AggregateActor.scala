@@ -16,6 +16,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
+
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier
@@ -91,7 +92,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case GetState                     => respond()
+    case StateRequest(requester)      => sendState(requester)
     case result: CompletedCreationCmd => onSuccessfulCreation(result)
     case result: CompletedUpdateCmd   => onSuccessfulUpdate(result)
     case failedCmd: FailedCommand     => onCommandFailure(failedCmd)
@@ -102,7 +103,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   }
 
   protected def defaultReceive: Receive = {
-    case GetState => respond()
+    case StateRequest(requester) => sendState(requester)
   }
 
   /** This method should be used as a callback handler for persist() method.
@@ -125,12 +126,14 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   }
 
   /** send a message containing the aggregate's state back to the requester
-    * @param replyTo actor to send message to (by default the sender from where you received a command)
+    * @param replyTo actor to send message to
     */
-  protected def respond(replyTo: ActorRef = context.sender()): Unit = {
+  protected def sendState(replyTo: ActorRef): Unit = {
     aggregateOpt match {
-      case Some(data) => replyTo ! data
-      case None       => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case Some(aggregate) =>
+        log.debug(s"sending aggregate state $aggregate to $replyTo")
+        replyTo ! aggregate
+      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -227,14 +230,15 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     */
   private def onSuccessfulCreation(result: CompletedCreationCmd): Unit = {
 
+    // extra check! persist it only if Behavior is defined for it
     if (behavior.isEventDefined(result.event)) {
-      // persist it only if Behavior is defined for it
+
       persist(result.event) { evt =>
         afterEventPersisted(evt)
       }
       result.origSender ! result.event
 
-    }  else {
+    } else {
       result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
     }
 
@@ -252,16 +256,19 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     val aggregate = aggregateOpt.get
     val events = immutable.Seq(result.events).flatten
 
+    // extra check! only persist it only if Behavior is defined for it
     if (events.forall(behavior.isEventDefined(_, aggregate))) {
 
-      // persist it only if Behavior is defined for it
-      persistAll(events) { evt =>
-        afterEventPersisted(evt)
+      // forall on an empty Seq always returns 'true' !!!!
+      // and akka-persistence throw exception if an empty list of events are sent!
+      if (events.nonEmpty) {
+        persistAll(events) { evt =>
+          afterEventPersisted(evt)
+        }
       }
       result.origSender ! result.events
 
     } else {
-
       // collect events with handler
       val badEventsNames = events.collect {
         case e if !behavior.isEventDefined(e, aggregate) => e.getClass.getSimpleName
@@ -316,9 +323,7 @@ object AggregateActor {
     */
   case object KillAggregate
 
-  case object GetState extends DomainCommand
-
-  case class SuccessfulCommand(events: immutable.Seq[DomainEvent])
+  case class StateRequest(requester: ActorRef)
 
   /** Specifies how many events should be processed before new snapshot is taken.
     * TODO: make configurable

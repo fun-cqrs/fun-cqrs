@@ -3,7 +3,7 @@ package shop.api
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
-import io.funcqrs.{DomainCommand, AggregateLike}
+import io.funcqrs.{ DomainCommand, AggregateLike }
 import io.funcqrs.DomainCommand
 import play.api.libs.json._
 import play.api.mvc.{ Action, Controller }
