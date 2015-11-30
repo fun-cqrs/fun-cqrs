@@ -7,5 +7,5 @@ trait AkkaModule {
 
   def actorSystem: ActorSystem
 
-  val funCQRS = new FunCQRS(actorSystem)
+  implicit val funCQRS = new FunCQRS(actorSystem)
 }

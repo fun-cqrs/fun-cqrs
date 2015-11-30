@@ -8,13 +8,19 @@ import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
+import io.funcqrs.akka.FunCQRS.api.CustomOffsetPersistenceStrategy
+import io.funcqrs.akka.ProjectionActor.FailureStrategy
 import io.funcqrs.{ DomainEvent, Projection }
 
 import scala.concurrent.duration._
+import scala.concurrent.{ Await, Future }
 import scala.language.postfixOps
 
-abstract class ProjectionActor(val name: String, val projection: Projection) extends ActorLogging with Stash {
-  this: EventsSourceProvider =>
+// TODO: document each parameter
+abstract class ProjectionActor(projection: Projection,
+                               sourceProvider: EventsSourceProvider,
+                               failureStrategy: FailureStrategy)
+    extends Actor with ActorLogging with Stash {
 
   import context.dispatcher
 
@@ -28,7 +34,7 @@ abstract class ProjectionActor(val name: String, val projection: Projection) ext
     log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
     val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
-    source(lastProcessedOffset + 1).runWith(actorSink)
+    sourceProvider.source(lastProcessedOffset + 1).runWith(actorSink)
   }
 
   override def receive: Receive = acceptingEvents
@@ -55,7 +61,7 @@ abstract class ProjectionActor(val name: String, val projection: Projection) ext
 
     case Status.Failure(e) =>
       handleFailure(currentEvent, e)
-      context become acceptingEvents // continue processing if possible
+      context become handlingFailure // wait till failure is handled
   }
 
   def acceptingEvents: Receive = {
@@ -72,12 +78,23 @@ abstract class ProjectionActor(val name: String, val projection: Projection) ext
       throw e
   }
 
-  final def handleFailure(evt: DomainEvent, e: Throwable): Unit = {
-    val finalHandleFailure = onFailure orElse handleFailureFunc
-    finalHandleFailure((evt, e))
+  def handlingFailure: Receive = {
+
+    case h: ProjectionActor.DoneHandlingFailure =>
+      unstashAll()
+      context become acceptingEvents
+
+    case _ => stash()
   }
 
-  val handleFailureFunc: PartialFunction[(DomainEvent, Throwable), Unit] = {
+  final def handleFailure(evt: DomainEvent, e: Throwable): Unit = {
+    val finalHandleFailure = failureStrategy orElse handleFailureFunc
+    finalHandleFailure((evt, e)).map { _ =>
+      ProjectionActor.DoneHandlingFailure(evt, e)
+    }.pipeTo(self)
+  }
+
+  val handleFailureFunc: PartialFunction[(DomainEvent, Throwable), Future[Unit]] = {
     // by default we re-throw to kill the actor and reprocess event
     case (currentEvent, e) =>
       log.error(e, s"Failed to process event $currentEvent")
@@ -85,6 +102,7 @@ abstract class ProjectionActor(val name: String, val projection: Projection) ext
   }
 
   object OnNextDomainEvent {
+
     def unapply(onNext: OnNext): Option[(DomainEvent, Long)] = {
       onNext.element match {
         case EventEnvelope(offset, _, _, event: DomainEvent) => Option((event, offset))
@@ -93,12 +111,21 @@ abstract class ProjectionActor(val name: String, val projection: Projection) ext
     }
   }
 
-  def onFailure: PartialFunction[(DomainEvent, Throwable), Unit] = PartialFunction.empty
 }
 
 object ProjectionActor {
 
+  /** PartialFunction to handle failures while processing events inside a [[ProjectionActor]].
+    *
+    * Typically, such a strategy should handle exceptions that are NOT related with external system calls or database operations.
+    * Only programatically errors should be handled. This is useful to avoid that a ProjectionActor get stuck trying processing an event
+    * it can't handle due to a programing error.
+    *
+    */
+  type FailureStrategy = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
+
   case class Done(evt: DomainEvent)
+  case class DoneHandlingFailure(evt: DomainEvent, throwable: Throwable)
 
 }
 
@@ -114,4 +141,77 @@ class ForwardingActorSubscriber(target: ActorRef, val requestStrategy: RequestSt
       context.system.stop(self)
 
   }
+}
+
+/** A ProjectionActor that never saves the offset
+  * causing the event stream to be read from start on each app restart
+  */
+class ProjectionActorWithoutOffsetPersistence(projection: Projection,
+                                              sourceProvider: EventsSourceProvider,
+                                              failureStrategy: FailureStrategy)
+    extends ProjectionActor(projection, sourceProvider, failureStrategy) with OffsetNotPersisted
+
+object ProjectionActorWithoutOffsetPersistence {
+
+  def props(projection: Projection,
+            sourceProvider: EventsSourceProvider,
+            failureStrategy: FailureStrategy) = {
+
+    Props(new ProjectionActorWithoutOffsetPersistence(projection, sourceProvider, failureStrategy))
+  }
+
+}
+
+/** A ProjectionActor that saves the offset as a snapshot in Akka Persistence
+  *
+  * This implementation is a quick win for those that simply want to persist the offset without caring about
+  * the persistence layer.
+  *
+  * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
+  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
+  */
+class ProjectionActorWithOffsetManagedByAkkaPersistence(projection: Projection,
+                                                        sourceProvider: EventsSourceProvider,
+                                                        failureStrategy: FailureStrategy,
+                                                        val persistenceId: String)
+    extends ProjectionActor(projection, sourceProvider, failureStrategy) with PersistedOffsetAkka
+
+object ProjectionActorWithOffsetManagedByAkkaPersistence {
+
+  def props(projection: Projection,
+            sourceProvider: EventsSourceProvider,
+            failureStrategy: FailureStrategy,
+            persistenceId: String) = {
+
+    Props(new ProjectionActorWithOffsetManagedByAkkaPersistence(projection, sourceProvider, failureStrategy, persistenceId))
+  }
+}
+
+/** A ProjectionActor that saves the offset using a [[CustomOffsetPersistenceStrategy]] */
+class ProjectionActorWithCustomOffsetPersistence(projection: Projection,
+                                                 sourceProvider: EventsSourceProvider,
+                                                 failureStrategy: FailureStrategy,
+                                                 customOffsetPersistence: CustomOffsetPersistenceStrategy)
+
+    extends ProjectionActor(projection, sourceProvider, failureStrategy) with PersistedOffsetCustom {
+
+  def saveCurrentOffset(offset: Long): Unit = {
+    // TODO: change signature of OffsetPersistence.saveCurrentOffset to return Future[Unit]
+    Await.result(customOffsetPersistence.saveCurrentOffset(offset), 500.millis)
+  }
+
+  /** Returns the current offset as persisted in DB */
+  def readOffset: Future[Long] = customOffsetPersistence.readOffset
+}
+
+object ProjectionActorWithCustomOffsetPersistence {
+
+  def props(projection: Projection,
+            sourceProvider: EventsSourceProvider,
+            failureStrategy: FailureStrategy,
+            customOffsetPersistence: CustomOffsetPersistenceStrategy) = {
+
+    Props(new ProjectionActorWithCustomOffsetPersistence(projection, sourceProvider, failureStrategy, customOffsetPersistence))
+  }
+
 }

@@ -25,8 +25,13 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
     (aggregateManager ? GetState(id)).map(_.asInstanceOf[Aggregate])
   }
 
-  def sendCommand(id: Id)(cmd: Command): AggregateUpdateInvokerWriteModel = {
+  def update(id: Id)(cmd: Command): AggregateUpdateInvokerWriteModel = {
     AggregateUpdateInvokerWriteModel(id, cmd)
+  }
+
+  @deprecated(message = "Use 'update' instead", since = "0.0.7")
+  def sendCommand(id: Id)(cmd: Command): AggregateUpdateInvokerWriteModel = {
+    update(id)(cmd)
   }
 
   case class AggregateUpdateInvokerWriteModel(id: Id, cmd: Command) {

@@ -1,43 +1,31 @@
 package shop.domain.service
 
-import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.funcqrs
-import io.funcqrs.Behavior
-import io.funcqrs.akka._
-import io.funcqrs.Tag
+import io.funcqrs.akka.FunCQRS.api._
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{ Product, ProductNumber, ProductView }
+import shop.domain.model.{ ProductView, Product }
 
 trait ProductModule extends AkkaModule {
 
   // WRITE side wiring
-  val productAggregateManager: ActorRef @@ Product.type =
-    actorSystem
-      .actorOf(Props[ProductAggregateManager], "ProductAggregateManager")
-      .taggedWith[Product.type]
+  val productService =
+    config {
+      aggregate[Product](Product.behavior)
+        .withName("ProductService")
+        .withAssignedId
+    }
 
   //----------------------------------------------------------------------
   // READ side wiring
   val productViewRepo = wire[ProductViewRepo].taggedWith[ProductView.type]
 
-  funCQRS.projection[ProductViewProjectionActor]("ProductViewProjectionActor", wire[ProductViewProjection])
+  config {
+    projection(
+      sourceProvider = new LevelDbTaggedEventsSource(Product.tag),
+      projection = wire[ProductViewProjection],
+      name = "ProductViewProjection"
+    ).withoutOffsetPersistence
+  }
 
-}
-
-class ProductAggregateManager extends AggregateManager with AssignedAggregateId {
-
-  type Aggregate = Product
-  def behavior(id: ProductNumber): Behavior[Product] = Product.behavior(id)
-
-  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
-}
-
-class ProductViewProjectionActor(name: String, projection: ProductViewProjection)
-    extends ProjectionActor(name, projection) // receives events and forward to ProductViewProjection
-    with LevelDbTaggedEventsSource // mixin the source
-    with OffsetNotPersisted { // no offset persistence, replay full-stream
-
-  val tag: funcqrs.Tag = Product.tag
 }

@@ -1,26 +1,20 @@
 package shop.app
 
-import akka.actor.Actor
+import akka.actor.ActorContext
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.scaladsl.Source
 import io.funcqrs.Tag
 import io.funcqrs.akka.EventsSourceProvider
 
-trait LevelDbTaggedEventsSource extends EventsSourceProvider {
-  this: Actor =>
-
-  /** The [[Tag]] to query events. Only events tagged with this [[Tag]] will be returned.
-    * @return
-    */
-  def tag: Tag
+class LevelDbTaggedEventsSource(tag: Tag) extends EventsSourceProvider {
 
   /** Builds a [[Source]] of [[EventEnvelope]]s containing the [[Tag]] and starting from the passed offset.
     *
     * @param offset - initial offset to start read from
     * @return
     */
-  def source(offset: Long): Source[EventEnvelope, Unit] = {
+  def source(offset: Long)(implicit context: ActorContext): Source[EventEnvelope, Unit] = {
 
     val readJournal =
       PersistenceQuery(context.system)
@@ -30,3 +24,4 @@ trait LevelDbTaggedEventsSource extends EventsSourceProvider {
   }
 
 }
+

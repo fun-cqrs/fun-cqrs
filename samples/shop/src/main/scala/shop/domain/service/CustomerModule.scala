@@ -1,38 +1,29 @@
 package shop.domain.service
 
-import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.funcqrs.Behavior
-import io.funcqrs.akka._
+import io.funcqrs.akka.FunCQRS.api._
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{ Customer, CustomerId, CustomerView }
+import shop.domain.model.{ Customer, CustomerView }
 
 trait CustomerModule extends AkkaModule {
 
-  val customerAggregateManager: ActorRef @@ Customer.type =
-    actorSystem
-      .actorOf(Props[CustomerAggregateManager], "CustomerAggregateManager")
-      .taggedWith[Customer.type]
+  val customerService =
+    config {
+      aggregate[Customer](Customer.behavior)
+        .withAssignedId
+    }
 
   //----------------------------------------------------------------------
   // READ side wiring
   val customerViewRepo = wire[CustomerViewRepo].taggedWith[CustomerView.type]
 
-  funCQRS.projection[CustomerViewProjectionActor]("CustomerViewProjectionActor", wire[CustomerViewProjection])
-}
+  config {
+    projection(
+      sourceProvider = new LevelDbTaggedEventsSource(Customer.tag),
+      projection = wire[CustomerViewProjection],
+      name = "CustomerViewProjectionActor"
+    ).withoutOffsetPersistence
+  }
 
-class CustomerAggregateManager extends AggregateManager with AssignedAggregateId {
-
-  type Aggregate = Customer
-
-  def behavior(id: CustomerId): Behavior[Customer] = Customer.behavior(id)
-
-  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
-
-}
-
-class CustomerViewProjectionActor(name: String, projection: CustomerViewProjection)
-    extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
-  val tag = Customer.tag
 }

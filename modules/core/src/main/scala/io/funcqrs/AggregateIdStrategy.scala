@@ -7,7 +7,7 @@ package io.funcqrs
   *
   * - [[AssignedIdStrategy]] to use whenever an aggregate id is generated externally.
   * (e.g.: user assigned or external system)
-  * - [[GeneratedIdStrategy]] to use whenever id generation is managed by the application ifself.
+  * - [[GeneratedIdStrategy]] to use whenever id generation is managed by the application itself.
   * - [[SingletonIdStrategy]] useful for singleton Aggregates with a constant, well-known, id.
   *
   * @tparam A the AggregateType

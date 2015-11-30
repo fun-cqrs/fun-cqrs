@@ -2,11 +2,6 @@ package io.funcqrs.akka
 
 import io.funcqrs._
 
-// TODO: find decent name for this ( lucd: not needed any more :-) )
-//trait AggregateIdGenerator {
-//  self: AggregateManager =>
-//}
-
 trait AssignedAggregateId {
   self: AggregateManager =>
 

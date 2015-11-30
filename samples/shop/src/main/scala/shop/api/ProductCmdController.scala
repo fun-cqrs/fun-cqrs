@@ -1,21 +1,20 @@
 package shop.api
 
-import akka.actor.ActorRef
-import com.softwaremill.macwire._
-import play.api.libs.json.{ JsResult, JsValue }
+import io.funcqrs.akka.AggregateService
+import play.api.libs.json.JsValue
 import play.api.mvc.RequestHeader
-import shop.domain.model.ProductProtocol.ProductCommand
-import shop.domain.model.{ Product, ProductNumber, ProductProtocol }
 import shop.api.routes.{ ProductQueryController => ReverseQueryCtrl }
+import shop.domain.model.{ Product, ProductNumber, ProductProtocol }
+
 import scala.language.postfixOps
 
-class ProductCmdController(val aggregateManager: ActorRef @@ Product.type)
-    extends CommandController with AssignedId {
+class ProductCmdController(val aggregateService: AggregateService[Product])
+    extends CommandController with AssignedIdCmdController {
 
-  type AggregateType = Product
+  type Aggregate = Product
   def aggregateId(id: String): ProductNumber = ProductNumber(id)
 
-  def toCommand(jsValue: JsValue): JsResult[ProductCommand] = ProductProtocol.commandsFormat.reads(jsValue)
+  def toCommand(jsValue: JsValue) = ProductProtocol.commandsFormat.reads(jsValue)
 
   def toLocation(id: String)(implicit request: RequestHeader): String = {
     ReverseQueryCtrl.get(id).absoluteURL()

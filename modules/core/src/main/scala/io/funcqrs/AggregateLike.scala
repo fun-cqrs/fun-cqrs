@@ -2,8 +2,6 @@ package io.funcqrs
 
 import java.util.UUID
 
-import scala.collection.immutable
-
 trait AggregateLike extends ProtocolAliases {
 
   type Id <: AggregateID

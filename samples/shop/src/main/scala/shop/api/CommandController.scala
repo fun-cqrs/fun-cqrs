@@ -1,10 +1,8 @@
 package shop.api
 
-import akka.actor.ActorRef
-import akka.pattern._
 import akka.util.Timeout
-import io.funcqrs.{ DomainCommand, AggregateLike }
-import io.funcqrs.DomainCommand
+import io.funcqrs.AggregateLike
+import io.funcqrs.akka.AggregateService
 import play.api.libs.json._
 import play.api.mvc.{ Action, Controller }
 
@@ -17,13 +15,13 @@ trait CommandController extends Controller {
 
   implicit def timeout: Timeout = Timeout(300 millis)
 
-  type AggregateType <: AggregateLike
+  type Aggregate <: AggregateLike
 
-  def aggregateManager: ActorRef
+  val aggregateService: AggregateService[Aggregate]
 
-  def toCommand(jsValue: JsValue): JsResult[DomainCommand]
+  def toCommand(jsValue: JsValue): JsResult[aggregateService.Command]
 
-  def toAggregateId(id: String): AggregateType#Id
+  def toAggregateId(id: String): aggregateService.Id
 
   def update(id: String) = Action.async(parse.json) { request =>
 
@@ -31,7 +29,10 @@ trait CommandController extends Controller {
 
     updateCmd match {
       case JsSuccess(cmd, _) =>
-        (aggregateManager ? (toAggregateId(id), cmd)).map(_ => Ok("done"))
+        aggregateService
+          .update(toAggregateId(id))(cmd)
+          .result()
+          .map(_ => Ok("done"))
 
       case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
     }

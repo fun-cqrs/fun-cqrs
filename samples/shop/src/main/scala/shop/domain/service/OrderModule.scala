@@ -1,21 +1,21 @@
 package shop.domain.service
 
-import akka.actor.{ ActorRef, Props }
 import com.softwaremill.macwire._
-import io.funcqrs
-import io.funcqrs.{ Projection, Behavior }
-import io.funcqrs.akka._
-import io.funcqrs.Tag
+import io.funcqrs.akka.FunCQRS.api._
 import shop.api.AkkaModule
 import shop.app.LevelDbTaggedEventsSource
-import shop.domain.model.{ Order, OrderNumber, OrderView }
+import shop.domain.model.{ Order, OrderView }
+
+import scala.concurrent.Future
 
 trait OrderModule extends AkkaModule {
 
-  val orderAggregateManager: ActorRef @@ Order.type =
-    actorSystem
-      .actorOf(Props[OrderAggregateManager], "orderAggregateManager")
-      .taggedWith[Order.type]
+  val orderService =
+    config {
+      aggregate[Order](Order.behavior)
+        .withName("OrderService")
+        .withAssignedId
+    }
 
   //----------------------------------------------------------------------
   // READ side wiring
@@ -29,27 +29,15 @@ trait OrderModule extends AkkaModule {
 
   val orderViewProjection = wire[OrderViewProjection] orElse productProjection orElse customerProjection
 
-  funCQRS.projection[OrderViewProjectionActor]("OrderViewProjectionActor", orderViewProjection)
-
-}
-
-class OrderAggregateManager extends AggregateManager with AssignedAggregateId {
-
-  type Aggregate = Order
-
-  def behavior(id: OrderNumber): Behavior[Order] = Order.behavior(id)
-
-  override def aggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
-
-}
-
-class OrderViewProjectionActor(name: String, projection: Projection)
-    extends ProjectionActor(name, projection) with LevelDbTaggedEventsSource with OffsetNotPersisted {
-
-  val tag: funcqrs.Tag = Order.dependentView
-
-  override def onFailure = {
-    // do nothing, ignore event
-    case (evt, e: NoSuchElementException) => log.debug(s"Got a NoSuchElementException, ignoring event $evt")
+  config {
+    projection(
+      sourceProvider = new LevelDbTaggedEventsSource(Order.dependentView),
+      projection = orderViewProjection,
+      name = "OrderViewProjection"
+    ).withoutOffsetPersistence
+      .onFailure {
+        case (evt, e: NoSuchElementException) => Future.successful(()) // Got a NoSuchElementException, ignoring event
+      }
   }
+
 }

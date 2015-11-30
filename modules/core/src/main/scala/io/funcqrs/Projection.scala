@@ -1,7 +1,8 @@
 package io.funcqrs
 
-import scala.concurrent.Future
 import io.funcqrs.Projection._
+
+import scala.concurrent.Future
 trait Projection {
 
   def handleEvent: HandleEvent

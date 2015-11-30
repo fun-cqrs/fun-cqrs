@@ -23,7 +23,7 @@ trait OffsetNotPersisted extends OffsetPersistence {
 }
 
 /** Read and save from a database. */
-trait PersistedOffsetDb extends OffsetPersistence {
+trait PersistedOffsetCustom extends OffsetPersistence {
   this: ProjectionActor =>
 
   def saveCurrentOffset(offset: Long): Unit
@@ -31,7 +31,7 @@ trait PersistedOffsetDb extends OffsetPersistence {
   /** Returns the current offset as persisted in DB */
   def readOffset: Future[Long]
 
-  /** On preStart we read the offset from db and start the events streamins */
+  /** On preStart we read the offset from db and start the events streaming */
   override def preStart(): Unit = {
     import scala.concurrent.ExecutionContext.Implicits.global
     readOffset.map { offset =>
@@ -52,7 +52,7 @@ trait PersistedOffsetDb extends OffsetPersistence {
 trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with Stash {
   self: ProjectionActor =>
 
-  def persistenceId: String = name
+  def persistenceId: String
 
   override def receive = receiveCommand
 
@@ -61,11 +61,11 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      log.debug(s"[$name] snapshot offer - lastProcessedOffset $offset")
+      log.debug(s"[$persistenceId] snapshot offer - lastProcessedOffset $offset")
       lastProcessedOffset = offset
 
     case _: RecoveryCompleted =>
-      log.debug(s"[$name] recovery completed - lastProcessedOffset $lastProcessedOffset")
+      log.debug(s"[$persistenceId] recovery completed - lastProcessedOffset $lastProcessedOffset")
       recoveryCompleted()
 
     case unknown => log.debug(s"Unknown message on recovery: $unknown")
@@ -79,7 +79,7 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
 
   def waitSnapshotConfirmation: Receive = {
     case SaveSnapshotSuccess(_) =>
-      log.debug(s"[$name] snapshot saved")
+      log.debug(s"[$persistenceId] snapshot saved")
       context.unbecome()
       unstashAll() // resume consuming DomainEvents
 

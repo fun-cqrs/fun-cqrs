@@ -2,6 +2,7 @@ package io.funcqrs
 
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 

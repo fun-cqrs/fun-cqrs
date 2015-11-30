@@ -23,7 +23,6 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
   case class ProjectionCreateSuccess[Event](event: Event) extends ProjectionCreateResult[Event]
   case class ProjectionCreateFailure[Event](event: Event, throwable: Throwable) extends ProjectionCreateResult[Event]
 
-
   trait ProjectionUpdateResult[Event] {
     def events: immutable.Seq[Event]
   }
@@ -37,9 +36,9 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
     * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
     *
     * @return - A Future with a [[ProjectionUpdateResult]]. A [[ProjectionUpdateSuccess]] is returned iff the events originated from `cmd`
-    *         are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
-    *         indicating the cause of the failure on the Read Model.
-    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
+    *      are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
+    *      indicating the cause of the failure on the Read Model.
+    *      Returns a failed Future if `Command` is not valid in which case no Events are generated.
     */
   def watchEvent(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionCreateResult[Event]] = {
 
@@ -72,9 +71,9 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
     * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
     *
     * @return - A Future with a [[ProjectionUpdateResult]]. A [[ProjectionUpdateSuccess]] is returned iff the events originated from `cmd`
-    *         are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
-    *         indicating the cause of the failure on the Read Model.
-    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
+    *      are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
+    *      indicating the cause of the failure on the Read Model.
+    *      Returns a failed Future if `Command` is not valid in which case no Events are generated.
     */
   def watchEvents(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionUpdateResult[Event]] = {
 

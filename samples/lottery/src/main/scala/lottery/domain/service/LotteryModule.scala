@@ -1,18 +1,22 @@
 package lottery.domain.service
 
-import com.softwaremill.macwire._
-import io.funcqrs
-import io.funcqrs.akka._
-import lottery.api.AkkaModule
+import akka.actor.ActorSystem
+import io.funcqrs.akka.FunCQRS
 import lottery.app.LevelDbTaggedEventsSource
-import lottery.domain.model.{ Lottery, LotteryView }
+import lottery.domain.model.Lottery
 
-trait LotteryModule extends AkkaModule {
+trait LotteryModule {
 
-  import io.funcqrs.akka.dsl.FunCqrsDsl._
+  def actorSystem: ActorSystem
+
+  implicit lazy val funCQRS = new FunCQRS(actorSystem)
+
+  import io.funcqrs.akka.FunCQRS.api._
+
+  //----------------------------------------------------------------------
   // WRITE side wiring
   val lotteryService =
-    service {
+    config {
       aggregate[Lottery](Lottery.behavior)
         .withName("LotteryManager")
         .withAssignedId
@@ -20,18 +24,14 @@ trait LotteryModule extends AkkaModule {
 
   //----------------------------------------------------------------------
   // READ side wiring
-  val lotteryViewRepo = wire[LotteryViewRepo].taggedWith[LotteryView.type]
+  val lotteryViewRepo = new LotteryViewRepo
 
-  funCQRS.projection[LotteryViewProjectionActor]("LotteryViewProjectionActor", wire[LotteryViewProjection])
+  config {
+    projection(
+      sourceProvider = new LevelDbTaggedEventsSource(Lottery.tag),
+      projection = new LotteryViewProjection(lotteryViewRepo),
+      name = "LotteryViewProjectionActor"
+    )
+  }
 
-}
-
-class LotteryViewProjectionActor(name: String, projection: LotteryViewProjection)
-    extends ProjectionActor(name, projection) // receives events and forward to RaffleViewProjection
-    with LevelDbTaggedEventsSource // mixin the source
-    with OffsetNotPersisted {
-
-  // no offset persistence, replay full-stream
-
-  val tag: funcqrs.Tag = Lottery.tag
 }

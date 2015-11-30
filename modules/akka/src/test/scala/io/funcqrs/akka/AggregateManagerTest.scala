@@ -9,9 +9,8 @@ import io.funcqrs.{ AggregateID, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol.{ ChangeName, CreateUser, NameChanged, UserCreated }
 import io.funcqrs.akka.TestModel.{ User, UserId }
-import io.funcqrs.akka.dsl.FunCqrsDsl._
 import org.scalatest._
-
+import FunCQRS.api._
 import scala.concurrent.duration._
 
 class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSystem)

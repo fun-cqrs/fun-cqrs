@@ -2,7 +2,6 @@ package io.funcqrs.akka
 
 import akka.actor.{ ActorRef, ActorSystem }
 import io.funcqrs.AggregateLike
-import io.funcqrs.akka.dsl.FunCqrsDsl
 
 trait FunCqrsSuite {
 

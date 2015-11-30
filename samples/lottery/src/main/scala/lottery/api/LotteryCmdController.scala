@@ -4,13 +4,13 @@ import akka.util.Timeout
 import io.funcqrs.AggregateAliases
 import io.funcqrs.akka.AggregateServiceWithAssignedId
 import lottery.api.routes.{ LotteryQueryController => ReverseQueryCtrl }
-import lottery.domain.model.LotteryProtocol.LotteryCommand
 import lottery.domain.model.{ Lottery, LotteryId, LotteryProtocol }
 import play.api.libs.json.{ JsError, JsResult, JsSuccess, JsValue }
 import play.api.mvc.{ Action, Controller, RequestHeader }
-import scala.concurrent.duration._
-import scala.concurrent.Future
+
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.concurrent.duration._
 
 class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[Lottery]) extends Controller with AggregateAliases {
 
@@ -50,7 +50,7 @@ class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[
       case JsSuccess(cmd, _) =>
         val res =
           aggregateService
-            .sendCommand(aggregateId)(cmd)
+            .update(aggregateId)(cmd)
             .watch("LotteryViewProjectionActor")
             .result()
 

@@ -1,21 +1,19 @@
 package shop.api
 
-import akka.actor.ActorRef
-import com.softwaremill.macwire._
-import play.api.libs.json.{ JsResult, JsValue }
+import io.funcqrs.akka.AggregateService
+import play.api.libs.json.JsValue
 import play.api.mvc.RequestHeader
 import shop.api.routes.{ OrderQueryController => ReverseQueryCtrl }
-import shop.domain.model.OrderProtocol.OrderCommand
 import shop.domain.model.{ Order, OrderNumber, OrderProtocol }
 
-class OrderCmdController(val aggregateManager: ActorRef @@ Order.type)
-    extends CommandController with AssignedId {
+class OrderCmdController(val aggregateService: AggregateService[Order])
+    extends CommandController with AssignedIdCmdController {
 
-  type AggregateType = Order
+  type Aggregate = Order
 
   def aggregateId(id: String): OrderNumber = OrderNumber(id)
 
-  def toCommand(jsValue: JsValue): JsResult[OrderCommand] =
+  def toCommand(jsValue: JsValue) =
     OrderProtocol.commandFormats.reads(jsValue)
 
   def toAggregateId(id: String): OrderNumber = OrderNumber.fromString(id)

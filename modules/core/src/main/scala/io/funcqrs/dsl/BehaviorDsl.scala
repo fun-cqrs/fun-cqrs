@@ -173,7 +173,7 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
 
         def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
           val handleNoEvents: UpdatesEventToAggregate = {
-            case (aggregate, _) => aggregate
+            case (agg, _) => agg
           }
           (handleEvents orElse handleNoEvents)(aggregate, evt)
         }
@@ -205,6 +205,6 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
 
 object BehaviorDsl {
   def behaviorFor[A <: AggregateLike] = {
-    new BehaviorDsl[A].behaviorBuilder
+    new BehaviorDsl[A].api
   }
 }
