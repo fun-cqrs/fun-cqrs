@@ -104,6 +104,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   protected def defaultReceive: Receive = {
     case StateRequest(requester) => sendState(requester)
+    case Exists(requester)       => requester ! aggregateOpt.isDefined
   }
 
   /** This method should be used as a callback handler for persist() method.
@@ -133,7 +134,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       case Some(aggregate) =>
         log.debug(s"sending aggregate state $aggregate to $replyTo")
         replyTo ! aggregate
-      case None => Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case None =>
+        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
     }
   }
 
@@ -324,6 +326,7 @@ object AggregateActor {
   case object KillAggregate
 
   case class StateRequest(requester: ActorRef)
+  case class Exists(requester: ActorRef)
 
   /** Specifies how many events should be processed before new snapshot is taken.
     * TODO: make configurable

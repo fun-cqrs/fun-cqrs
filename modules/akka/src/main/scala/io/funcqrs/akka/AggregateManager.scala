@@ -3,13 +3,17 @@ package io.funcqrs.akka
 import _root_.akka.actor._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs._
-import io.funcqrs.akka.AggregateManager.GetState
+import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 
 import scala.concurrent.duration.Duration
 import scala.util.{ Success, Try }
 
 object AggregateManager {
+
   case class GetState(id: AggregateID)
+
+  case class Exists(id: AggregateID)
+
 }
 
 case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
@@ -56,20 +60,23 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   private def defaultProcessCommand: Receive = {
 
-    case Terminated(actor) => handleTermination(actor)
-    case GetStateTyped(id) => fetchState(id)
+    case Terminated(actor)    => handleTermination(actor)
+    case GetState(GoodId(id)) => fetchState(id)
+    case GetState(BadId(id)) =>
+      sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
 
-    case BadId(id) =>
+    case Exists(GoodId(id)) => exists(id)
+    case Exists(BadId(id)) =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
 
     case x =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
-  object GetStateTyped {
+  object GoodId {
 
-    def unapply(getState: GetState): Option[Id] = {
-      Try(getState.id.asInstanceOf[Id]) match {
+    def unapply(aggregateId: AggregateID): Option[Id] = {
+      Try(aggregateId.asInstanceOf[Id]) match {
         case Success(id) => Some(id)
         case _           => None
       }
@@ -78,16 +85,20 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   object BadId {
 
-    def unapply(getState: GetState): Option[AggregateID] = {
-      Try(getState.id.asInstanceOf[Id]) match {
+    def unapply(aggregateId: AggregateID): Option[AggregateID] = {
+      Try(aggregateId.asInstanceOf[Id]) match {
         case Success(id) => None
-        case _           => Some(getState.id)
+        case _           => Some(aggregateId)
       }
     }
   }
 
   def fetchState(id: Id): Unit = {
     findOrCreate(id) forward AggregateActor.StateRequest(sender())
+  }
+
+  def exists(id: Id): Unit = {
+    findOrCreate(id) forward AggregateActor.Exists(sender())
   }
 
   private def handleTermination(actor: ActorRef) = {
