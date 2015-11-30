@@ -3,12 +3,11 @@ package io.funcqrs.akka
 import akka.actor.ActorRef
 import akka.pattern._
 import akka.util.Timeout
-import io.funcqrs.akka.AggregateManager.GetState
+import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.{ AggregateAliases, AggregateLike, CommandId }
 
-import scala.concurrent.Future
-import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 trait AggregateService[A <: AggregateLike] extends AggregateAliases {
 
@@ -19,9 +18,7 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
   def projectionMonitorActorRef: ActorRef
 
   def exists(id: Id)(implicit timeout: Timeout): Future[Boolean] = {
-    fetchState(id)
-      .map(_ => true)
-      .recover { case NonFatal(e) => false }
+    (aggregateManager ? Exists(id)).mapTo[Boolean]
   }
 
   def fetchState(id: Id)(implicit timeout: Timeout): Future[Aggregate] = {
