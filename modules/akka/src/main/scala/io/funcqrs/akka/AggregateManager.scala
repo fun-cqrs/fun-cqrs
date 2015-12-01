@@ -26,7 +26,8 @@ case class AggregatePassivationStrategy(
   * Handles communication between client and aggregate.
   * It is also capable of aggregates creation and removal.
   */
-trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
+trait AggregateManager extends Actor
+    with ActorLogging with AggregateAliases with AggregateIdExtractors {
 
   import scala.collection.immutable._
 
@@ -58,50 +59,32 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
     // can `any` be convert to the seed tuple (Id, Command)?
     case creationCommand if idStrategy.beforeReceiveCreateCommand.isDefinedAt(creationCommand) =>
       val (id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
-      processAggregateCommand((id, cmd))
+      id match {
+        case GoodId(_) => processAggregateCommand(id, cmd)
+        case _         => badAggregateId(id)
+      }
   }
 
   // def processCreation: Receive
 
   def processUpdate: Receive = {
-    case updateCommand =>
-      val (id: Id @unchecked, cmd: Command) = updateCommand
-      processAggregateCommand((id, cmd))
+    case (GoodId(id), cmd: Command) => processAggregateCommand(id, cmd)
   }
 
+  private def badAggregateId(id: AggregateID) = {
+    sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
+  }
   private def defaultProcessCommand: Receive = {
 
     case Terminated(actor)    => handleTermination(actor)
     case GetState(GoodId(id)) => fetchState(id)
-    case GetState(BadId(id)) =>
-      sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
+    case GetState(BadId(id))  => badAggregateId(id)
 
-    case Exists(GoodId(id)) => exists(id)
-    case Exists(BadId(id)) =>
-      sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
+    case Exists(GoodId(id))   => exists(id)
+    case Exists(BadId(id))    => badAggregateId(id)
 
     case x =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
-  }
-
-  object GoodId {
-
-    def unapply(aggregateId: AggregateID): Option[Id] = {
-      Try(aggregateId.asInstanceOf[Id]) match {
-        case Success(id) => Some(id)
-        case _           => None
-      }
-    }
-  }
-
-  object BadId {
-
-    def unapply(aggregateId: AggregateID): Option[AggregateID] = {
-      Try(aggregateId.asInstanceOf[Id]) match {
-        case Success(id) => None
-        case _           => Some(aggregateId)
-      }
-    }
   }
 
   def fetchState(id: Id): Unit = {
@@ -127,8 +110,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
     * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
     *
     */
-  def processAggregateCommand: PartialFunction[(Id, Command), Unit] = {
-    case (aggregateId, command) =>
+  def processAggregateCommand(aggregateId: Id, command: Command) = {
 
     val maybeChild = context child aggregateId.value
 
@@ -161,7 +143,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
     agg
   }
 
-  def behavior(id: Id): Behavior[Aggregate]
+  def behavior(id: Aggregate#Id): Behavior[Aggregate]
 
   /** Build Props for a new Aggregate Actor with the passed Id
     */
@@ -182,6 +164,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
         }
     }
   }
+
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
@@ -189,7 +172,9 @@ class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Beh
 
   type Aggregate = A
 
-  def behavior(id: Id): Behavior[A] = behaviorCons(id)
+  def behavior(id: Id): Behavior[Aggregate] = {
+    behaviorCons(id)
+  }
 }
 
 object ConfigurableAggregateManager {

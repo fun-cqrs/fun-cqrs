@@ -1,9 +1,9 @@
 package io.funcqrs.dsl
 
-import io.funcqrs.{AggregateAliases, AggregateLike, Behavior, CommandException}
+import io.funcqrs.{ AggregateAliases, AggregateLike, Behavior, CommandException }
 
 import scala.collection.immutable
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -195,8 +195,11 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
       copy(updatesBuilder = transformer.apply(updatesBuilder))
   }
 
-  val behaviorBuilder: BehaviorBuilder[Pending, Pending] =
+  val api: BehaviorBuilder[Pending, Pending] =
     new BehaviorBuilder[Pending, Pending](new CreationBuilder, new UpdatesBuilder)
+
+  @deprecated(message = "User api instead", since = "0.0.7")
+  val behaviorBuilder: BehaviorBuilder[Pending, Pending] = api
 
 }
 

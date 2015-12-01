@@ -62,7 +62,7 @@ object Projection {
     * }}}
     *
     */
-  private[funcqrs] class AndThenProjection(firstProj: Projection, secondProj: Projection)  extends ComposedProjection(firstProj, secondProj) with Projection {
+  private[funcqrs] class AndThenProjection(firstProj: Projection, secondProj: Projection) extends ComposedProjection(firstProj, secondProj) with Projection {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 

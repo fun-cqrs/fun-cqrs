@@ -92,7 +92,7 @@ object Product {
 
     val productBehaviorDsl = new BehaviorDsl[Product]
 
-    import productBehaviorDsl.behaviorBuilder._
+    import productBehaviorDsl.api._
 
     whenConstructing { it =>
       it.processesCommands {
