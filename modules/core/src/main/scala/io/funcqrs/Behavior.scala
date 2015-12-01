@@ -55,13 +55,13 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
 
   protected def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events]
 
-  protected def applyAsyncCommand(cmd: Command)(implicit ec: ExecutionContext): Future[(Event, Aggregate)] = {
+  private def applyAsyncCommand(cmd: Command)(implicit ec: ExecutionContext): Future[(Event, Aggregate)] = {
     validateAsync(cmd).map { event =>
       (event, applyEvent(event))
     }
   }
 
-  protected def applyAsyncCommand(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[(Events, Aggregate)] = {
+  private def applyAsyncCommand(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[(Events, Aggregate)] = {
     validateAsync(cmd, aggregate).map { events =>
       (events, applyEvents(events, aggregate))
     }

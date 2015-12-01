@@ -7,9 +7,7 @@ import scala.collection.immutable
 trait AggregateLike extends ProtocolAliases {
 
   type Id <: AggregateID
-
-  type Protocol <: ProtocolLike
-
+  
   def id: Id
 
 }

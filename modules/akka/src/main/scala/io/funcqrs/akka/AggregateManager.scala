@@ -32,6 +32,8 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 
   type Aggregate <: AggregateLike
 
+  val idStrategy: AggregateIdStrategy[Aggregate]
+
   case class PendingCommand(sender: ActorRef, targetProcessorId: Id, command: Command)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
@@ -52,10 +54,19 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
       defaultProcessCommand
   }
 
-  def processCreation: Receive
+  def processCreation: Receive = {
+    // can `any` be convert to the seed tuple (Id, Command)?
+    case creationCommand if idStrategy.beforeReceiveCreateCommand.isDefinedAt(creationCommand) =>
+      val (id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
+      processAggregateCommand((id, cmd))
+  }
+
+  // def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (id: Id @unchecked, cmd: Command) => processAggregateCommand(id, cmd)
+    case updateCommand =>
+      val (id: Id @unchecked, cmd: Command) = updateCommand
+      processAggregateCommand((id, cmd))
   }
 
   private def defaultProcessCommand: Receive = {
@@ -115,10 +126,9 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
   /** Processes aggregate command.
     * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
     *
-    * @param aggregateId Aggregate id
-    * @param command DomainCommand that should be passed to aggregate
     */
-  def processAggregateCommand(aggregateId: Id, command: Command): Unit = {
+  def processAggregateCommand: PartialFunction[(Id, Command), Unit] = {
+    case (aggregateId, command) =>
 
     val maybeChild = context child aggregateId.value
 
@@ -175,7 +185,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases {
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
-    extends AggregateManager with AggregateIdGenerator {
+    extends AggregateManager {
 
   type Aggregate = A
 

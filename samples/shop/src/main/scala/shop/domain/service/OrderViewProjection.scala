@@ -14,7 +14,7 @@ class OrderViewProjection(orderRepo: OrderViewRepo,
                           productRepo: ProductViewRepo @@ OrderView.type,
                           customerRepo: CustomerViewRepo @@ OrderView.type) extends Projection with LazyLogging {
 
-  def receiveEvent: HandleEvent = {
+  def handleEvent: HandleEvent = {
 
     case e: OrderProtocol.OrderCreated   => create(e)
     case e: OrderProtocol.ProductAdded   => addProduct(e)
