@@ -41,7 +41,7 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
 
   case class AggregateUpdateInvokerReadModel(projectionName: String, id: Id, cmd: Command) {
 
-    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionResult[ProjectionMonitor[A]#Event]] = {
+    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionUpdateResult[ProjectionMonitor[A]#Event]] = {
       projectionMonitor(projectionName).watchEvents(cmd) { _ =>
         (aggregateManager ? (id, cmd)).mapTo[Events]
       }
@@ -70,17 +70,17 @@ trait AggregateServiceWithAssignedId[A <: AggregateLike] extends AggregateServic
 
   case class AggregateConsInvokerWriteModel(id: Id, cmd: Command) {
 
-    def watch(projectionName: String): AggregateUpdateConsReadModel =
-      AggregateUpdateConsReadModel(projectionName, id, cmd)
+    def watch(projectionName: String): AggregateConsInvokerReadModel =
+      AggregateConsInvokerReadModel(projectionName, id, cmd)
 
     def result()(implicit timeout: Timeout): Future[Event] = {
       (aggregateManager ? (id, cmd)).mapTo[Event]
     }
   }
 
-  case class AggregateUpdateConsReadModel(projectionName: String, id: Id, cmd: Command) {
+  case class AggregateConsInvokerReadModel(projectionName: String, id: Id, cmd: Command) {
 
-    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionResult[ProjectionMonitor[A]#Event]] = {
+    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionCreateResult[ProjectionMonitor[A]#Event]] = {
       projectionMonitor(projectionName).watchEvent(cmd) { _ =>
         (aggregateManager ? (id, cmd)).mapTo[Event]
       }
@@ -97,17 +97,17 @@ trait AggregateServiceWithManagedId[A <: AggregateLike] extends AggregateService
 
   case class AggregateConsInvokerWriteModel(cmd: Command) {
 
-    def watch(projectionName: String): AggregateUpdateConsReadModel =
-      AggregateUpdateConsReadModel(projectionName, cmd)
+    def watch(projectionName: String): AggregateConsInvokerReadModel =
+      AggregateConsInvokerReadModel(projectionName, cmd)
 
     def result()(implicit timeout: Timeout): Future[Event] = {
       (aggregateManager ? cmd).mapTo[Event]
     }
   }
 
-  case class AggregateUpdateConsReadModel(projectionName: String, cmd: Command) {
+  case class AggregateConsInvokerReadModel(projectionName: String, cmd: Command) {
 
-    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionResult[ProjectionMonitor[A]#Event]] = {
+    def result()(implicit timeout: Timeout): Future[ProjectionMonitor[A]#ProjectionCreateResult[ProjectionMonitor[A]#Event]] = {
       projectionMonitor(projectionName).watchEvent(cmd) { _ =>
         (aggregateManager ? cmd).mapTo[Event]
       }
