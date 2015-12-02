@@ -134,8 +134,11 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
   }
 
   trait BuildState
+
   trait Pending extends BuildState
+
   trait CreationDefined extends BuildState
+
   trait UpdatesDefined extends BuildState
 
   object BehaviorBuilder {
@@ -144,13 +147,13 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
 
       new Behavior[Aggregate] {
 
-        private val processCreationalCommands = creation.processCommandFunction
-        private val fallbackOnCreation = creation.fallbackFunction
-        private val handleCreationalEvents = creation.handleEventFunction
+        private val processCreationalCommands = creationBuilder.processCommandFunction
+        private val fallbackOnCreation = creationBuilder.fallbackFunction
+        private val handleCreationalEvents = creationBuilder.handleEventFunction
 
-        private val processUpdateCommands = updates.processCommandFunction
-        private val fallbackOnUpdate = updates.fallbackFunction
-        private val handleEvents = updates.handleEventFunction
+        private val processUpdateCommands = updatesBuilder.processCommandFunction
+        private val fallbackOnUpdate = updatesBuilder.fallbackFunction
+        private val handleEvents = updatesBuilder.handleEventFunction
 
         def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
           (processCreationalCommands orElse fallbackOnCreation)
@@ -169,7 +172,10 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
         }
 
         def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
-          handleEvents.lift(aggregate, evt).getOrElse(aggregate)
+          val handleNoEvents: UpdatesEventToAggregate = {
+            case (aggregate, _) => aggregate
+          }
+          (handleEvents orElse handleNoEvents)(aggregate, evt)
         }
 
         def isEventDefined(event: Event): Boolean =
@@ -181,16 +187,19 @@ class BehaviorDsl[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  case class BehaviorBuilder[C <: BuildState, U <: BuildState](creation: CreationBuilder, updates: UpdatesBuilder) {
-    def whenConstructing(creationBlock: CreationBuilder => CreationBuilder): BehaviorBuilder[CreationDefined, U] =
-      BehaviorBuilder[CreationDefined, U](creation = creationBlock(creation), updates)
+  case class BehaviorBuilder[C <: BuildState, U <: BuildState](creationBuilder: CreationBuilder, updatesBuilder: UpdatesBuilder) {
+    def whenConstructing(transformer: CreationBuilder => CreationBuilder): BehaviorBuilder[CreationDefined, U] =
+      copy(creationBuilder = transformer.apply(creationBuilder))
 
-    def whenUpdating(updateBlock: UpdatesBuilder => UpdatesBuilder): BehaviorBuilder[C, UpdatesDefined] =
-      BehaviorBuilder[C, UpdatesDefined](creation, updates = updateBlock(updates))
+    def whenUpdating(transformer: UpdatesBuilder => UpdatesBuilder): BehaviorBuilder[C, UpdatesDefined] =
+      copy(updatesBuilder = transformer.apply(updatesBuilder))
   }
 
-  val behaviorBuilder: BehaviorBuilder[Pending, Pending] =
+  val api: BehaviorBuilder[Pending, Pending] =
     new BehaviorBuilder[Pending, Pending](new CreationBuilder, new UpdatesBuilder)
+
+  @deprecated(message = "User api instead", since = "0.0.7")
+  val behaviorBuilder: BehaviorBuilder[Pending, Pending] = api
 
 }
 

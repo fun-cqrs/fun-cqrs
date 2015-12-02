@@ -81,7 +81,7 @@ object Order {
 
     val orderBehaviorDsl = new BehaviorDsl[Order]
 
-    import orderBehaviorDsl.behaviorBuilder._
+    import orderBehaviorDsl.api._
 
     whenConstructing { it =>
       it.processesCommands {

@@ -155,7 +155,7 @@ object Customer {
 
     val customerBehaviorDsl = new BehaviorDsl[Customer]
 
-    import customerBehaviorDsl.behaviorBuilder._
+    import customerBehaviorDsl.api._
 
     whenConstructing { it =>
       it.processesCommands {

@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyLogging {
 
-  def receiveEvent: HandleEvent = {
+  def handleEvent: HandleEvent = {
     case e: LotteryCreated     => create(e)
     case e: LotteryUpdateEvent => update(e)
 

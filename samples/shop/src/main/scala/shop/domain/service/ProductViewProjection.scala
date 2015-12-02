@@ -11,7 +11,7 @@ import scala.concurrent.Future
 
 class ProductViewProjection(repo: ProductViewRepo) extends Projection with LazyLogging {
 
-  def receiveEvent: HandleEvent = {
+  def handleEvent: HandleEvent = {
     case e: ProductCreated     => create(e)
     case e: ProductUpdateEvent => update(e)
   }

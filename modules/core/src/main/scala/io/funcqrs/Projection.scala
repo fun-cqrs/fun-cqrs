@@ -4,11 +4,11 @@ import scala.concurrent.Future
 import io.funcqrs.Projection._
 trait Projection {
 
-  def receiveEvent: HandleEvent
+  def handleEvent: HandleEvent
 
   final def onEvent(evt: DomainEvent): Future[Unit] = {
-    if (receiveEvent.isDefinedAt(evt)) {
-      receiveEvent(evt)
+    if (handleEvent.isDefinedAt(evt)) {
+      handleEvent(evt)
     } else {
       Future.successful(())
     }
@@ -35,7 +35,7 @@ object Projection {
 
   /** Projection with empty domain */
   def empty = new Projection {
-    def receiveEvent: HandleEvent = PartialFunction.empty
+    def handleEvent: HandleEvent = PartialFunction.empty
   }
 
   /** A [[Projection]] composed of two other Projections to each [[DomainEvent]] will be sent.
@@ -62,24 +62,20 @@ object Projection {
     * }}}
     *
     */
-  private[funcqrs] class AndThenProjection(firstProj: Projection, secondProj: Projection) extends Projection {
+  private[funcqrs] class AndThenProjection(firstProj: Projection, secondProj: Projection) extends ComposedProjection(firstProj, secondProj) with Projection {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
     val projections = Seq(firstProj, secondProj)
 
-    // compose underlying receiveEvents PartialFunction in order
-    // to decide if this Projection is defined for given incoming DomainEvent
-    private val composedReceive = firstProj.receiveEvent orElse secondProj.receiveEvent
-
-    def receiveEvent: HandleEvent = {
+    def handleEvent: HandleEvent = {
       // note that we only broadcast if at least one of the underlying
       // projections is defined for the incoming event
       // as such we make it possible to compose using orElse
-      case anyEvent if composedReceive.isDefinedAt(anyEvent) =>
+      case domainEvent if composedHandleEvent.isDefinedAt(domainEvent) =>
         // send event to all projections
-        firstProj.onEvent(anyEvent).flatMap { _ =>
-          secondProj.onEvent(anyEvent)
+        firstProj.onEvent(domainEvent).flatMap { _ =>
+          secondProj.onEvent(domainEvent)
         }
     }
   }
@@ -93,8 +89,14 @@ object Projection {
     * for the given incoming [[DomainEvent]]
     *
     */
-  private[funcqrs] class OrElseProjection(firstProj: Projection, secondProj: Projection) extends Projection {
-    def receiveEvent = firstProj.receiveEvent orElse secondProj.receiveEvent
+  private[funcqrs] class OrElseProjection(firstProj: Projection, secondProj: Projection) extends ComposedProjection(firstProj, secondProj) with Projection {
+    def handleEvent = composedHandleEvent
+  }
+
+  private[funcqrs] class ComposedProjection(firstProj: Projection, secondProj: Projection) {
+    // compose underlying receiveEvents PartialFunction in order
+    // to decide if this Projection is defined for given incoming DomainEvent
+    private[funcqrs] def composedHandleEvent = firstProj.handleEvent orElse secondProj.handleEvent
   }
 
 }

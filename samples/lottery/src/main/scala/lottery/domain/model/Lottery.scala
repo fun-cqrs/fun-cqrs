@@ -113,7 +113,7 @@ object Lottery {
 
     val lotteryBehaviorDsl = new BehaviorDsl[Lottery]
 
-    import lotteryBehaviorDsl.behaviorBuilder._
+    import lotteryBehaviorDsl.api._
 
     whenConstructing { it =>
       it processesCommands {
