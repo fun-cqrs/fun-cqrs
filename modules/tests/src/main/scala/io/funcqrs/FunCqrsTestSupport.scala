@@ -10,25 +10,31 @@ trait FunCqrsTestSupport {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
 
-      def sendCreateCommand(cmd: behavior.Command)(implicit ec: ExecutionContext): Future[(behavior.Event, behavior.Aggregate)] = {
+      def newInstance(cmd: behavior.Command)(implicit ec: ExecutionContext): Future[RichTestAggregate[behavior.Aggregate]] = {
         for {
           (evt, aggregate) <- sendCreateCommandInternal(behavior)(cmd)
           _ <- sendToProjectionInternal(projection, evt)
-        } yield (evt, aggregate)
+        } yield RichTestAggregate(aggregate, behavior)
       }
+    }
 
-      def sendCommands(cmd: behavior.Command, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
-        for {
-          (evts, aggregate) <- sendCommandsInternal(behavior)(cmd, cmds: _*)
-          _ <- sendToProjectionInternal(projection, evts)
-        } yield (evts, aggregate)
+    implicit class FutureRichAggregateOps[A <: AggregateLike](val fut: Future[RichTestAggregate[A]]) {
+      def update(cmds: A#Command*)(implicit ec: ExecutionContext): Future[RichTestAggregate[A]] = {
+        fut.flatMap { richtAggregate =>
+          richtAggregate.update(cmds:_*)
+        }
       }
+    }
 
-      def sendUpdateCommands(aggregate: behavior.Aggregate, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
+    case class RichTestAggregate[A <: AggregateLike](aggregate:A, behavior:Behavior[A]) extends WriteModelOps with ReadModelOps {
+
+      def id: A#Id = aggregate.id
+
+      def update(cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[RichTestAggregate[A]] = {
         for {
           (evts, aggregate) <- sendUpdateCommandsInternal(behavior)(immutable.Seq(), aggregate, cmds: _*)
           _ <- sendToProjectionInternal(projection, evts)
-        } yield (evts, aggregate)
+        } yield RichTestAggregate(aggregate, behavior)
       }
     }
 
