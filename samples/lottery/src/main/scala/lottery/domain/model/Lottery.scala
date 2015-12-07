@@ -127,7 +127,7 @@ object Lottery {
     } whenUpdating { it =>
       it processesCommands {
         case (lottery, cmd) if lottery.hasWinner =>
-          new CommandException("Lottery has already a winner")
+          new CommandException("Lottery has already a winner!")
 
         case (lottery, cmd: Run.type) if lottery.hasNoParticipants =>
           new CommandException("Lottery has no participants")

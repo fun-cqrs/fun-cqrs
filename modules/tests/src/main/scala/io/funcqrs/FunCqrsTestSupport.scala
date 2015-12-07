@@ -58,7 +58,7 @@ trait FunCqrsTestSupport {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
 
-      def sendCreateCommand(cmd: behavior.Command)(implicit ec: ExecutionContext): Future[(behavior.Event, behavior.Aggregate)] = {
+      def newInstance(cmd: behavior.Command)(implicit ec: ExecutionContext): Future[(behavior.Event, behavior.Aggregate)] = {
         sendCreateCommandInternal(behavior)(cmd)
       }
 

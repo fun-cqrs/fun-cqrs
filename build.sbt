@@ -77,8 +77,8 @@ lazy val shopApp = Project(
   ) ++ mainDeps ++ playSampleDeps ++ commonSettings
 ).enablePlugins(PlayScala)
   .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(funCqrs % "compile->compile;test->test")
-  .dependsOn(funCqrsAkka % "compile->compile;test->test")
+  .dependsOn(funCqrs)
+  .dependsOn(funCqrsAkka)
 //================================================
 
 lazy val lotteryApp = Project(
@@ -90,8 +90,9 @@ lazy val lotteryApp = Project(
   ) ++ mainDeps ++ playSampleDeps ++ commonSettings
 ).enablePlugins(PlayScala)
   .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(funCqrs % "compile->compile;test->test")
-  .dependsOn(funCqrsAkka % "compile->compile;test->test")
+  .dependsOn(funCqrs)
+  .dependsOn(funCqrsTestKit)
+  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runShopSample", "sample-shop/run")
 addCommandAlias("runLotterySample", "sample-lottery/run")
