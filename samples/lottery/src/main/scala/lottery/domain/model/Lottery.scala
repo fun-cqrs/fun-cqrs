@@ -76,6 +76,8 @@ object LotteryProtocol extends ProtocolLike {
 
   case class RemoveParticipant(name: String) extends LotteryCommand
 
+  case object Reset extends LotteryCommand
+
   case object Run extends LotteryCommand
 
   sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata]
@@ -123,35 +125,43 @@ object Lottery {
 
     import io.funcqrs.dsl.BindingDsl.api._
 
-
-    bind {
+    whenCreating {
       // creational command and event
-      createCommand { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
+      command { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
         .action { evt => Lottery(name = evt.name, id = id) }
 
       // updates
-    } bind { lottery =>
+    } whenUpdating { lottery =>
 
       // Select a winner when run!
-      updateCommand { cmd: Run.type =>
+      command { cmd: Run.type =>
         lottery.selectParticipant().map { winner => WinnerSelected(winner, metadata(id, cmd)) }
       } action { evt =>
         lottery.copy(winner = Option(evt.winner))
       }
 
-    } bind { lottery =>
+    } whenUpdating { lottery =>
       // add participant
-      updateCommand { cmd: AddParticipant =>
+      command { cmd: AddParticipant =>
         if (lottery.hasParticipant(cmd.name))
           Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
         else
           Success(ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)))
+      } action { evt =>
+        lottery.addParticipant(evt.name)
+      }
 
-      } action { evt => lottery.addParticipant(evt.name) }
-
-    } bind { lottery =>
-      updateCommand { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
+    } whenUpdating { lottery =>
+      command { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
         .action { evt => lottery.removeParticipant(evt.name) }
+
+    } whenUpdating { lottery =>
+
+      command.multipleEvents { cmd: Reset.type =>
+        lottery.participants.map { name => ParticipantRemoved(name, metadata(id, cmd)) }
+      } action { evt =>
+        lottery.removeParticipant(evt.name)
+      }
     }
 
   }

@@ -1,6 +1,6 @@
 package io.funcqrs.dsl
 
-import io.funcqrs.dsl.BindingDsl.Api.{UpdateBinding, CreateEventCons, CreateBinding}
+import io.funcqrs.dsl.BindingDsl.Api.{ ManyEventsBinding, SingleEventCons, SingleEventBinding }
 import io.funcqrs._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.language.implicitConversions
@@ -83,22 +83,21 @@ class BindingDsl[A <: AggregateLike] extends AggregateAliases {
         def isEventDefined(event: Event): Boolean =
           handleCreationalEvents.isDefinedAt(event)
 
-        def isEventDefined(event: Event, aggregate: Aggregate): Boolean = false
-
-        //        handleEvents.isDefinedAt(aggregate, event)
+        def isEventDefined(event: Event, aggregate: Aggregate): Boolean =
+          handleEvents.isDefinedAt(aggregate, event)
       }
     }
   }
 
   case class BehaviorBuilder(creationBuilder: CreationBuilder, updatesBuilder: UpdatesBuilder) {
 
-    def bind[CC <: Command: ClassTag, EE <: Event: ClassTag](binding: CreateBinding[CC, EE, Aggregate]): BehaviorBuilder = {
+    def whenCreating[CC <: Command: ClassTag, EE <: Event: ClassTag](binding: SingleEventBinding[CC, EE, Aggregate]): BehaviorBuilder = {
 
       object CmdExtractor extends Extractor[CC]
       object EvtExtractor extends Extractor[EE]
 
       val commandValidationPF: CommandToEvent = {
-        case CmdExtractor(cmd) => binding.cons(cmd)
+        case CmdExtractor(cmd) => binding.eventCons(cmd)
       }
 
       val eventApplyPF: EventToAggregate = {
@@ -114,13 +113,13 @@ class BindingDsl[A <: AggregateLike] extends AggregateAliases {
       BehaviorBuilder(creationBuilderUpdated, updatesBuilder)
     }
 
-    def bind[CC <: Command: ClassTag, EE <: Event: ClassTag](aggFun: Aggregate => UpdateBinding[CC, EE, Aggregate]): BehaviorBuilder = {
+    def whenUpdating[CC <: Command: ClassTag, EE <: Event: ClassTag](aggFun: Aggregate => ManyEventsBinding[CC, EE, Aggregate]): BehaviorBuilder = {
 
       object CmdExtractor extends Extractor[CC]
       object EvtExtractor extends Extractor[EE]
 
       val commandValidationPF: UpdatesCommandToEvents = {
-        case (agg, CmdExtractor(cmd)) => aggFun(agg).cons(cmd)
+        case (agg, CmdExtractor(cmd)) => aggFun(agg).eventsCons(cmd)
       }
 
       val eventApplyPF: UpdatesEventToAggregate = {
@@ -151,37 +150,45 @@ object BindingDsl {
       * It holds two functions:
       * Command => Event and Event => Aggregate
       */
-    case class CreateBinding[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag, A <: AggregateLike](cons: CC => Future[EE], action: EE => A)
+    case class SingleEventBinding[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, A <: AggregateLike](eventCons: C => Future[E], action: E => A)
 
-    case class UpdateBinding[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag, A <: AggregateLike](cons: CC => Future[immutable.Seq[EE]], action: EE => A)
+    case class ManyEventsBinding[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, A <: AggregateLike](eventsCons: C => Future[immutable.Seq[E]], action: E => A)
 
-    case class CreateEventCons[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[EE]) {
-
-      def action[A <: AggregateLike](action: EE => A)(implicit ev: EE <:< A#Event, ev2: CC <:< A#Command) = {
-        CreateBinding(cons, action)
+    object ManyEventsBinding {
+      implicit def singleToManyBindingSingleEventBinding[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, A <: AggregateLike](binding: SingleEventBinding[C, E, A]): ManyEventsBinding[C, E, A] = {
+        import scala.concurrent.ExecutionContext.Implicits.global
+        // wrap in Seq
+        val consWithSeq = (cmd: C) => binding.eventCons(cmd).map(evt => immutable.Seq(evt))
+        ManyEventsBinding(consWithSeq, binding.action)
       }
     }
 
-    case class UpdateEventsCons[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[immutable.Seq[EE]]) {
-
-      def action[A <: AggregateLike](action: EE => A)(implicit ev: EE <:< A#Event) = {
-        UpdateBinding(cons, action)
+    case class SingleEventCons[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cons: C => Future[E]) {
+      def action[A <: AggregateLike](action: E => A)(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event) = {
+        SingleEventBinding(cons, action)
       }
     }
 
-    def createCommand[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[EE]): CreateEventCons[CC, EE] = {
-      CreateEventCons(cons)
+    case class ManyEventsCons[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cons: C => Future[immutable.Seq[E]]) {
+
+      def action[A <: AggregateLike](action: E => A)(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event) = {
+        ManyEventsBinding(cons, action)
+      }
     }
 
-    def updateCommand[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[EE]): UpdateEventsCons[CC, EE] = {
-      import scala.concurrent.ExecutionContext.Implicits.global
-      // wrap in Seq
-      val consWithSeq = (cmd:CC) => cons(cmd).map(evt => immutable.Seq(evt))
-      UpdateEventsCons(consWithSeq)
+    def command[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cons: C => Future[E]): SingleEventCons[C, E] = {
+      SingleEventCons(cons)
     }
 
-    implicit def eventToFutureEvent[EE <: DomainEvent](event: EE): Future[EE] = Future.successful(event)
-    implicit def tryEventToFutureEvent[EE <: DomainEvent](triedEvent: Try[EE]): Future[EE] = Future.fromTry(triedEvent)
+    def command = new {
+      def multipleEvents[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[immutable.Seq[EE]]): ManyEventsCons[CC, EE] = {
+        ManyEventsCons(cons)
+      }
+    }
+
+    implicit def eventToFutureEvent[E <: DomainEvent](event: E): Future[E] = Future.successful(event)
+    implicit def eventToFutureEvents[E <: DomainEvent](event: immutable.Seq[E]): Future[immutable.Seq[E]] = Future.successful(event)
+    implicit def tryEventToFutureEvent[E <: DomainEvent](triedEvent: Try[E]): Future[E] = Future.fromTry(triedEvent)
 
   }
 
