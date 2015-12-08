@@ -1,10 +1,10 @@
 package lottery.domain.model
 
-import org.scalatest.concurrent.{Futures, ScalaFutures}
+import org.scalatest.concurrent.{ Futures, ScalaFutures }
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
-trait FailedFutures extends Futures with ScalaFutures{
+trait FailedFutures extends Futures with ScalaFutures {
 
   final def whenFailed[T](future: FutureConcept[T])(fun: Throwable => Unit): Unit = {
 

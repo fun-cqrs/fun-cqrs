@@ -1,11 +1,11 @@
 package lottery.domain.model
 
 import io.funcqrs._
-import lottery.domain.model.LotteryProtocol.{AddParticipant, CreateLottery, Run}
-import lottery.domain.service.{LotteryViewProjection, LotteryViewRepo}
-import org.scalatest.concurrent.{Futures, ScalaFutures}
-import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{FunSuite, Matchers, OptionValues}
+import lottery.domain.model.LotteryProtocol.{ Reset, AddParticipant, CreateLottery, Run }
+import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
+import org.scalatest.concurrent.{ Futures, ScalaFutures }
+import org.scalatest.time.{ Seconds, Span }
+import org.scalatest.{ FunSuite, Matchers, OptionValues }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -53,7 +53,6 @@ class LotteryTest extends FunSuite with Matchers with Futures
           .update(Run)
           .update(Run)
 
-
       whenFailed(lotteryFut) {
         case e => e.getMessage shouldBe "Lottery has already a winner!"
       }
@@ -94,4 +93,29 @@ class LotteryTest extends FunSuite with Matchers with Futures
     }
   }
 
+  test("Reset lottery") {
+
+    new End2EndTestSupport(projection) {
+
+      val lotteryFut =
+        lotteryBehavior
+          .newInstance(CreateLottery("TestLottery"))
+          .update(AddParticipant("John"))
+          .update(AddParticipant("Paul"))
+
+      lotteryFut.map { lottery =>
+
+        val view = repo.find(lottery.aggregate.id).futureValue
+        view.participants should have size 2
+
+      }.futureValue
+
+      lotteryFut.update(Reset).map { lottery =>
+
+        val updateView = repo.find(lottery.aggregate.id).futureValue
+        updateView.participants should have size 0
+
+      }.futureValue
+    }
+  }
 }
