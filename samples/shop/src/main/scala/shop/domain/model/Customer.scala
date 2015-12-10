@@ -5,6 +5,7 @@ import java.time.OffsetDateTime
 import funcqrs.json.TypedJson
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.funcqrs._
+import io.funcqrs.akka.DomainException
 import io.funcqrs.dsl.BehaviorDsl
 import io.funcqrs._
 import play.api.libs.json.Json
@@ -167,6 +168,7 @@ object Customer {
       }
     } whenUpdating { it =>
       it.processesCommands {
+        case (agg, cmd: ChangeName) if agg.name == cmd.name => CustomerException("Name is the same as existing")
         case (_, cmd: ChangeName) =>
           NameChanged(cmd.name, metadata(id, cmd))
         case (_, cmd: ChangeAddressStreet) =>
@@ -206,4 +208,6 @@ object Customer {
     }
   }
 }
+
+case class CustomerException(message: String) extends DomainException
 
