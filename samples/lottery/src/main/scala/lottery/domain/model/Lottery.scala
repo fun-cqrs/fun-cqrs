@@ -120,18 +120,16 @@ object Lottery {
 
   private def behaviorImpl(id: LotteryId): Behavior[Lottery] = {
 
-    val dsl = new BindingDsl[Lottery]
-    import dsl.api._
-
     import io.funcqrs.dsl.BindingDsl.api._
 
-    whenCreating {
-      // creational command and event
-      command { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
-        .action { evt => Lottery(name = evt.name, id = id) }
+    behaviorFor[Lottery]
+      .whenCreating {
+        // creational command and event
+        command { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
+          .action { evt => Lottery(name = evt.name, id = id) }
 
-      // updates
-    } whenUpdating { lottery =>
+        // updates
+      } whenUpdating { lottery =>
 
       // Select a winner when run!
       command { cmd: Run.type =>
