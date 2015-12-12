@@ -51,6 +51,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       eventualEvent map {
         event => CompletedCreationCmd(event, origSender)
       } recover {
+        case NonFatal(cause: DomainException) =>
+          FailedCommand(cause, origSender, Uninitialized)
         case NonFatal(cause) =>
           log.error(cause, s"Error while processing creational command: $cmd")
           FailedCommand(cause, origSender, Uninitialized)
@@ -77,6 +79,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       eventualEvents.map {
         events => CompletedUpdateCmd(events, origSender)
       } recover {
+        case NonFatal(cause: DomainException) =>
+          FailedCommand(cause, origSender, Available)
         case NonFatal(cause) =>
           log.error(cause, s"Error while processing update command: $cmd")
           FailedCommand(cause, origSender, Available)
@@ -334,3 +338,5 @@ object AggregateActor {
   val eventsPerSnapshot = 10
 
 }
+
+class DomainException extends RuntimeException
