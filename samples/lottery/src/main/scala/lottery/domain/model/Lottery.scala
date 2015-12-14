@@ -131,36 +131,36 @@ object Lottery {
         // updates
       } whenUpdating { lottery =>
 
-      // Select a winner when run!
-      command { cmd: Run.type =>
-        lottery.selectParticipant().map { winner => WinnerSelected(winner, metadata(id, cmd)) }
-      } action { evt =>
-        lottery.copy(winner = Option(evt.winner))
+        // Select a winner when run!
+        command { cmd: Run.type =>
+          lottery.selectParticipant().map { winner => WinnerSelected(winner, metadata(id, cmd)) }
+        } action { evt =>
+          lottery.copy(winner = Option(evt.winner))
+        }
+
+      } whenUpdating { lottery =>
+        // add participant
+        command { cmd: AddParticipant =>
+          if (lottery.hasParticipant(cmd.name))
+            Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
+          else
+            Success(ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)))
+        } action { evt =>
+          lottery.addParticipant(evt.name)
+        }
+
+      } whenUpdating { lottery =>
+        command { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
+          .action { evt => lottery.removeParticipant(evt.name) }
+
+      } whenUpdating { lottery =>
+
+        command.multipleEvents { cmd: Reset.type =>
+          lottery.participants.map { name => ParticipantRemoved(name, metadata(id, cmd)) }
+        } action { evt =>
+          lottery.removeParticipant(evt.name)
+        }
       }
-
-    } whenUpdating { lottery =>
-      // add participant
-      command { cmd: AddParticipant =>
-        if (lottery.hasParticipant(cmd.name))
-          Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
-        else
-          Success(ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)))
-      } action { evt =>
-        lottery.addParticipant(evt.name)
-      }
-
-    } whenUpdating { lottery =>
-      command { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
-        .action { evt => lottery.removeParticipant(evt.name) }
-
-    } whenUpdating { lottery =>
-
-      command.multipleEvents { cmd: Reset.type =>
-        lottery.participants.map { name => ParticipantRemoved(name, metadata(id, cmd)) }
-      } action { evt =>
-        lottery.removeParticipant(evt.name)
-      }
-    }
 
   }
 }
