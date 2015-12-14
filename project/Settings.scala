@@ -12,7 +12,7 @@ object Settings {
 
   import ScalariformKeys._
 
-  val commonSettings = SbtScalariform.defaultScalariformSettings ++ Seq(
+  val commonSettings = SbtScalariform.scalariformSettings ++ Seq(
     ScalariformKeys.preferences in Compile := formattingPreferences,
     ScalariformKeys.preferences in Test    := formattingPreferences
   )

@@ -5,9 +5,9 @@ import java.util.UUID
 
 import funcqrs.json.TypedJson.{ TypeHintFormat, _ }
 import io.funcqrs._
-import io.funcqrs.dsl.BindingDsl
 import play.api.libs.json.Json
-
+import io.funcqrs.dsl.BindingDsl.api._
+import scala.concurrent.Future
 import scala.util.{ Failure, Random, Success, Try }
 
 case class Lottery(name: String, participants: List[String] = List(),
@@ -41,6 +41,7 @@ case class Lottery(name: String, participants: List[String] = List(),
   def hasNoParticipants = participants.isEmpty
 
   def hasParticipant(name: String) = participants.contains(name)
+  def isNewParticipant(name: String) = !hasParticipant(name)
 }
 
 case class LotteryId(value: String) extends AggregateID
@@ -120,47 +121,54 @@ object Lottery {
 
   private def behaviorImpl(id: LotteryId): Behavior[Lottery] = {
 
-    import io.funcqrs.dsl.BindingDsl.api._
-
     behaviorFor[Lottery]
       .whenCreating {
         // creational command and event
-        command { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
+        command[CreateLottery]
+          .produceEvent { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(id, cmd)) }
           .action { evt => Lottery(name = evt.name, id = id) }
 
         // updates
       } whenUpdating { lottery =>
 
         // Select a winner when run!
-        command { cmd: Run.type =>
+        command[Run.type].produceEvent { cmd =>
           lottery.selectParticipant().map { winner => WinnerSelected(winner, metadata(id, cmd)) }
         } action { evt =>
           lottery.copy(winner = Option(evt.winner))
         }
 
       } whenUpdating { lottery =>
+
+        command[AddParticipant]
+          .when { cmd => !lottery.hasParticipant(cmd.name) }
+          .produceEvent { cmd => ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)) }
+          .action { evt => lottery.addParticipant(evt.name) }
+
         // add participant
-        command { cmd: AddParticipant =>
-          if (lottery.hasParticipant(cmd.name))
-            Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
-          else
-            Success(ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)))
-        } action { evt =>
-          lottery.addParticipant(evt.name)
-        }
+        //      command { cmd: AddParticipant =>
+        //        if (lottery.hasParticipant(cmd.name))
+        //          Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
+        //        else
+        //          Success(ParticipantAdded(cmd.name, Lottery.metadata(id, cmd)))
+        //      } action { evt =>
+        //        lottery.addParticipant(evt.name)
+        //      }
 
       } whenUpdating { lottery =>
-        command { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
+        command[RemoveParticipant]
+          .produceEvent { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(id, cmd)) }
           .action { evt => lottery.removeParticipant(evt.name) }
 
-      } whenUpdating { lottery =>
-
-        command.multipleEvents { cmd: Reset.type =>
-          lottery.participants.map { name => ParticipantRemoved(name, metadata(id, cmd)) }
-        } action { evt =>
-          lottery.removeParticipant(evt.name)
-        }
       }
+    //    whenUpdating { lottery =>
+    //
+    //      command.multipleEvents { cmd: Reset.type =>
+    //        lottery.participants.map { name => ParticipantRemoved(name, metadata(id, cmd)) }
+    //      } action { evt =>
+    //        lottery.removeParticipant(evt.name)
+    //      }
+    //    }
 
   }
 }

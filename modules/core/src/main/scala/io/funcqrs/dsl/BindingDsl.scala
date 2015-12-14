@@ -1,190 +1,221 @@
 package io.funcqrs.dsl
 
 import io.funcqrs._
-import io.funcqrs.dsl.BindingDsl.Api.Binding
+import io.funcqrs.dsl.BindingDsl.Api.{ Binding, CommandHandlerInvoker }
+import io.funcqrs.interpreters.Identity
+
 import scala.collection.immutable
-import scala.concurrent.{ ExecutionContext, Future }
-import scala.language.implicitConversions
+import scala.concurrent.Future
+import scala.language.higherKinds
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{ Failure, Try }
 
 object BindingDsl {
 
   val api = Api
 
+  type CommandHandler[C <: DomainCommand, E <: DomainEvent, F[_]] = PartialFunction[C, F[immutable.Seq[E]]]
+  type EventListener[E <: DomainEvent, A <: AggregateLike] = PartialFunction[E, A]
+
   object Api {
 
-    /** A binding express the links between a command, an event and it's impact on the system
-      * It holds two functions:
-      * Command => Events and Event => Aggregate
-      */
-    case class Binding[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, A <: AggregateLike](eventsCons: C => Future[immutable.Seq[E]], action: E => A)
+    val handler = IdBinderFactory
 
-    def behaviorFor[A <: AggregateLike]: BehaviorBuilder[A] = {
-      BehaviorBuilder[A](CreationBuilder(), UpdatesBuilder())
+    object IdBinderFactory {
+
+      def apply[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Identity[E]) = {
+        // wrap single event in immutable.Seq
+        val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
+        new SingleEventBinder(handlerWithSeq)(IdCommandHandlerInvoker(_))
+      }
+
+      def manyEvents[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Identity[immutable.Seq[E]]) = {
+        new ManyEventsBinder(cmdHandler)(IdCommandHandlerInvoker(_))
+      }
+
     }
 
-    case class BindingStep[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cons: C => Future[immutable.Seq[E]]) {
-      def action[A <: AggregateLike](action: E => A)(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event) = {
-        Binding(cons, action)
+    val tryHandler = TryBinderFactory
+
+    object TryBinderFactory {
+
+      def apply[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Try[E]) = {
+        // wrap single event in immutable.Seq
+        val handlerWithSeq: (C) => Try[immutable.Seq[E]] = (cmd: C) => cmdHandler(cmd).map(immutable.Seq(_))
+        new SingleEventBinder(handlerWithSeq)(TryCommandHandlerInvoker(_))
+      }
+
+      def manyEvents[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Try[immutable.Seq[E]]) = {
+        new ManyEventsBinder(cmdHandler)(TryCommandHandlerInvoker(_))
       }
     }
 
-    def command[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cons: C => Future[E]): BindingStep[C, E] = {
-      import scala.concurrent.ExecutionContext.Implicits.global
-      // wrap in Seq
-      val consWithSeq = (cmd: C) => cons(cmd).map(evt => immutable.Seq(evt))
-      BindingStep(consWithSeq)
-    }
+    val asyncHandler = AsyncBinderFactory
 
-    def command = new {
-      def multipleEvents[CC <: DomainCommand: ClassTag, EE <: DomainEvent: ClassTag](cons: CC => Future[immutable.Seq[EE]]): BindingStep[CC, EE] = {
-        BindingStep(cons)
+    object AsyncBinderFactory {
+
+      def apply[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Future[E]) = {
+        import scala.concurrent.ExecutionContext.Implicits.global
+        // wrap single event in immutable.Seq
+        val handlerWithSeq: (C) => Future[immutable.Seq[E]] = (cmd: C) => cmdHandler(cmd).map(immutable.Seq(_))
+        new SingleEventBinder(handlerWithSeq)(FutureCommandHandlerInvoker(_))
+      }
+
+      def manyEvents[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Future[immutable.Seq[E]]) = {
+        new ManyEventsBinder(cmdHandler)(FutureCommandHandlerInvoker(_))
       }
     }
 
-    implicit def eventToFutureEvent[E <: DomainEvent](event: E): Future[E] = Future.successful(event)
+    //================================================================================================
+    // extractor help us to convert a total function to a partial function internally
+    abstract class ClassTagExtractor[T](implicit classTag: ClassTag[T]) {
 
-    implicit def eventToFutureEvents[E <: DomainEvent](event: immutable.Seq[E]): Future[immutable.Seq[E]] = Future.successful(event)
+      def unapply(obj: T): Option[T] = {
+        // need classTag because of erasure as we must be able to find back the original type
+        if (obj.getClass == classTag.runtimeClass) Some(obj)
+        else None
+      }
+    }
 
-    implicit def tryEventToFutureEvent[E <: DomainEvent](triedEvent: Try[E]): Future[E] = Future.fromTry(triedEvent)
+    //================================================================================================
 
+    case class SingleEventBinder[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, F[_]](cmdHandler: C => F[immutable.Seq[E]])(consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]) {
+      object CmdExtractor extends ClassTagExtractor[C]
+      val cmdHandlerPF: PartialFunction[C, F[immutable.Seq[E]]] = {
+        case CmdExtractor(cmd) => cmdHandler(cmd)
+      }
+
+      def listener[A <: AggregateLike](eventListener: E => A)(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event): Binding[A] = {
+
+        object EvtExtractor extends ClassTagExtractor[E]
+        val eventListenerPF: EventListener[E, A] = {
+          case EvtExtractor(evt) => eventListener(evt)
+        }
+
+        // safe to call asInstanceOf since we have evidence that C is a A#Commnd and E is a A#Event
+        Binding(
+          consInvoker(cmdHandlerPF).asInstanceOf[CommandHandlerInvoker[A#Command, A#Event]],
+          eventListenerPF.asInstanceOf[EventListener[A#Event, A]]
+        )
+      }
+    }
+
+    case class ManyEventsBinder[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, F[_]](cmdHandler: C => F[immutable.Seq[E]])(consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]) {
+
+      object CmdExtractor extends ClassTagExtractor[C]
+      val cmdHandlerPF: PartialFunction[C, F[immutable.Seq[E]]] = {
+        case CmdExtractor(cmd) => cmdHandler(cmd)
+      }
+
+      def listener[A <: AggregateLike](eventListenerPF: EventListener[E, A])(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event): Binding[A] = {
+        // safe to call asInstanceOf since we have evidence that C is a A#Commnd and E is a A#Event
+        Binding(
+          consInvoker(cmdHandlerPF).asInstanceOf[CommandHandlerInvoker[A#Command, A#Event]],
+          eventListenerPF.asInstanceOf[EventListener[A#Event, A]]
+        )
+      }
+
+    }
+
+    //================================================================================================
+
+    trait CommandHandlerInvoker[-C <: DomainCommand, E <: DomainEvent] {
+
+      type F[_]
+
+      def cmdHandler: PartialFunction[C, F[immutable.Seq[E]]]
+    }
+
+    case class IdCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Identity[immutable.Seq[E]]])
+        extends CommandHandlerInvoker[C, E] {
+
+      type F[_] = Identity[_]
+    }
+
+    case class TryCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Try[immutable.Seq[E]]])
+        extends CommandHandlerInvoker[C, E] {
+
+      type F[_] = Try[_]
+    }
+
+    case class FutureCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Future[immutable.Seq[E]]])
+        extends CommandHandlerInvoker[C, E] {
+
+      type F[_] = Future[_]
+    }
+
+    //================================================================================================
+
+    case class Binding[A <: AggregateLike](cmdInvoker: CommandHandlerInvoker[A#Command, A#Event], eventListener: EventListener[A#Event, A])
+        extends AggregateAliases {
+
+      type Aggregate = A
+
+      def cmdInvokerPF: PartialFunction[Command, CommandHandlerInvoker[Command, Event]] = {
+        case cmd if cmdInvoker.cmdHandler.isDefinedAt(cmd) => cmdInvoker
+      }
+
+    }
+
+    def describe[A <: AggregateLike]: AggregateSpec[A] = {
+      AggregateSpec[A](CreationSpec(), UpdateSpec())
+    }
   }
 
 }
 
-case class CreationBuilder[A <: AggregateLike](processCommandFunction: PartialFunction[A#Command, Future[A#Event]] = PartialFunction.empty,
-                                               handleEventFunction: PartialFunction[A#Event, A] = PartialFunction.empty) {
+case class CreationSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+                                            eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty) {
 
-  val fallbackFunction: PartialFunction[A#Command, Future[A#Event]] = {
-    case cmd => Future.failed(new CommandException(s"Invalid command $cmd"))
+  val fallbackFunction: PartialFunction[A#Command, Try[A#Event]] = {
+    case cmd => Failure(new CommandException(s"Invalid command $cmd"))
   }
 
 }
 
-case class UpdatesBuilder[A <: AggregateLike](processCommandFunction: PartialFunction[(A, A#Command), Future[A#Events]] = PartialFunction.empty,
-                                              handleEventFunction: PartialFunction[(A, A#Event), A] = PartialFunction.empty) {
+case class UpdateSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+                                          eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty) {
 
-  val fallbackFunction: PartialFunction[(A, A#Command), Future[A#Events]] = {
-    case (agg, cmd) => Future.failed(new CommandException(s"Invalid command $cmd for aggregate ${agg.id}"))
+  val fallbackFunction: PartialFunction[(A, A#Command), Try[A#Events]] = {
+    case (agg, cmd) => Failure(new CommandException(s"Invalid command $cmd for aggregate ${agg.id}"))
   }
 }
 
-case class BehaviorBuilder[A <: AggregateLike](creationBuilder: CreationBuilder[A], updatesBuilder: UpdatesBuilder[A])
-    extends AggregateAliases {
+case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], updateSpec: UpdateSpec[A]) extends AggregateAliases {
 
   type Aggregate = A
 
-  // from Cmd to Event
-  type CommandToEvent = PartialFunction[Command, Future[Event]]
-  // from Event to new Aggregate
-  type EventToAggregate = PartialFunction[Event, Aggregate]
+  def whenCreating(binding: Binding[Aggregate]): AggregateSpec[Aggregate] = {
 
-  // from Aggregate + Cmd to Seq of Events
-  type UpdatesCommandToEvents = PartialFunction[(Aggregate, Command), Future[Events]]
-  // from Aggregate + Event to updated Aggregate
-  type UpdatesEventToAggregate = PartialFunction[(Aggregate, Event), Aggregate]
-
-  // extractor help us to convert a total function to a partial function internally
-  abstract class ClassTagExtractor[T](implicit classTag: ClassTag[T]) {
-
-    def unapply(obj: T): Option[T] = {
-      // need classTag because of erasure. We must be able to find back what the original type
-      if (obj.getClass == classTag.runtimeClass) Some(obj)
-      else None
-    }
-  }
-
-  def whenCreating[CC <: Command: ClassTag, EE <: Event: ClassTag](binding: Binding[CC, EE, Aggregate]): BehaviorBuilder[Aggregate] = {
-
-    object CmdExtractor extends ClassTagExtractor[CC]
-    object EvtExtractor extends ClassTagExtractor[EE]
-
-    import scala.concurrent.ExecutionContext.Implicits.global
-
-    val commandValidationPF: CommandToEvent = {
-      case CmdExtractor(cmd) => binding.eventsCons(cmd).map { evts =>
-        // TODO: remove it when we have support for many events generation at construction time
-        evts.head
-      }
-    }
-
-    val eventApplyPF: EventToAggregate = {
-      case EvtExtractor(evt) => binding.action(evt)
-    }
-
-    val creationBuilderUpdated =
-      creationBuilder.copy(
-        processCommandFunction = creationBuilder.processCommandFunction orElse commandValidationPF,
-        handleEventFunction = creationBuilder.handleEventFunction orElse eventApplyPF
+    val creationSpecUpdated =
+      creationSpec.copy(
+        cmdHandlerInvokerPF = creationSpec.cmdHandlerInvokerPF orElse binding.cmdInvokerPF,
+        eventListenerPF = creationSpec.eventListenerPF orElse binding.eventListener
       )
 
-    BehaviorBuilder(creationBuilderUpdated, updatesBuilder)
+    copy(creationSpec = creationSpecUpdated)
   }
 
-  def whenUpdating[CC <: Command: ClassTag, EE <: Event: ClassTag](aggFun: Aggregate => Binding[CC, EE, Aggregate]): BehaviorBuilder[Aggregate] = {
+  def whenUpdating(aggFunc: Aggregate => Binding[Aggregate]): AggregateSpec[Aggregate] = {
 
-    object CmdExtractor extends ClassTagExtractor[CC]
-    object EvtExtractor extends ClassTagExtractor[EE]
+    type UpdatesCommandToEvents = PartialFunction[(Aggregate, Command), CommandHandlerInvoker[A#Command, A#Event]]
+    type UpdatesEventToAggregate = PartialFunction[(Aggregate, Event), Aggregate]
 
-    val commandValidationPF: UpdatesCommandToEvents = {
-      case (agg, CmdExtractor(cmd)) => aggFun(agg).eventsCons(cmd)
+    val cmdInvokerPF: UpdatesCommandToEvents = {
+      case (agg, cmd) if aggFunc(agg).cmdInvokerPF.isDefinedAt(cmd) => aggFunc(agg).cmdInvoker
     }
 
-    val eventApplyPF: UpdatesEventToAggregate = {
-      case (agg, EvtExtractor(evt)) => aggFun(agg).action(evt)
+    val eventListenerPF: UpdatesEventToAggregate = {
+      case (agg, evt) if aggFunc(agg).eventListener.isDefinedAt(evt) => aggFunc(agg).eventListener(evt)
     }
 
-    val updatesBuilderUpdated =
-      updatesBuilder.copy(
-        processCommandFunction = updatesBuilder.processCommandFunction orElse commandValidationPF,
-        handleEventFunction = updatesBuilder.handleEventFunction orElse eventApplyPF
-      )
+    val updateSpecUpdated = updateSpec.copy(
+      cmdHandlerInvokerPF = updateSpec.cmdHandlerInvokerPF orElse cmdInvokerPF,
+      eventListenerPF = updateSpec.eventListenerPF orElse eventListenerPF
+    )
 
-    BehaviorBuilder(creationBuilder, updatesBuilderUpdated)
+    copy(updateSpec = updateSpecUpdated)
   }
 
-}
-
-object BehaviorBuilder {
-
-  implicit def build[A <: AggregateLike](builder: BehaviorBuilder[A]): Behavior[A] = {
-    import builder._
-    new Behavior[A] {
-
-      private val processCreationalCommands = creationBuilder.processCommandFunction
-      private val fallbackOnCreation = creationBuilder.fallbackFunction
-      private val handleCreationalEvents = creationBuilder.handleEventFunction
-
-      private val processUpdateCommands = updatesBuilder.processCommandFunction
-      private val fallbackOnUpdate = updatesBuilder.fallbackFunction
-      private val handleEvents = updatesBuilder.handleEventFunction
-
-      def validateAsync(cmd: Command)(implicit ec: ExecutionContext): Future[Event] = {
-        (processCreationalCommands orElse fallbackOnCreation).apply(cmd) // apply cmd
-      }
-
-      def validateAsync(cmd: Command, aggregate: Aggregate)(implicit ec: ExecutionContext): Future[Events] = {
-        (processUpdateCommands orElse fallbackOnUpdate).apply(aggregate, cmd) // apply cmd
-      }
-
-      def applyEvent(evt: Event): Aggregate = {
-        handleCreationalEvents(evt)
-      }
-
-      def applyEvent(evt: Event, aggregate: Aggregate): Aggregate = {
-        val handleNoEvents: UpdatesEventToAggregate = {
-          case (agg, _) => agg
-        }
-        (handleEvents orElse handleNoEvents)(aggregate, evt)
-      }
-
-      def isEventDefined(event: Event): Boolean =
-        handleCreationalEvents.isDefinedAt(event)
-
-      def isEventDefined(event: Event, aggregate: Aggregate): Boolean =
-        handleEvents.isDefinedAt(aggregate, event)
-    }
-  }
 }
 
