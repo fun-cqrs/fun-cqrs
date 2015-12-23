@@ -40,7 +40,7 @@ object BindingMain extends App {
 
   object FooId {
 
-    def apply(): FooId = FooId(UUID.randomUUID.toString)
+    def apply(): FooId = FooId("foo-test")
   }
 
   case class Foo(name: String, id: FooId = FooId()) extends AggregateLike {
@@ -55,38 +55,39 @@ object BindingMain extends App {
 
   import FooProtocol._
 
-  val spec = describe[Foo]
-    .whenCreating {
+  val spec = 
+    describe[Foo]
+      .whenCreating {
 
-      handler { cmd: CreateFoo => FooEvt(cmd.name) }
-        .listener { evt => Foo(evt.name) }
+        handler { cmd: CreateFoo => FooEvt(cmd.name) }
+          .listener { evt => Foo(evt.name) }
 
-    } whenUpdating { foo =>
+      } whenUpdating { foo =>
 
-      handler
-        .manyEvents { cmd: UpdateFoo => List(FooEvt(cmd.name), BazEvt(cmd.name)) }
-        .listener {
-          case evt: FooEvt => foo.copy(name = evt.name)
-          case evt: BazEvt => foo.copy(name = evt.name)
-        }
+        handler
+          .manyEvents { cmd: UpdateFoo => List(FooEvt(cmd.name), BazEvt(cmd.name)) }
+          .listener {
+            case evt: FooEvt => foo.copy(name = evt.name)
+            case evt: BazEvt => foo.copy(name = evt.name)
+          }
 
-    } whenUpdating { foo =>
+      } whenUpdating { foo =>
 
-      handler
-        .manyEvents { cmd: UpdateFoo => List(FooEvt(cmd.name), FooEvt(cmd.name)) }
-        .listener { case evt => foo.copy(name = evt.name) }
+        handler
+          .manyEvents { cmd: UpdateFoo => List(FooEvt(cmd.name), FooEvt(cmd.name)) }
+          .listener { case evt => foo.copy(name = evt.name) }
 
-    } whenUpdating { foo =>
+      } whenUpdating { foo =>
 
-      tryHandler { cmd: UpdateFoo => Try(BazEvt(cmd.name)) }
-        .listener { evt => foo.copy(name = evt.name) }
+        tryHandler { cmd: UpdateFoo => Try(BazEvt(cmd.name)) }
+          .listener { evt => foo.copy(name = evt.name) }
 
-    } whenUpdating { foo =>
+      } whenUpdating { foo =>
 
-      asyncHandler { cmd: UpdateBaz => Future { BazEvt(cmd.name) } }
-        .listener { evt => foo.copy(name = evt.name) }
+        asyncHandler { cmd: UpdateBaz => Future { BazEvt(cmd.name) } }
+          .listener { evt => foo.copy(name = evt.name) }
 
-    }
+      }
 
   def run[F[_]](interpreter: Interpreter[Foo, F], label: String)(implicit monad: Monad[F]): F[_] = {
 
