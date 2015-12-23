@@ -6,24 +6,42 @@ import scala.util.Try
 
 object Monads {
 
-  trait Monad[F[_]] {
+  trait MonadOps[F[_]] {
     def map[A, B](fa: F[A])(f: A => B): F[B]
     def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   }
 
-  implicit val identityMonad: Monad[Identity] = new Monad[Identity] {
+  implicit val identityMonad: MonadOps[Identity] = new MonadOps[Identity] {
     def map[A, B](fa: Identity[A])(f: (A) => B): Identity[B] = f(fa)
     def flatMap[A, B](fa: Identity[A])(f: (A) => Identity[B]): Identity[B] = f(fa)
   }
 
-  implicit val tryMonad: Monad[Try] = new Monad[Try] {
+  implicit val tryMonad: MonadOps[Try] = new MonadOps[Try] {
     def map[A, B](fa: Try[A])(f: (A) => B): Try[B] = fa.map(f)
     def flatMap[A, B](fa: Try[A])(f: (A) => Try[B]): Try[B] = fa.flatMap(f)
   }
 
-  implicit val futureMonad: Monad[Future] = new Monad[Future] {
+  implicit val futureMonad: MonadOps[Future] = new MonadOps[Future] {
     import scala.concurrent.ExecutionContext.Implicits.global
     def map[A, B](fa: Future[A])(f: (A) => B): Future[B] = fa.map(f)
     def flatMap[A, B](fa: Future[A])(f: (A) => Future[B]): Future[B] = fa.flatMap(f)
   }
+
+  trait Monad[A, F[_]] {
+    def map[B](f: A => B): F[B]
+    def flatMap[B](f: A => F[B]): F[B]
+  }
+
+  def monad[A, F[_]](fa: F[A])(implicit monadOps: MonadOps[F]) =
+
+    new Monad[A, F] {
+
+      def map[B](f: A => B): F[B] = {
+        monadOps.map(fa)(f)
+      }
+
+      def flatMap[B](f: A => F[B]): F[B] = {
+        monadOps.flatMap(fa)(f)
+      }
+    }
 }

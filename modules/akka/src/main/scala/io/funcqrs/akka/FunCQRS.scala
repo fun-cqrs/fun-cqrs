@@ -6,6 +6,7 @@ import _root_.akka.util.Timeout
 import com.typesafe.scalalogging.LazyLogging
 import io.funcqrs._
 import io.funcqrs.akka.ProjectionActor.FailureStrategy
+import io.funcqrs.behavior.Behavior
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.implicitConversions

@@ -39,7 +39,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "create event") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! GetState(userId)
@@ -93,7 +93,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! Exists(userId)
@@ -107,7 +107,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     val userId = UserId.generate()
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))

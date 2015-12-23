@@ -1,17 +1,15 @@
 package io.funcqrs.interpreters
 import io.funcqrs.AggregateLike
-import io.funcqrs.dsl.AggregateSpec
-import io.funcqrs.dsl.BindingDsl.Api.{ FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
+import io.funcqrs.behavior.{ Behavior, FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
 
 import scala.concurrent.Future
-import scala.concurrent.duration.{ Duration, _ }
 import scala.language.higherKinds
 
-class AsyncInterpreter[A <: AggregateLike](val spec: AggregateSpec[A], atMost: Duration = 5.seconds) extends Interpreter[A, Future] {
+class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
 
   def handleCommand(cmd: Command): Future[Events] = {
-    val invoker = spec.creationSpec.cmdHandlerInvokerPF(cmd)
-    invoker match {
+
+    behavior.handleCommand(cmd) match {
       case IdCommandHandlerInvoker(handler)     => Future.successful(handler(cmd))
       case TryCommandHandlerInvoker(handler)    => Future.fromTry(handler(cmd))
       case FutureCommandHandlerInvoker(handler) => handler(cmd)
@@ -19,11 +17,15 @@ class AsyncInterpreter[A <: AggregateLike](val spec: AggregateSpec[A], atMost: D
   }
 
   def handleCommand(aggregate: A, cmd: Command): Future[Events] = {
-    val invoker = spec.updateSpec.cmdHandlerInvokerPF(aggregate, cmd)
-    invoker match {
+
+    behavior.handleCommand(aggregate, cmd) match {
       case IdCommandHandlerInvoker(handler)     => Future.successful(handler(cmd))
       case TryCommandHandlerInvoker(handler)    => Future.fromTry(handler(cmd))
       case FutureCommandHandlerInvoker(handler) => handler(cmd)
     }
   }
+}
+
+object AsyncInterpreter {
+  def apply[A <: AggregateLike](behavior: Behavior[A]) = new AsyncInterpreter(behavior)
 }

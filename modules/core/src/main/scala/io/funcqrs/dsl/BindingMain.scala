@@ -3,7 +3,8 @@ package io.funcqrs.dsl
 import java.util.UUID
 
 import io.funcqrs._
-import io.funcqrs.interpreters.Monads.Monad
+import io.funcqrs.behavior.Behavior
+import io.funcqrs.interpreters.Monads.MonadOps
 import io.funcqrs.interpreters.{ Interpreter, AsyncInterpreter, IdentityInterpreter, TryInterpreter }
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -55,7 +56,7 @@ object BindingMain extends App {
 
   import FooProtocol._
 
-  val spec = 
+  val behavior: Behavior[Foo] =
     describe[Foo]
       .whenCreating {
 
@@ -89,7 +90,7 @@ object BindingMain extends App {
 
       }
 
-  def run[F[_]](interpreter: Interpreter[Foo, F], label: String)(implicit monad: Monad[F]): F[_] = {
+  def run[F[_]](interpreter: Interpreter[Foo, F], label: String)(implicit monad: MonadOps[F]): F[_] = {
 
     println("------------------------------------")
     println("==> " + label)
@@ -126,9 +127,9 @@ object BindingMain extends App {
     fooM3
   }
 
-  run(new IdentityInterpreter(spec), "Identity")
-  run(new TryInterpreter(spec), "Try")
+  run(new IdentityInterpreter(behavior), "Identity")
+  run(new TryInterpreter(behavior), "Try")
   import scala.concurrent.duration._
-  val result = Await.result(run(new AsyncInterpreter(spec), "Async (Future)"), 5.seconds)
+  val result = Await.result(run(new AsyncInterpreter(behavior), "Async (Future)"), 5.seconds)
   println(s"async result = $result")
 }

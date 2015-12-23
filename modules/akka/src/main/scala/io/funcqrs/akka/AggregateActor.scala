@@ -3,10 +3,11 @@ package io.funcqrs.akka
 import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
-import io.funcqrs.akka.AggregateActor._
 import io.funcqrs._
+import io.funcqrs.akka.AggregateActor._
+import io.funcqrs.behavior.Behavior
+import io.funcqrs.interpreters.AsyncInterpreter
 
-import scala.collection.immutable
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
@@ -16,6 +17,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
+
+  val interpreter = AsyncInterpreter(behavior)
 
   import context.dispatcher
 
@@ -45,11 +48,11 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
     case cmd: Command =>
       log.debug(s"Received creation cmd: $cmd")
-      val eventualEvent = behavior.validate(cmd)
+      val eventualEvents = interpreter.handleCommand(cmd)
       val origSender = sender()
 
-      eventualEvent map {
-        event => CompletedCreationCmd(event, origSender)
+      eventualEvents map {
+        events => SuccessfulCreation(events, origSender)
       } recover {
         case NonFatal(cause: DomainException) =>
           FailedCommand(cause, origSender, Uninitialized)
@@ -73,11 +76,11 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
     case cmd: Command =>
       log.debug(s"Received cmd: $cmd")
-      val eventualEvents = behavior.validate(cmd, aggregateOpt.get)
+      val eventualEvents = interpreter.handleCommand(aggregateOpt.get, cmd)
       val origSender = sender()
 
       eventualEvents.map {
-        events => CompletedUpdateCmd(events, origSender)
+        events => SuccessfulUpdate(events, origSender)
       } recover {
         case NonFatal(cause: DomainException) =>
           FailedCommand(cause, origSender, Available)
@@ -96,10 +99,10 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case StateRequest(requester)      => sendState(requester)
-    case result: CompletedCreationCmd => onSuccessfulCreation(result)
-    case result: CompletedUpdateCmd   => onSuccessfulUpdate(result)
-    case failedCmd: FailedCommand     => onCommandFailure(failedCmd)
+    case StateRequest(requester)                => sendState(requester)
+    case SuccessfulCreation(events, origSender) => onSuccessfulCreation(events, origSender)
+    case SuccessfulUpdate(events, origSender)   => onSuccessfulUpdate(events, origSender)
+    case failedCmd: FailedCommand               => onCommandFailure(failedCmd)
 
     case anyOther =>
       log.debug(s"received $anyOther while processing another command")
@@ -158,10 +161,10 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     (aggregateOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Event)            => Some(behavior.applyEvent(evt))
+      case (None, evt: Event)            => Some(behavior.onEvent(evt))
 
       // Update events are applied on current state
-      case (Some(aggregate), evt: Event) => Some(behavior.applyEvent(evt, aggregate))
+      case (Some(aggregate), evt: Event) => Some(behavior.onEvent(aggregate, evt))
 
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
@@ -242,18 +245,28 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     * - apply the event, ie: create the aggregate
     * - notify the original sender
     */
-  private def onSuccessfulCreation(result: CompletedCreationCmd): Unit = {
+  private def onSuccessfulCreation(events: Events, origSender: ActorRef): Unit = {
 
-    // extra check! persist it only if Behavior is defined for it
-    if (behavior.isEventDefined(result.event)) {
+    // extra check! persist it only if a listener is defined for each event
+    if (behavior.canHandleEvents(events)) {
 
-      persist(result.event) { evt =>
-        afterEventPersisted(evt)
+      // forall on an empty Seq always returns 'true' !!!!
+      // and akka-persistence throw exception if an empty list of events are sent!
+      if (events.nonEmpty) {
+        persistAll(events) { evt =>
+          afterEventPersisted(evt)
+        }
       }
-      result.origSender ! result.event
+
+      origSender ! events
 
     } else {
-      result.origSender ! Status.Failure(new CommandException(s"No handler defined for event ${result.event.getClass.getSimpleName}"))
+
+      // collect events with listener
+      val badEventsNames = events.collect {
+        case e if !behavior.canHandleEvent(e) => e.getClass.getSimpleName
+      }
+      origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
     }
 
     changeState(Available)
@@ -265,13 +278,12 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     * - apply the events to the current aggregate state
     * - notify the original sender
     */
-  private def onSuccessfulUpdate(result: CompletedUpdateCmd): Unit = {
+  private def onSuccessfulUpdate(events: Events, origSender: ActorRef): Unit = {
 
     val aggregate = aggregateOpt.get
-    val events = immutable.Seq(result.events).flatten
 
-    // extra check! only persist it only if Behavior is defined for it
-    if (events.forall(behavior.isEventDefined(_, aggregate))) {
+    // extra check! persist it only if a listener is defined for each event
+    if (behavior.canHandleEvents(events, aggregate)) {
 
       // forall on an empty Seq always returns 'true' !!!!
       // and akka-persistence throw exception if an empty list of events are sent!
@@ -280,14 +292,15 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
           afterEventPersisted(evt)
         }
       }
-      result.origSender ! result.events
+      origSender ! events
 
     } else {
-      // collect events with handler
+
+      // collect events with listener
       val badEventsNames = events.collect {
-        case e if !behavior.isEventDefined(e, aggregate) => e.getClass.getSimpleName
+        case e if !behavior.canHandleEvent(e, aggregate) => e.getClass.getSimpleName
       }
-      result.origSender ! Status.Failure(new CommandException(s"No handler defined for events: ${badEventsNames.mkString(",")}"))
+      origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
     }
     changeState(Available)
   }
@@ -308,13 +321,11 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** Internal representation of a completed create command.
-    */
-  private case class CompletedCreationCmd(event: Event, origSender: ActorRef)
-
   /** Internal representation of a completed update command.
     */
-  private case class CompletedUpdateCmd(events: Events, origSender: ActorRef)
+  private case class SuccessfulCreation(events: Events, origSender: ActorRef)
+
+  private case class SuccessfulUpdate(events: Events, origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef, state: State)
 

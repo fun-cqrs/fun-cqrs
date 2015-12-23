@@ -22,7 +22,14 @@ lazy val root = Project(
   settings = Seq(
     publishArtifact := false
   ) ++ commonSettings
-) aggregate(funCqrs, funCqrsAkka, funPlayJsonSupport, funCqrsTestKit, shopApp, lotteryApp)
+) aggregate(
+  funCqrs,
+  funCqrsAkka,
+  funPlayJsonSupport,
+  funCqrsTestKit,
+//  shopApp,
+  lotteryApp
+  )
 
 
 // Core ==========================================
@@ -68,17 +75,17 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 
 // contains Play / Akka / Macwire sample
-lazy val shopApp = Project(
-  id = "sample-shop",
-  base = file("samples/shop"),
-  settings = Seq(
-    publishArtifact := false,
-    routesGenerator := InjectedRoutesGenerator
-  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
-).enablePlugins(PlayScala)
-  .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(funCqrs)
-  .dependsOn(funCqrsAkka)
+//lazy val shopApp = Project(
+//  id = "sample-shop",
+//  base = file("samples/shop"),
+//  settings = Seq(
+//    publishArtifact := false,
+//    routesGenerator := InjectedRoutesGenerator
+//  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
+//).enablePlugins(PlayScala)
+//  .disablePlugins(PlayLayoutPlugin)
+//  .dependsOn(funCqrs)
+//  .dependsOn(funCqrsAkka)
 //================================================
 
 lazy val lotteryApp = Project(

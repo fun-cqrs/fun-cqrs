@@ -1,14 +1,14 @@
 package io.funcqrs.dsl
 
 import io.funcqrs._
-import io.funcqrs.dsl.BindingDsl.Api.{ Binding, CommandHandlerInvoker }
+import io.funcqrs.behavior._
+import io.funcqrs.dsl.BindingDsl.Api.Binding
 import io.funcqrs.interpreters.Identity
-
 import scala.collection.immutable
 import scala.concurrent.Future
-import scala.language.higherKinds
+import scala.language.{ higherKinds, implicitConversions }
 import scala.reflect.ClassTag
-import scala.util.{ Failure, Try }
+import scala.util.Try
 
 object BindingDsl {
 
@@ -119,31 +119,6 @@ object BindingDsl {
 
     //================================================================================================
 
-    trait CommandHandlerInvoker[-C <: DomainCommand, E <: DomainEvent] {
-
-      type F[_]
-
-      def cmdHandler: PartialFunction[C, F[immutable.Seq[E]]]
-    }
-
-    case class IdCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Identity[immutable.Seq[E]]])
-        extends CommandHandlerInvoker[C, E] {
-
-      type F[_] = Identity[_]
-    }
-
-    case class TryCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Try[immutable.Seq[E]]])
-        extends CommandHandlerInvoker[C, E] {
-
-      type F[_] = Try[_]
-    }
-
-    case class FutureCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: PartialFunction[C, Future[immutable.Seq[E]]])
-        extends CommandHandlerInvoker[C, E] {
-
-      type F[_] = Future[_]
-    }
-
     //================================================================================================
 
     case class Binding[A <: AggregateLike](cmdInvoker: CommandHandlerInvoker[A#Command, A#Event], eventListener: EventListener[A#Event, A])
@@ -165,21 +140,10 @@ object BindingDsl {
 }
 
 case class CreationSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
-                                            eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty) {
-
-  val fallbackFunction: PartialFunction[A#Command, Try[A#Event]] = {
-    case cmd => Failure(new CommandException(s"Invalid command $cmd"))
-  }
-
-}
+                                            eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty)
 
 case class UpdateSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
-                                          eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty) {
-
-  val fallbackFunction: PartialFunction[(A, A#Command), Try[A#Events]] = {
-    case (agg, cmd) => Failure(new CommandException(s"Invalid command $cmd for aggregate ${agg.id}"))
-  }
-}
+                                          eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty)
 
 case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], updateSpec: UpdateSpec[A]) extends AggregateAliases {
 
@@ -209,13 +173,33 @@ case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], upda
       case (agg, evt) if aggFunc(agg).eventListener.isDefinedAt(evt) => aggFunc(agg).eventListener(evt)
     }
 
-    val updateSpecUpdated = updateSpec.copy(
-      cmdHandlerInvokerPF = updateSpec.cmdHandlerInvokerPF orElse cmdInvokerPF,
-      eventListenerPF = updateSpec.eventListenerPF orElse eventListenerPF
-    )
+    val updateSpecUpdated =
+      updateSpec.copy(
+        cmdHandlerInvokerPF = updateSpec.cmdHandlerInvokerPF orElse cmdInvokerPF,
+        eventListenerPF = updateSpec.eventListenerPF orElse eventListenerPF
+      )
 
     copy(updateSpec = updateSpecUpdated)
   }
 
 }
 
+object AggregateSpec {
+
+  implicit def build[A <: AggregateLike](spec: AggregateSpec[A]): Behavior[A] = {
+    new Behavior[A] {
+
+      def commandHandlerWhenCreating: PartialFunction[Command, CommandHandlerInvoker[Command, Event]] =
+        spec.creationSpec.cmdHandlerInvokerPF
+
+      def eventListenerWhenCreating: PartialFunction[Event, Aggregate] =
+        spec.creationSpec.eventListenerPF
+
+      def commandHandlerWhenUpdating: PartialFunction[(Aggregate, Command), CommandHandlerInvoker[Command, Event]] =
+        spec.updateSpec.cmdHandlerInvokerPF
+
+      def eventListenerWhenUpdating: PartialFunction[(Aggregate, Event), Aggregate] =
+        spec.updateSpec.eventListenerPF
+    }
+  }
+}

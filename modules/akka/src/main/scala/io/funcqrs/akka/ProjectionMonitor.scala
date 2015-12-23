@@ -4,7 +4,6 @@ import _root_.akka.actor.ActorRef
 import _root_.akka.pattern._
 import _root_.akka.util.Timeout
 import io.funcqrs._
-import io.funcqrs.akka.AggregateActor._
 import io.funcqrs.akka.EventsMonitorActor.Subscribe
 
 import scala.collection.immutable
@@ -17,17 +16,12 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
 
   type Aggregate = A
 
-  trait ProjectionCreateResult[Event] {
-    def event: Event
-  }
-  case class ProjectionCreateSuccess[Event](event: Event) extends ProjectionCreateResult[Event]
-  case class ProjectionCreateFailure[Event](event: Event, throwable: Throwable) extends ProjectionCreateResult[Event]
 
-  trait ProjectionUpdateResult[Event] {
+  trait ProjectionResult[Event] {
     def events: immutable.Seq[Event]
   }
-  case class ProjectionUpdateSuccess[Event](events: immutable.Seq[Event]) extends ProjectionUpdateResult[Event]
-  case class ProjectionUpdateFailure[Event](events: immutable.Seq[Event], throwable: Throwable) extends ProjectionUpdateResult[Event]
+  case class ProjectionSuccess[Event](events: immutable.Seq[Event]) extends ProjectionResult[Event]
+  case class ProjectionFailure[Event](events: immutable.Seq[Event], throwable: Throwable) extends ProjectionResult[Event]
 
   /** Watch for an [[DomainEvent]] originated from the passed [[DomainCommand]] until it's applied to the ReadModel.
     *
@@ -35,32 +29,32 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
     * @param block - a function that will send the `cmd` to the Write Model.
     * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
     *
-    * @return - A Future with a [[ProjectionUpdateResult]]. A [[ProjectionUpdateSuccess]] is returned iff the events originated from `cmd`
-    *     are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
-    *     indicating the cause of the failure on the Read Model.
-    *     Returns a failed Future if `Command` is not valid in which case no Events are generated.
+    * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
+    *         are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
+    *         indicating the cause of the failure on the Read Model.
+    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
     */
-  def watchEvent(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionCreateResult[Event]] = {
+  def watchEvent(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionResult[Event]] = {
 
     val resultOnWrite =
       for {
         // initialize an EventMonitor for the given command
         monitor <- newEventsMonitor(cmd.id)
         // send command to Write Model (AggregateManager)
-        event <- block(cmd).mapTo[Event]
-      } yield (monitor, event)
+        events <- block(cmd).mapTo[Events]
+      } yield (monitor, events)
 
     val resultOnRead =
       for {
-        (monitor, event) <- resultOnWrite
+        (monitor, events) <- resultOnWrite
         // subscribe for the event on the Read Model
-        result <- (monitor ? Subscribe(event)).mapTo[EventsMonitorActor.Done.type]
-      } yield ProjectionCreateSuccess(event)
+        result <- (monitor ? Subscribe(events)).mapTo[EventsMonitorActor.Done.type]
+      } yield ProjectionSuccess(events)
 
     resultOnRead.recoverWith {
       // on failure, we send the event we got from the Write Model
       // together with the exception that made it fail (probably a timeout)
-      case NonFatal(e) => resultOnWrite.map { case (_, evt) => ProjectionCreateFailure(evt, e) }
+      case NonFatal(e) => resultOnWrite.map { case (_, evt) => ProjectionFailure(evt, e) }
     }
   }
 
@@ -70,12 +64,12 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
     * @param block - a function that will send the `cmd` to the Write Model.
     * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
     *
-    * @return - A Future with a [[ProjectionUpdateResult]]. A [[ProjectionUpdateSuccess]] is returned iff the events originated from `cmd`
-    *     are effectively applied on the Read Model, otherwise a [[ProjectionUpdateFailure]] is returned containing the Events and the Exception
-    *     indicating the cause of the failure on the Read Model.
-    *     Returns a failed Future if `Command` is not valid in which case no Events are generated.
+    * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
+    *         are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
+    *         indicating the cause of the failure on the Read Model.
+    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
     */
-  def watchEvents(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionUpdateResult[Event]] = {
+  def watchEvents(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionResult[Event]] = {
 
     val resultOnWrite =
       for {
@@ -91,12 +85,12 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
         (monitor, events) <- resultOnWrite
         // subscribe for events on the Read Model
         result <- (monitor ? Subscribe(events)).mapTo[EventsMonitorActor.Done.type]
-      } yield ProjectionUpdateSuccess(events)
+      } yield ProjectionSuccess(events)
 
     resultOnRead.recoverWith {
       // on failure, we send the events we got from the Write Model
       // together with the exception that made it fail (probably a timeout)
-      case NonFatal(e) => resultOnWrite.map { case (_, evts) => ProjectionUpdateFailure(evts, e) }
+      case NonFatal(e) => resultOnWrite.map { case (_, evts) => ProjectionFailure(evts, e) }
     }
   }
 }

@@ -1,12 +1,12 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs._
+import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
+import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
-import scala.util.{ Success, Try }
 
 object AggregateManager {
 

@@ -1,19 +1,16 @@
 package io.funcqrs.interpreters
 
 import io.funcqrs.AggregateLike
-import io.funcqrs.dsl.AggregateSpec
-import io.funcqrs.dsl.BindingDsl.Api.{ FutureCommandHandlerInvoker, TryCommandHandlerInvoker, IdCommandHandlerInvoker }
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration._
+import io.funcqrs.behavior.{ Behavior, FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
 
-class IdentityInterpreter[A <: AggregateLike](val spec: AggregateSpec[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
+import scala.concurrent.Await
+import scala.concurrent.duration.{ Duration, _ }
+
+class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
 
   def handleCommand(cmd: Command): Identity[Events] = {
 
-    val invoker = spec.creationSpec.cmdHandlerInvokerPF(cmd)
-
-    invoker match {
+    behavior.handleCommand(cmd) match {
       case IdCommandHandlerInvoker(handler)     => handler(cmd)
       case TryCommandHandlerInvoker(handler)    => handler(cmd).get
       case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
@@ -22,9 +19,8 @@ class IdentityInterpreter[A <: AggregateLike](val spec: AggregateSpec[A], atMost
   }
 
   def handleCommand(aggregate: A, cmd: Command): Identity[Events] = {
-    val invoker = spec.updateSpec.cmdHandlerInvokerPF(aggregate, cmd)
 
-    invoker match {
+    behavior.handleCommand(aggregate, cmd) match {
       case IdCommandHandlerInvoker(handler)     => handler(cmd)
       case TryCommandHandlerInvoker(handler)    => handler(cmd).get
       case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
@@ -32,4 +28,8 @@ class IdentityInterpreter[A <: AggregateLike](val spec: AggregateSpec[A], atMost
 
   }
 
+}
+
+object IdentityInterpreter {
+  def apply[A <: AggregateLike](behavior: Behavior[A], atMost: Duration = 5.seconds) = new IdentityInterpreter(behavior, atMost)
 }
