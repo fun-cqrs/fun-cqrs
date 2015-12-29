@@ -119,9 +119,12 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
     eventsSinceLastSnapshot += 1
 
-    if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+    for {
+      aggregate <- aggregateOpt
+      if eventsSinceLastSnapshot >= eventsPerSnapshot
+    } yield {
       log.debug(s"$eventsPerSnapshot events reached, saving snapshot")
-      saveSnapshot((state, aggregateOpt))
+      saveSnapshot(aggregate)
       eventsSinceLastSnapshot = 0
     }
   }
@@ -178,6 +181,11 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       eventsSinceLastSnapshot = 0
       log.debug("recovering aggregate from snapshot")
       restoreState(metadata, state, data)
+
+    case SnapshotOffer(metadata, data: Aggregate @unchecked) =>
+      eventsSinceLastSnapshot = 0
+      log.debug("recovering aggregate from snapshot")
+      restoreState(metadata, Available, Some(data))
 
     case RecoveryCompleted =>
       log.debug(s"aggregate '$persistenceId' has recovered, state = '$state'")
