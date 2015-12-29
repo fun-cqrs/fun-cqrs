@@ -6,6 +6,20 @@ import io.funcqrs.behavior.{ Behavior, FutureCommandHandlerInvoker, IdCommandHan
 import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, _ }
 
+
+/**
+  * An Interpreter with F[_] bounded to [[Identity]].
+  *
+  * All command handling are interpreted to [[Identity]] of Events (ie: the pure value).
+  *
+  * Will block on any async operation defined by [[Behavior]].
+  *
+  * This interpreter should be used for testing and / or for behaviors that preferably don't define any async operation.
+  *
+  * @param behavior - a Aggregate [[Behavior]]
+  * @param atMost - the maximum duration we are to wait before Futures timeout.
+  * @tparam A - an Aggregate type
+  */
 class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
 
   def handleCommand(cmd: Command): Identity[Events] = {

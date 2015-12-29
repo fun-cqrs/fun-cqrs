@@ -5,6 +5,14 @@ import io.funcqrs.behavior.{ Behavior, FutureCommandHandlerInvoker, IdCommandHan
 import scala.concurrent.Future
 import scala.language.higherKinds
 
+/**
+  * An Interpreter with F[_] bounded to [[Future]].
+  *
+  * All command handling are interpreted to [[Future]] of Events.
+  *
+  * @param behavior - a Aggregate [[Behavior]]
+  * @tparam A - an Aggregate type
+  */
 class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
 
   def handleCommand(cmd: Command): Future[Events] = {
