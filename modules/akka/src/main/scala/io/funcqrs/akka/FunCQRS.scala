@@ -13,8 +13,9 @@ import scala.language.implicitConversions
 
 class FunCQRS(val actorSystem: ActorSystem) extends LazyLogging {
 
-  /** Parent actor for all projections!
-    */
+  /**
+   * Parent actor for all projections!
+   */
   private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
 
 }
@@ -95,19 +96,21 @@ object FunCQRS {
 
       def withName(name: String): AggregateConfig[A]
 
-      /** Configure Aggregate to use an [[AssignedIdStrategy]].
-        *
-        * Aggregate Ids are defined externally.
-        */
+      /**
+       * Configure Aggregate to use an [[AssignedIdStrategy]].
+       *
+       * Aggregate Ids are defined externally.
+       */
       def withAssignedId: AggregateConfigWithAssignedId[A] = {
         AggregateConfigWithAssignedId(name, behavior, AssignedIdStrategy[A])
       }
 
-      /** Configure Aggregate to use an [[GeneratedIdStrategy]].
-        * On each create command, a new unique Id will be generated.
-        *
-        * @param gen - a by-name parameter that should, whenever evaluated, return a unique Aggregate Id
-        */
+      /**
+       * Configure Aggregate to use an [[GeneratedIdStrategy]].
+       * On each create command, a new unique Id will be generated.
+       *
+       * @param gen - a by-name parameter that should, whenever evaluated, return a unique Aggregate Id
+       */
       def withGeneratedId(gen: => A#Id): AggregateConfigWithManagedId[A] = {
         val strategy = new GeneratedIdStrategy[A] {
           def generateId(): Id = gen
@@ -115,11 +118,12 @@ object FunCQRS {
         AggregateConfigWithManagedId(name, behavior, strategy)
       }
 
-      /** Configure Aggregate to use a fixed Id.
-        *
-        * A [[SingletonIdStrategy]] will be constructed using the passed Id
-        * @param uniqueId - the fixed Id to be used for this Aggregate
-        */
+      /**
+       * Configure Aggregate to use a fixed Id.
+       *
+       * A [[SingletonIdStrategy]] will be constructed using the passed Id
+       * @param uniqueId - the fixed Id to be used for this Aggregate
+       */
       def withSingletonId(uniqueId: A#Id): AggregateConfigWithManagedId[A] = {
         val strategy = new SingletonIdStrategy[A] {
           val id: Id = uniqueId
@@ -195,10 +199,11 @@ object FunCQRS {
         this.copy(offsetPersistenceStrategy = strategy)
       }
 
-      /** Defines the  [[FailureStrategy]]
-        * @param failureStrategy - a partial function that should handle failures
-        * @return
-        */
+      /**
+       * Defines the  [[FailureStrategy]]
+       * @param failureStrategy - a partial function that should handle failures
+       * @return
+       */
       def onFailure(failureStrategy: FailureStrategy) = {
         this.copy(failureStrategy = failureStrategy)
       }

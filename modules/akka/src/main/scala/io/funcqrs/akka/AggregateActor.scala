@@ -28,8 +28,9 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   /** The aggregate instance if initialized, None otherwise */
   private var aggregateOpt: Option[Aggregate] = None
 
-  /** The lifecycle of the aggregate, by default [[Uninitialized]]
-    */
+  /**
+   * The lifecycle of the aggregate, by default [[Uninitialized]]
+   */
   protected var state: State = Uninitialized
 
   private var eventsSinceLastSnapshot = 0
@@ -37,8 +38,9 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   // always compose with defaultReceive
   override def receiveCommand: Receive = initializing orElse defaultReceive
 
-  /** PartialFunction to handle commands when the Actor is in the [[Uninitialized]] state
-    */
+  /**
+   * PartialFunction to handle commands when the Actor is in the [[Uninitialized]] state
+   */
   protected def initializing: Receive = {
     // always compose with defaultReceive
     initialReceive orElse defaultReceive
@@ -65,8 +67,9 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   }
 
-  /** PartialFunction to handle commands when the Actor is in the [[Available]] state
-    */
+  /**
+   * PartialFunction to handle commands when the Actor is in the [[Available]] state
+   */
   protected def available: Receive = {
     // always compose with defaultReceive
     availableReceive orElse defaultReceive
@@ -114,12 +117,13 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     case Exists(requester)       => requester ! aggregateOpt.isDefined
   }
 
-  /** This method should be used as a callback handler for persist() method.
-    * It will:
-    * - apply the event on the aggregate effectively changing its state
-    * - check if a snapshot needs to be saved.
-    * @param evt DomainEvent that has been persisted
-    */
+  /**
+   * This method should be used as a callback handler for persist() method.
+   * It will:
+   * - apply the event on the aggregate effectively changing its state
+   * - check if a snapshot needs to be saved.
+   * @param evt DomainEvent that has been persisted
+   */
   protected def afterEventPersisted(evt: Event): Unit = {
 
     aggregateOpt = applyEvent(evt)
@@ -136,9 +140,10 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** send a message containing the aggregate's state back to the requester
-    * @param replyTo actor to send message to
-    */
+  /**
+   * send a message containing the aggregate's state back to the requester
+   * @param replyTo actor to send message to
+   */
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateOpt match {
       case Some(aggregate) =>
@@ -149,13 +154,14 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** Apply event on the AggregateRoot.
-    *
-    * Creational events are only applied if Aggregate is not yet initialized (ie: None)
-    * Update events are only applied on already initialized Aggregates (ie: Some(aggregate))
-    *
-    * All other combinations will be ignored and the current Aggregate state is returned.
-    */
+  /**
+   * Apply event on the AggregateRoot.
+   *
+   * Creational events are only applied if Aggregate is not yet initialized (ie: None)
+   * Update events are only applied on already initialized Aggregates (ie: Some(aggregate))
+   *
+   * All other combinations will be ignored and the current Aggregate state is returned.
+   */
   def applyEvent(event: DomainEvent): Option[Aggregate] = {
 
     (aggregateOpt, event) match {
@@ -173,15 +179,16 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** Recovery handler that receives persisted events during recovery. If a state snapshot
-    * has been captured and saved, this handler will receive a [[SnapshotOffer]] message
-    * followed by events that are younger than the offered snapshot.
-    *
-    * This handler must not have side-effects other than changing persistent actor state i.e. it
-    * should not perform actions that may fail, such as interacting with external services,
-    * for example.
-    *
-    */
+  /**
+   * Recovery handler that receives persisted events during recovery. If a state snapshot
+   * has been captured and saved, this handler will receive a [[SnapshotOffer]] message
+   * followed by events that are younger than the offered snapshot.
+   *
+   * This handler must not have side-effects other than changing persistent actor state i.e. it
+   * should not perform actions that may fail, such as interacting with external services,
+   * for example.
+   *
+   */
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, (state: State, data: Option[Aggregate])) =>
@@ -210,11 +217,12 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     changeState(Available)
   }
 
-  /** restore the lifecycle and state of the aggregate from a snapshot
-    * @param metadata snapshot metadata
-    * @param state the state of the aggregate
-    * @param data the data of the aggregate
-    */
+  /**
+   * restore the lifecycle and state of the aggregate from a snapshot
+   * @param metadata snapshot metadata
+   * @param state the state of the aggregate
+   * @param data the data of the aggregate
+   */
   protected def restoreState(metadata: SnapshotMetadata, state: State, data: Option[Aggregate]) = {
     changeState(state)
     log.debug(s"restoring data $data")
@@ -240,11 +248,12 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** When a Creation Command completes we must:
-    * - persist the event
-    * - apply the event, ie: create the aggregate
-    * - notify the original sender
-    */
+  /**
+   * When a Creation Command completes we must:
+   * - persist the event
+   * - apply the event, ie: create the aggregate
+   * - notify the original sender
+   */
   private def onSuccessfulCreation(events: Events, origSender: ActorRef): Unit = {
 
     // extra check! persist it only if a listener is defined for each event
@@ -273,11 +282,12 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   }
 
-  /** When a Update Command completes we must:
-    * - persist the events
-    * - apply the events to the current aggregate state
-    * - notify the original sender
-    */
+  /**
+   * When a Update Command completes we must:
+   * - persist the events
+   * - apply the events to the current aggregate state
+   * - notify the original sender
+   */
   private def onSuccessfulUpdate(events: Events, origSender: ActorRef): Unit = {
 
     val aggregate = aggregateOpt.get
@@ -321,8 +331,9 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     }
   }
 
-  /** Internal representation of a completed update command.
-    */
+  /**
+   * Internal representation of a completed update command.
+   */
   private case class SuccessfulCreation(events: Events, origSender: ActorRef)
 
   private case class SuccessfulUpdate(events: Events, origSender: ActorRef)
@@ -333,8 +344,9 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
 object AggregateActor {
 
-  /** state of Aggregate Root
-    */
+  /**
+   * state of Aggregate Root
+   */
   sealed trait State
 
   case object Uninitialized extends State
@@ -343,17 +355,19 @@ object AggregateActor {
 
   case object Busy extends State
 
-  /** We don't want the aggregate to be killed if it hasn't fully restored yet,
-    * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
-    */
+  /**
+   * We don't want the aggregate to be killed if it hasn't fully restored yet,
+   * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
+   */
   case object KillAggregate
 
   case class StateRequest(requester: ActorRef)
   case class Exists(requester: ActorRef)
 
-  /** Specifies how many events should be processed before new snapshot is taken.
-    * TODO: make configurable
-    */
+  /**
+   * Specifies how many events should be processed before new snapshot is taken.
+   * TODO: make configurable
+   */
   val eventsPerSnapshot = 10
 
 }

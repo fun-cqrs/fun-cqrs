@@ -6,10 +6,11 @@ import io.funcqrs.{ AggregateAliases, AggregateLike }
 
 import scala.language.higherKinds
 
-/** Base Interpreter trait.
-  *
-  * Implementors must define which type F must be bound to.
-  */
+/**
+ * Base Interpreter trait.
+ *
+ * Implementors must define which type F must be bound to.
+ */
 trait Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
 
   type Aggregate = A

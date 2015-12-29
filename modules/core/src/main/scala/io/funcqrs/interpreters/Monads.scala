@@ -5,11 +5,11 @@ import scala.language.higherKinds
 import scala.util.Try
 
 /**
-  * Provides type-classes for map and flatMap over [[Identity]], [[Try]] and [[Future]]
-  *
-  * This implementation does NOT pretend sound. We only an abstraction to map and flatMap
-  * over  [[Identity]], [[Try]] and [[Future]] in a unified way.
-  */
+ * Provides type-classes for map and flatMap over [[Identity]], [[Try]] and [[Future]]
+ *
+ * This implementation does NOT pretend sound. We only an abstraction to map and flatMap
+ * over  [[Identity]], [[Try]] and [[Future]] in a unified way.
+ */
 object Monads {
 
   trait MonadOps[F[_]] {

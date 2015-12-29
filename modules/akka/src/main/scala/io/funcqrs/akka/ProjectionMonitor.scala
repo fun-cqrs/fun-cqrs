@@ -16,24 +16,24 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
 
   type Aggregate = A
 
-
   trait ProjectionResult[Event] {
     def events: immutable.Seq[Event]
   }
   case class ProjectionSuccess[Event](events: immutable.Seq[Event]) extends ProjectionResult[Event]
   case class ProjectionFailure[Event](events: immutable.Seq[Event], throwable: Throwable) extends ProjectionResult[Event]
 
-  /** Watch for an [[DomainEvent]] originated from the passed [[DomainCommand]] until it's applied to the ReadModel.
-    *
-    * @param cmd - a [[DomainCommand]] to be sent
-    * @param block - a function that will send the `cmd` to the Write Model.
-    * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
-    *
-    * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
-    *         are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
-    *         indicating the cause of the failure on the Read Model.
-    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
-    */
+  /**
+   * Watch for an [[DomainEvent]] originated from the passed [[DomainCommand]] until it's applied to the ReadModel.
+   *
+   * @param cmd - a [[DomainCommand]] to be sent
+   * @param block - a function that will send the `cmd` to the Write Model.
+   * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
+   *
+   * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
+   *           are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
+   *           indicating the cause of the failure on the Read Model.
+   *           Returns a failed Future if `Command` is not valid in which case no Events are generated.
+   */
   def watchEvent(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionResult[Event]] = {
 
     val resultOnWrite =
@@ -58,17 +58,18 @@ class ProjectionMonitor[A <: AggregateLike](projectionName: String, newEventsMon
     }
   }
 
-  /** Watch for [[DomainEvent]]s originated from the passed [[DomainCommand]] until they are applied to the ReadModel.
-    *
-    * @param cmd - a [[DomainCommand]] to be sent
-    * @param block - a function that will send the `cmd` to the Write Model.
-    * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
-    *
-    * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
-    *         are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
-    *         indicating the cause of the failure on the Read Model.
-    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
-    */
+  /**
+   * Watch for [[DomainEvent]]s originated from the passed [[DomainCommand]] until they are applied to the ReadModel.
+   *
+   * @param cmd - a [[DomainCommand]] to be sent
+   * @param block - a function that will send the `cmd` to the Write Model.
+   * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
+   *
+   * @return - A Future with a [[ProjectionResult]]. A [[ProjectionSuccess]] is returned iff the events originated from `cmd`
+   *           are effectively applied on the Read Model, otherwise a [[ProjectionFailure]] is returned containing the Events and the Exception
+   *           indicating the cause of the failure on the Read Model.
+   *           Returns a failed Future if `Command` is not valid in which case no Events are generated.
+   */
   def watchEvents(cmd: Command)(block: Command => Future[Any])(implicit timeout: Timeout): Future[ProjectionResult[Event]] = {
 
     val resultOnWrite =

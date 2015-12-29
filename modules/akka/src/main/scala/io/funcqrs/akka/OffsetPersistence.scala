@@ -41,14 +41,15 @@ trait PersistedOffsetCustom extends OffsetPersistence {
   }
 }
 
-/** Persist Offset as snapshot in akka-persistence
-  *
-  * This implementation is a quick win for those that simply want to persist the offset without caring about
-  * the persistence layer.
-  *
-  * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
-  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
-  */
+/**
+ * Persist Offset as snapshot in akka-persistence
+ *
+ * This implementation is a quick win for those that simply want to persist the offset without caring about
+ * the persistence layer.
+ *
+ * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
+ * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
+ */
 trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with Stash {
   self: ProjectionActor =>
 

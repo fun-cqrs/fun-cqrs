@@ -32,9 +32,10 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
 
   }
 
-  /** Build a TryCommandHandlerInvoker that will always return an Failure
-    * Used internally to handle unknown commands
-    */
+  /**
+   * Build a TryCommandHandlerInvoker that will always return an Failure
+   * Used internally to handle unknown commands
+   */
   protected def fallbackInvoker(msg: String): CommandHandlerInvoker[Command, Event] = {
     val cmdHandler: PartialFunction[Command, Try[Events]] = {
       case cmd => Failure(new CommandException(msg))

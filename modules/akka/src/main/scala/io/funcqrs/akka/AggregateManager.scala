@@ -22,10 +22,11 @@ case class AggregatePassivationStrategy(
   inactivityTimeout: Option[Duration] = None,
   maxChildren: Option[MaxChildren] = None)
 
-/** Base aggregate manager.
-  * Handles communication between client and aggregate.
-  * It is also capable of aggregates creation and removal.
-  */
+/**
+ * Base aggregate manager.
+ * Handles communication between client and aggregate.
+ * It is also capable of aggregates creation and removal.
+ */
 trait AggregateManager extends Actor
     with ActorLogging with AggregateAliases with AggregateIdExtractors {
 
@@ -42,10 +43,11 @@ trait AggregateManager extends Actor
 
   def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
-  /** Processes command.
-    * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
-    * and call [[AggregateManager.processAggregateCommand]]
-    */
+  /**
+   * Processes command.
+   * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
+   * and call [[AggregateManager.processAggregateCommand]]
+   */
   def processCommand: Receive = PartialFunction.empty
 
   override def receive: PartialFunction[Any, Unit] = {
@@ -106,10 +108,11 @@ trait AggregateManager extends Actor
     }
   }
 
-  /** Processes aggregate command.
-    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
-    *
-    */
+  /**
+   * Processes aggregate command.
+   * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
+   *
+   */
   def processAggregateCommand(aggregateId: Id, command: Command) = {
 
     val maybeChild = context child aggregateId.value
@@ -145,8 +148,9 @@ trait AggregateManager extends Actor
 
   def behavior(id: Aggregate#Id): Behavior[Aggregate]
 
-  /** Build Props for a new Aggregate Actor with the passed Id
-    */
+  /**
+   * Build Props for a new Aggregate Actor with the passed Id
+   */
   def aggregateActorProps(id: Id): Props = {
     Props(classOf[AggregateActor[Aggregate]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
   }

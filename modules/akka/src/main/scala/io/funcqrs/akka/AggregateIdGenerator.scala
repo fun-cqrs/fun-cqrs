@@ -18,9 +18,10 @@ trait GeneratedAggregateId {
   }
 }
 
-/** Provides means to manage a Singleton Aggregate.
-  * A Singleton Aggregate has a fixed Id and therefore there must exist only one instance in the whole system.
-  */
+/**
+ * Provides means to manage a Singleton Aggregate.
+ * A Singleton Aggregate has a fixed Id and therefore there must exist only one instance in the whole system.
+ */
 trait SingletonAggregateId {
   singleton: AggregateManager =>
 

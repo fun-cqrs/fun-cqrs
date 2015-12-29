@@ -9,14 +9,16 @@ object TypedJson {
 
   implicit class FormatsOpts[T](val format: Format[T]) extends AnyVal {
 
-    /** Creates a TypeHintFormat that will use the classname of the type T as the typeHint of the TypeHintFormat
-      */
+    /**
+     * Creates a TypeHintFormat that will use the classname of the type T as the typeHint of the TypeHintFormat
+     */
     def withTypeHint(implicit typeTag: TypeTag[T], classTag: ClassTag[T]): TypeHint[T] = {
       TypeHint(format)
     }
 
-    /** Creates a TypeHintFormat that will use the passed value as the type hint of the TypeHintFormat
-      */
+    /**
+     * Creates a TypeHintFormat that will use the passed value as the type hint of the TypeHintFormat
+     */
     def withTypeHint(typeHint: String)(implicit classTag: ClassTag[T]): TypeHint[T] = {
       TypeHint(format = format, typeHint = typeHint)
     }
@@ -33,9 +35,10 @@ object TypedJson {
     format.withTypeHint(typeHint)
   }
 
-  /** A decorator for a regular Format that can add a type hint to the serialised json.
-    * That same type hint is then used again when deserializing.
-    */
+  /**
+   * A decorator for a regular Format that can add a type hint to the serialised json.
+   * That same type hint is then used again when deserializing.
+   */
   case class TypeHint[T](typeHint: String, format: Format[T])(implicit classTag: ClassTag[T]) {
 
     def canWrite(obj: Any): Boolean = {
@@ -61,18 +64,20 @@ object TypedJson {
 
   object TypeHint {
 
-    /** Create a new TypeHintFormat, using the className as the tagValue.
-      */
+    /**
+     * Create a new TypeHintFormat, using the className as the tagValue.
+     */
     def apply[T](format: Format[T])(implicit typeTag: TypeTag[T], classTag: ClassTag[T]): TypeHint[T] = {
       new TypeHint[T](typeHint = typeOf[T].toString, format = format)(classTag)
     }
 
   }
 
-  /** Create a Format that will find the correct format amongst the passed formats when serialising/deserialising,
-    * using the type hint in the TypeFormat.
-    * The field that holds the type hint will be the value of `typeKey`
-    */
+  /**
+   * Create a Format that will find the correct format amongst the passed formats when serialising/deserialising,
+   * using the type hint in the TypeFormat.
+   * The field that holds the type hint will be the value of `typeKey`
+   */
   case class TypeHintFormat[A](typeHintKey: String, typeHintFormats: Seq[TypeHint[_ <: A]]) extends Format[A] {
 
     require(typeHintFormats.map(_.typeHint).toSet.size == typeHintFormats.size, "Duplicate type hints in the passed typeHintFormats")
@@ -130,10 +135,11 @@ object TypedJson {
 
   object TypeHintFormat {
 
-    /** Create a Format that will find the correct format amongst the passed formats when serializing/deserializing,
-      * using the type hint in the TypeFormat.
-      * The field that holds the type hint will be "_type"
-      */
+    /**
+     * Create a Format that will find the correct format amongst the passed formats when serializing/deserializing,
+     * using the type hint in the TypeFormat.
+     * The field that holds the type hint will be "_type"
+     */
     def apply[A](typedFormats: TypeHint[_ <: A]*): TypeHintFormat[A] = {
       TypeHintFormat[A](typeHintKey = "_type", typedFormats)
     }

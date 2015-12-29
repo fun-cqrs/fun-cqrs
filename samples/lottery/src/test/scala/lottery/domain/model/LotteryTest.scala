@@ -1,16 +1,16 @@
 package lottery.domain.model
 
 import io.funcqrs._
-import lottery.domain.model.LotteryProtocol.{AddParticipant, CreateLottery, Reset, Run}
-import lottery.domain.service.{LotteryViewProjection, LotteryViewRepo}
-import org.scalatest.concurrent.{Futures, ScalaFutures}
-import org.scalatest.time.{Seconds, Span}
-import org.scalatest.{FunSuite, Matchers, OptionValues}
+import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, Reset, Run }
+import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
+import org.scalatest.concurrent.{ Futures, ScalaFutures }
+import org.scalatest.time.{ Seconds, Span }
+import org.scalatest.{ FunSuite, Matchers, OptionValues }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class LotteryTest extends FunSuite with Matchers with Futures
-  with ScalaFutures with FunCqrsTestSupport with OptionValues with FailedFutures {
+    with ScalaFutures with FunCqrsTestSupport with OptionValues with FailedFutures {
 
   override implicit val patienceConfig = PatienceConfig(timeout = Span(5, Seconds))
 
@@ -75,7 +75,6 @@ class LotteryTest extends FunSuite with Matchers with Futures
   test("Add twice the same participant") {
 
     new End2EndTestSupport(projection) {
-
 
       intercept[IllegalArgumentException] {
 

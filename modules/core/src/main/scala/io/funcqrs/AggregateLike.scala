@@ -12,11 +12,12 @@ trait AggregateLike extends ProtocolAliases {
 
 trait AggregateAliases extends ProtocolAliases {
 
-  /** The Aggregate type.
-    * This is the only (abstract) type member to be defined.
-    *
-    * All other type members are aliases defined by type projection of inner types from Aggregate type itself.
-    */
+  /**
+   * The Aggregate type.
+   * This is the only (abstract) type member to be defined.
+   *
+   * All other type members are aliases defined by type projection of inner types from Aggregate type itself.
+   */
   type Aggregate <: AggregateLike
 
   /** Alias for Aggregate#Id */

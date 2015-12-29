@@ -14,8 +14,9 @@ import io.funcqrs.DomainEvent
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
-/** Parent actor for all ProjectionActors
-  */
+/**
+ * Parent actor for all ProjectionActors
+ */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)

@@ -48,9 +48,10 @@ trait AggregateService[A <: AggregateLike] extends AggregateAliases {
     }
   }
 
-  /** Builds a ProjectionMonitor actor that can inform when events from a given command have been applied
-    * to the read model.
-    */
+  /**
+   * Builds a ProjectionMonitor actor that can inform when events from a given command have been applied
+   * to the read model.
+   */
   protected def projectionMonitor(viewName: String)(implicit timeout: Timeout): ProjectionMonitor[A] = {
 
     val newEventsMonitor = (commandId: CommandId) => {

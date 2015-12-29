@@ -2,16 +2,17 @@ package io.funcqrs
 
 import java.time.OffsetDateTime
 
-/** Holds Metadata information such as:
-  * - aggregateId
-  * - CommandId
-  * - EventId
-  * - event date
-  * - tags
-  *
-  * Abstract type Id (subtype of AggregateID) must be defined,
-  * as such Metadata's implementation are bounded to specific Aggregate types.
-  */
+/**
+ * Holds Metadata information such as:
+ * - aggregateId
+ * - CommandId
+ * - EventId
+ * - event date
+ * - tags
+ *
+ * Abstract type Id (subtype of AggregateID) must be defined,
+ * as such Metadata's implementation are bounded to specific Aggregate types.
+ */
 trait Metadata {
 
   type Id <: AggregateID
@@ -29,9 +30,10 @@ trait JavaTime {
   type DateTime = OffsetDateTime
 }
 
-/** Enriches [[DomainEvent]] with [[Metadata]] information.
-  * @tparam M a Metadata subtype
-  */
+/**
+ * Enriches [[DomainEvent]] with [[Metadata]] information.
+ * @tparam M a Metadata subtype
+ */
 trait MetadataFacet[M <: Metadata] {
   this: DomainEvent =>
 

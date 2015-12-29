@@ -115,13 +115,14 @@ abstract class ProjectionActor(projection: Projection,
 
 object ProjectionActor {
 
-  /** PartialFunction to handle failures while processing events inside a [[ProjectionActor]].
-    *
-    * Typically, such a strategy should handle exceptions that are NOT related with external system calls or database operations.
-    * Only programatically errors should be handled. This is useful to avoid that a ProjectionActor get stuck trying processing an event
-    * it can't handle due to a programing error.
-    *
-    */
+  /**
+   * PartialFunction to handle failures while processing events inside a [[ProjectionActor]].
+   *
+   * Typically, such a strategy should handle exceptions that are NOT related with external system calls or database operations.
+   * Only programatically errors should be handled. This is useful to avoid that a ProjectionActor get stuck trying processing an event
+   * it can't handle due to a programing error.
+   *
+   */
   type FailureStrategy = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
 
   case class Done(evt: DomainEvent)
@@ -143,9 +144,10 @@ class ForwardingActorSubscriber(target: ActorRef, val requestStrategy: RequestSt
   }
 }
 
-/** A ProjectionActor that never saves the offset
-  * causing the event stream to be read from start on each app restart
-  */
+/**
+ * A ProjectionActor that never saves the offset
+ * causing the event stream to be read from start on each app restart
+ */
 class ProjectionActorWithoutOffsetPersistence(projection: Projection,
                                               sourceProvider: EventsSourceProvider,
                                               failureStrategy: FailureStrategy)
@@ -162,14 +164,15 @@ object ProjectionActorWithoutOffsetPersistence {
 
 }
 
-/** A ProjectionActor that saves the offset as a snapshot in Akka Persistence
-  *
-  * This implementation is a quick win for those that simply want to persist the offset without caring about
-  * the persistence layer.
-  *
-  * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
-  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
-  */
+/**
+ * A ProjectionActor that saves the offset as a snapshot in Akka Persistence
+ *
+ * This implementation is a quick win for those that simply want to persist the offset without caring about
+ * the persistence layer.
+ *
+ * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
+ * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
+ */
 class ProjectionActorWithOffsetManagedByAkkaPersistence(projection: Projection,
                                                         sourceProvider: EventsSourceProvider,
                                                         failureStrategy: FailureStrategy,
