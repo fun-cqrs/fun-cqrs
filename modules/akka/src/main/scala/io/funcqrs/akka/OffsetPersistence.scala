@@ -29,7 +29,7 @@ trait PersistedOffsetCustom extends OffsetPersistence {
   def saveCurrentOffset(offset: Long): Unit
 
   /** Returns the current offset as persisted in DB */
-  def readOffset: Future[Long]
+  def readOffset: Future[Option[Long]]
 
   /** On preStart we read the offset from db and start the events streaming */
   override def preStart(): Unit = {
@@ -62,7 +62,7 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
 
     case SnapshotOffer(metadata, offset: Long) =>
       log.debug(s"[$persistenceId] snapshot offer - lastProcessedOffset $offset")
-      lastProcessedOffset = offset
+      lastProcessedOffset = Some(offset)
 
     case _: RecoveryCompleted =>
       log.debug(s"[$persistenceId] recovery completed - lastProcessedOffset $lastProcessedOffset")
