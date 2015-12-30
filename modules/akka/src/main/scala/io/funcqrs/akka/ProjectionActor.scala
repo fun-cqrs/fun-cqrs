@@ -26,7 +26,7 @@ abstract class ProjectionActor(projection: Projection,
 
   implicit val timeout = Timeout(5 seconds)
 
-  var lastProcessedOffset: Long = 0
+  var lastProcessedOffset: Option[Long] = None
 
   def saveCurrentOffset(offset: Long): Unit
 
@@ -34,7 +34,7 @@ abstract class ProjectionActor(projection: Projection,
     log.debug(s"ProjectionActor: starting projection... $projection")
     implicit val mat = ActorMaterializer()
     val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
-    sourceProvider.source(lastProcessedOffset + 1).runWith(actorSink)
+    sourceProvider.source(lastProcessedOffset.map(_ + 1).getOrElse(0)).runWith(actorSink)
   }
 
   override def receive: Receive = acceptingEvents
@@ -204,7 +204,7 @@ class ProjectionActorWithCustomOffsetPersistence(projection: Projection,
   }
 
   /** Returns the current offset as persisted in DB */
-  def readOffset: Future[Long] = customOffsetPersistence.readOffset
+  def readOffset: Future[Option[Long]] = customOffsetPersistence.readOffset
 }
 
 object ProjectionActorWithCustomOffsetPersistence {

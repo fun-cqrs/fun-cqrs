@@ -172,7 +172,7 @@ object FunCQRS {
       def saveCurrentOffset(offset: Long): Future[Unit]
 
       /** Returns the current offset as persisted in DB */
-      def readOffset: Future[Long]
+      def readOffset: Future[Option[Long]]
 
     }
 
