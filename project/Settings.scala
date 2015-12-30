@@ -24,6 +24,4 @@ object Settings {
       .setPreference(AlignSingleLineCaseStatements, true)
       .setPreference(DoubleIndentClassDeclaration, true)
       .setPreference(PreserveDanglingCloseParenthesis, true)
- //     .setPreference(MultilineScaladocCommentsStartOnFirstLine, true)
- //     .setPreference(PlaceScaladocAsterisksBeneathSecondAsterisk, true)
 }
