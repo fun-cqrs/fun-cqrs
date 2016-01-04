@@ -2,6 +2,9 @@ package io.funcqrs
 
 import java.util.UUID
 
+/**
+ * Base trait for Aggregates
+ */
 trait AggregateLike extends ProtocolAliases {
 
   type Id <: AggregateID

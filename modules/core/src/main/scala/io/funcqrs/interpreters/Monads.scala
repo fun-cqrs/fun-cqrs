@@ -7,13 +7,13 @@ import scala.util.Try
 /**
  * Provides type-classes for map and flatMap over [[Identity]], [[Try]] and [[Future]]
  *
- * This implementation does NOT pretend sound. We only an abstraction to map and flatMap
- * over  [[Identity]], [[Try]] and [[Future]] in a unified way.
+ * This implementation does NOT pretend to sound. We only need an abstraction to map and flatMap
+ * over [[Identity]], [[Try]] and [[Future]] in a unified way.
  */
 object Monads {
 
   trait MonadOps[F[_]] {
-    def pure[A](any:A): F[A]
+    def pure[A](any: A): F[A]
     def map[A, B](fa: F[A])(f: A => B): F[B]
     def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
   }
@@ -44,7 +44,7 @@ object Monads {
   }
 
   object Monad {
-    def pure[A, F[_]](any:A)(implicit monadOps: MonadOps[F]): F[A] = {
+    def pure[A, F[_]](any: A)(implicit monadOps: MonadOps[F]): F[A] = {
       monadOps.pure(any)
     }
   }
