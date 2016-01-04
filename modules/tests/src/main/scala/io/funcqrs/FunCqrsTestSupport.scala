@@ -5,7 +5,6 @@ import scala.concurrent.{ ExecutionContext, Future }
 
 trait FunCqrsTestSupport {
 
-
   class End2EndTestSupport(projection: Projection) extends WriteModelOps with ReadModelOps {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
@@ -21,12 +20,12 @@ trait FunCqrsTestSupport {
     implicit class FutureRichAggregateOps[A <: AggregateLike](val fut: Future[RichTestAggregate[A]]) {
       def update(cmds: A#Command*)(implicit ec: ExecutionContext): Future[RichTestAggregate[A]] = {
         fut.flatMap { richtAggregate =>
-          richtAggregate.update(cmds:_*)
+          richtAggregate.update(cmds: _*)
         }
       }
     }
 
-    case class RichTestAggregate[A <: AggregateLike](aggregate:A, behavior:Behavior[A]) extends WriteModelOps with ReadModelOps {
+    case class RichTestAggregate[A <: AggregateLike](aggregate: A, behavior: Behavior[A]) extends WriteModelOps with ReadModelOps {
 
       def id: A#Id = aggregate.id
 
@@ -40,7 +39,7 @@ trait FunCqrsTestSupport {
 
   }
 
-  trait ReadModelTestSupport extends ReadModelOps{
+  trait ReadModelTestSupport extends ReadModelOps {
 
     implicit class ProjectionOps(projection: Projection)(implicit ec: ExecutionContext) {
 
@@ -88,23 +87,17 @@ trait FunCqrsTestSupport {
 
   trait WriteModelOps {
 
-    protected def sendCreateCommandInternal[A <: AggregateLike](behavior: Behavior[A])
-                                                               (cmd: behavior.Command, cmds: behavior.Command*)
-                                                               (implicit ec: ExecutionContext): Future[(behavior.Event, behavior.Aggregate)] = {
+    protected def sendCreateCommandInternal[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Event, behavior.Aggregate)] = {
       behavior.applyCommand(cmd)
     }
-    protected def sendCommandsInternal[A <: AggregateLike](behavior: Behavior[A])
-                                                          (cmd: behavior.Command, cmds: behavior.Command*)
-                                                          (implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
+    protected def sendCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
 
       sendCreateCommandInternal(behavior)(cmd).flatMap {
         case (evt, agg) => sendUpdateCommandsInternal(behavior)(immutable.Seq(evt), agg, cmds: _*)
       }
     }
 
-    protected def sendUpdateCommandsInternal[A <: AggregateLike](behavior: Behavior[A])
-                                                                (events: behavior.Events, aggregate: behavior.Aggregate, cmds: behavior.Command*)
-                                                                (implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
+    protected def sendUpdateCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(events: behavior.Events, aggregate: behavior.Aggregate, cmds: behavior.Command*)(implicit ec: ExecutionContext): Future[(behavior.Events, behavior.Aggregate)] = {
 
       cmds.toList match {
         case head :: Nil => behavior.applyCommand(head, aggregate).map {
