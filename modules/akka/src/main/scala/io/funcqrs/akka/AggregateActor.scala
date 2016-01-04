@@ -109,6 +109,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
   protected def defaultReceive: Receive = {
     case StateRequest(requester) => sendState(requester)
     case Exists(requester)       => requester ! aggregateOpt.isDefined
+    case KillAggregate           => context.stop(self)
   }
 
   /** This method should be used as a callback handler for persist() method.
