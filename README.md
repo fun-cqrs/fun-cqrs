@@ -12,7 +12,7 @@ Small library for building CQRS application using Scala in combination with Akka
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-  libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "0.0.1"
+  libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "0.1.1"
 ```
   
 ### Contribution policy
