@@ -37,7 +37,7 @@ object TestModel {
 
     }
   }
-  case class UserId(value: String) extends AggregateID
+  case class UserId(value: String) extends AggregateId
   object UserId {
     def generate() = UserId(UUID.randomUUID().toString)
   }

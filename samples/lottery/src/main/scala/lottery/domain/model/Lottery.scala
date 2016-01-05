@@ -45,7 +45,7 @@ case class Lottery(name: String, participants: List[String] = List(),
   def isNewParticipant(name: String) = !hasParticipant(name)
 }
 
-case class LotteryId(value: String) extends AggregateID
+case class LotteryId(value: String) extends AggregateId
 
 object LotteryId {
 

@@ -6,12 +6,13 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"    % "3.1.0"
-  // val scalaTest             =  "org.scalatest"              %%  "scalatest"        % "2.2.1"         % "test"
+  val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"     % "3.1.0"
+  val reactiveStreams       =   "org.reactivestreams"        % "reactive-streams"   % "1.0.0"
+
   val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0-M10" % "test"
-  
+
   val mainDeps = Seq(
-    libraryDependencies ++= Seq(scalaLogging, scalaTest)
+    libraryDependencies ++= Seq(reactiveStreams, scalaLogging, scalaTest)
   )
   //------------------------------------------------------------------------------------------------------------
 

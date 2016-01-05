@@ -3,17 +3,28 @@ package io.funcqrs
 import io.funcqrs.Projection._
 
 import scala.concurrent.Future
+import scala.util.control.NonFatal
+
 trait Projection {
+
+  type HandleFailure = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
 
   def handleEvent: HandleEvent
 
+  def handleFailure: HandleFailure = PartialFunction.empty
+
   final def onEvent(evt: DomainEvent): Future[Unit] = {
     if (handleEvent.isDefinedAt(evt)) {
-      handleEvent(evt)
+      import scala.concurrent.ExecutionContext.Implicits.global
+      handleEvent(evt).recoverWith {
+        case NonFatal(exp) if handleFailure.isDefinedAt((evt, exp)) => handleFailure(evt, exp)
+      }
     } else {
       Future.successful(())
     }
   }
+
+
 
   /**
    * Builds a [[AndThenProjection]] composed of this Projection and the passed Projection.

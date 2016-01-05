@@ -1,17 +1,21 @@
 package lottery.domain.service
 
 import akka.actor.ActorSystem
-import io.funcqrs.akka.FunCQRS
-import lottery.app.LevelDbTaggedEventsSource
+import io.funcqrs.AggregateServiceWithAssignedId
+import io.funcqrs.backend.AkkaBackend
+import io.funcqrs.backend.async.api._
 import lottery.domain.model.Lottery
+
+import scala.concurrent.Future
+import scala.concurrent.duration._
+
 
 trait LotteryModule {
 
   def actorSystem: ActorSystem
 
-  implicit lazy val funCQRS = new FunCQRS(actorSystem)
+  implicit lazy val backend = new AkkaBackend(actorSystem, 3.seconds)
 
-  import io.funcqrs.akka.FunCQRS.api._
 
   //----------------------------------------------------------------------
   // WRITE side wiring
@@ -26,12 +30,12 @@ trait LotteryModule {
   // READ side wiring
   val lotteryViewRepo = new LotteryViewRepo
 
-  config {
-    projection(
-      sourceProvider = new LevelDbTaggedEventsSource(Lottery.tag),
-      projection = new LotteryViewProjection(lotteryViewRepo),
-      name = "LotteryViewProjectionActor"
-    )
-  }
+//  config {
+//    projection(
+//      publisherProvider = new LevelDbTaggedEventsSource(Lottery.tag),
+//      projection = new LotteryViewProjection(lotteryViewRepo),
+//      name = "LotteryViewProjectionActor"
+//    )
+//  }
 
 }

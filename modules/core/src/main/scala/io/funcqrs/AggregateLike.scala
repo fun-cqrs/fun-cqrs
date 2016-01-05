@@ -7,7 +7,7 @@ import java.util.UUID
  */
 trait AggregateLike extends ProtocolAliases {
 
-  type Id <: AggregateID
+  type Id <: AggregateId
 
   def id: Id
 
@@ -32,13 +32,13 @@ trait AggregateAliases extends ProtocolAliases {
 }
 
 /** Base trait for definitions of type-safe aggregate ids */
-trait AggregateID {
+trait AggregateId {
 
   def value: String
 
 }
 
-trait AggregateUUID extends AggregateID {
+trait AggregateUUID extends AggregateId {
 
   def uuid: UUID
 

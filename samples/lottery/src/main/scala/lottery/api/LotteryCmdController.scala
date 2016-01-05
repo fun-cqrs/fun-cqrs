@@ -2,7 +2,7 @@ package lottery.api
 
 import akka.util.Timeout
 import io.funcqrs.AggregateAliases
-import io.funcqrs.akka.AggregateServiceWithAssignedId
+import io.funcqrs.AggregateServiceWithAssignedId
 import lottery.api.routes.{ LotteryQueryController => ReverseQueryCtrl }
 import lottery.domain.model.{ Lottery, LotteryId, LotteryProtocol }
 import play.api.libs.json.{ JsError, JsResult, JsSuccess, JsValue }
@@ -12,7 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[Lottery]) extends Controller with AggregateAliases {
+class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[Lottery, Future]) extends Controller with AggregateAliases {
 
   type Aggregate = aggregateService.Aggregate
 
@@ -28,13 +28,7 @@ class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[
 
     createCmd match {
       case JsSuccess(cmd, _) =>
-        val res =
-          aggregateService
-            .newInstance(aggregateId, cmd)
-            .watch("LotteryViewProjectionActor")
-            .result()
-
-        res.map { result =>
+        aggregateService.newInstance(aggregateId, cmd).map { result =>
           Created.withHeaders("Location" -> toLocation(id))
         }
       case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
@@ -48,13 +42,7 @@ class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[
 
     updateCmd match {
       case JsSuccess(cmd, _) =>
-        val res =
-          aggregateService
-            .update(aggregateId)(cmd)
-            .watch("LotteryViewProjectionActor")
-            .result()
-
-        res.map(_ => Ok("done"))
+        aggregateService.update(aggregateId)(cmd).map(_ => Ok("done"))
 
       case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
     }

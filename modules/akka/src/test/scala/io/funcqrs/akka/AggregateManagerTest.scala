@@ -5,7 +5,7 @@ import akka.actor.Status.Failure
 import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import io.funcqrs.{ AggregateID, CommandException, DomainCommand }
+import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol.{ ChangeName, CreateUser, NameChanged, UserCreated }
 import io.funcqrs.akka.TestModel.{ User, UserId }
@@ -120,7 +120,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
   // FIXME: we can't type check on Id, need to investigate further
   ignore should "not accept AggregateIDs of another type" in {
 
-    case class BadUserId(value: String) extends AggregateID
+    case class BadUserId(value: String) extends AggregateId
 
     aggregateManager ! (BadUserId("bad-id"), CreateUser("John Doe", 30))
 

@@ -9,6 +9,7 @@ import io.funcqrs.{ AggregateAliases, AggregateLike, CommandId }
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
+@deprecated(message = "use io.funcqrs.AggregateService instead", since = "0.3.0")
 trait AggregateService[A <: AggregateLike] extends AggregateAliases {
 
   type Aggregate = A

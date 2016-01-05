@@ -10,9 +10,9 @@ import scala.concurrent.duration.Duration
 
 object AggregateManager {
 
-  case class GetState(id: AggregateID)
+  case class GetState(id: AggregateId)
 
-  case class Exists(id: AggregateID)
+  case class Exists(id: AggregateId)
 
 }
 
@@ -73,7 +73,7 @@ trait AggregateManager extends Actor
     case (GoodId(id), cmd: Command) => processAggregateCommand(id, cmd)
   }
 
-  private def badAggregateId(id: AggregateID) = {
+  private def badAggregateId(id: AggregateId) = {
     sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
   private def defaultProcessCommand: Receive = {

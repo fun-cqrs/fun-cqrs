@@ -15,7 +15,7 @@ import java.time.OffsetDateTime
  */
 trait Metadata {
 
-  type Id <: AggregateID
+  type Id <: AggregateId
   type DateTime
 
   def aggregateId: Id
