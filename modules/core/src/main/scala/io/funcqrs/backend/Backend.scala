@@ -1,12 +1,9 @@
 package io.funcqrs.backend
 
 import io.funcqrs._
-
 import scala.language.higherKinds
 
-trait Backend {
-
-  type F[_]
+trait Backend[F[_]] {
 
   def configureProjection(config: ProjectionConfig): Unit
 

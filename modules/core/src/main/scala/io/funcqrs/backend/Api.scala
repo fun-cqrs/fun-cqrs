@@ -1,21 +1,23 @@
 package io.funcqrs.backend
 
-import io.funcqrs.behavior.Behavior
 import io.funcqrs._
+import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.Future
+import scala.language.higherKinds
 
-object Api {
 
-  def config(projectionConfig: ProjectionConfig)(implicit backend: Backend): Unit = {
+trait Api[F[_]] {
+
+  def config(projectionConfig: ProjectionConfig)(implicit backend: Backend[F]): Unit = {
     backend.configureProjection(projectionConfig)
   }
 
-  def config[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit backend: Backend): AggregateServiceWithAssignedId[A, backend.F] = {
+  def config[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit backend: Backend[F]): AggregateServiceWithAssignedId[A, F] = {
     backend.configureAggregate(aggregateConfig)
   }
 
-  def config[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit backend: Backend): AggregateServiceWithManagedId[A, backend.F] = {
+  def config[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit backend: Backend[F]): AggregateServiceWithManagedId[A, F] = {
     backend.configureAggregate(aggregateConfig)
   }
 
@@ -28,8 +30,6 @@ object Api {
                  name: String): ProjectionConfig = {
     ProjectionConfig(publisherProvider, projection, name)
   }
-
-
 }
 
 

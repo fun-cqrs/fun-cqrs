@@ -1,14 +1,11 @@
 package lottery.domain.service
 
 import akka.actor.ActorSystem
-import io.funcqrs.AggregateServiceWithAssignedId
 import io.funcqrs.backend.AkkaBackend
-import io.funcqrs.backend.async.api._
+import io.funcqrs.backend.asyncApi._
 import lottery.domain.model.Lottery
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
-
 
 trait LotteryModule {
 
@@ -16,15 +13,18 @@ trait LotteryModule {
 
   implicit lazy val backend = new AkkaBackend(actorSystem, 3.seconds)
 
+//  import io.funcqrs.backend.
+//  val a = api[Future]
+//  import a._
 
   //----------------------------------------------------------------------
   // WRITE side wiring
   val lotteryService =
-    config {
+    config (
       aggregate[Lottery](Lottery.behavior)
         .withName("LotteryManager")
         .withAssignedId
-    }
+    )
 
   //----------------------------------------------------------------------
   // READ side wiring

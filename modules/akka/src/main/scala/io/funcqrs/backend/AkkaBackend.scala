@@ -5,16 +5,13 @@ import akka.util.Timeout
 import io.funcqrs.akka.AggregateManager.{Exists, GetState}
 import io.funcqrs.AggregateService
 import io.funcqrs.akka._
-import io.funcqrs.backend.Api._
 import io.funcqrs.{AggregateLike, AggregateServiceWithAssignedId, AggregateServiceWithManagedId}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Try
 
-class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Backend {
-
-  type F[_] = Future[_]
+class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Backend[Future] {
 
   /**
    * Parent actor for all projections!
@@ -51,7 +48,7 @@ class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Bac
     () // return Unit
   }
 
-  trait AggregateServiceAkka[A <: AggregateLike] extends AggregateService[A, F] {
+  trait AggregateServiceAkka[A <: AggregateLike] extends AggregateService[A, Future] {
     def aggregateManager: ActorRef
 
     // ask timeout should only be in scope inside service
@@ -74,9 +71,9 @@ class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Bac
     }
   }
 
-  def configureAggregate[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateServiceWithAssignedId[A, F] = {
+  def configureAggregate[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateServiceWithAssignedId[A, Future] = {
 
-    new AggregateServiceWithAssignedId[A, F] with AggregateServiceAkka[A] {
+    new AggregateServiceWithAssignedId[A, Future] with AggregateServiceAkka[A] {
       val aggregateManager = actorOf[A](config)
 
       def newInstance(id: Id, cmd: Command): Future[Events] = {
@@ -85,9 +82,9 @@ class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Bac
     }
   }
 
-  def configureAggregate[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateServiceWithManagedId[A, F] = {
+  def configureAggregate[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateServiceWithManagedId[A, Future] = {
 
-    new AggregateServiceWithManagedId[A, F] with AggregateServiceAkka[A]{
+    new AggregateServiceWithManagedId[A, Future] with AggregateServiceAkka[A]{
 
       val aggregateManager = actorOf[A](config)
 
@@ -97,7 +94,7 @@ class AkkaBackend(val actorSystem: ActorSystem, askTimeout: Timeout) extends Bac
     }
   }
 
-  private def actorOf[A <: AggregateLike](config: AggregateConfig[A]): ActorRef = {
+  def actorOf[A <: AggregateLike](config: AggregateConfig[A]): ActorRef = {
     config.name match {
       case Some(name) =>
         actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior, config.idStrategy), name)
