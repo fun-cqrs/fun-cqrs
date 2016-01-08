@@ -85,6 +85,20 @@ trait AggregateManager extends Actor
     case Exists(GoodId(id))   => exists(id)
     case Exists(BadId(id))    => badAggregateId(id)
 
+    case cmd: Command =>
+      log.error(
+        s"""
+           | Received command without AggregateId!
+           | $cmd
+           |#=============================================================================#
+           |# Have you configured your aggregate to use assigned IDs?                     #
+           |# In that case, you must always send commands together with the aggregate ID! #
+           |#=============================================================================#
+         """.stripMargin)
+      sender() ! Status.Failure(
+        new IllegalArgumentException(s"Command send without AggregateId: $cmd!")
+      )
+
     case x =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }

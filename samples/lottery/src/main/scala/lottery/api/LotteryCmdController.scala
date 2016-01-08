@@ -1,18 +1,17 @@
 package lottery.api
 
 import akka.util.Timeout
-import io.funcqrs.AggregateAliases
-import io.funcqrs.AggregateServiceWithAssignedId
-import lottery.api.routes.{ LotteryQueryController => ReverseQueryCtrl }
-import lottery.domain.model.{ Lottery, LotteryId, LotteryProtocol }
-import play.api.libs.json.{ JsError, JsResult, JsSuccess, JsValue }
-import play.api.mvc.{ Action, Controller, RequestHeader }
+import io.funcqrs.{AggregateAliases, AsyncAggregateService}
+import lottery.api.routes.{LotteryQueryController => ReverseQueryCtrl}
+import lottery.domain.model.{Lottery, LotteryId, LotteryProtocol}
+import play.api.libs.json.{JsError, JsResult, JsSuccess, JsValue}
+import play.api.mvc.{Action, Controller, RequestHeader}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class LotteryCmdController(val aggregateService: AggregateServiceWithAssignedId[Lottery, Future]) extends Controller with AggregateAliases {
+class LotteryCmdController(val aggregateService: AsyncAggregateService[Lottery]) extends Controller with AggregateAliases {
 
   type Aggregate = aggregateService.Aggregate
 

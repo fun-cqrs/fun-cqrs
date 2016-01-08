@@ -1,17 +1,15 @@
 package io.funcqrs.backend.akka
 
-import _root_.akka.actor.{ ActorRef, Props, ActorSystem }
+import _root_.akka.actor.{ActorRef, ActorSystem, Props}
 import _root_.akka.pattern._
 import _root_.akka.util.Timeout
-import io.funcqrs.AggregateService
-import io.funcqrs.AggregateServiceWithAssignedId
-import io.funcqrs.AggregateServiceWithManagedId
 import io.funcqrs._
-import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
+import io.funcqrs.akka.AggregateManager.{Exists, GetState}
 import io.funcqrs.akka._
 import io.funcqrs.behavior.Behavior
-import scala.concurrent.duration._
+
 import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.util.Try
 
 object AkkaBackendApi {
@@ -22,8 +20,7 @@ object AkkaBackendApi {
      */
     private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
 
-    trait AggregateServiceAkka[A <: AggregateLike] extends AggregateService[A, Future] {
-      def aggregateManager: ActorRef
+    class AggregateServiceAkka[A <: AggregateLike](aggregateManager: ActorRef) extends AsyncAggregateService[A] {
 
       def state(id: Id): Future[A] = {
         import scala.concurrent.ExecutionContext.Implicits.global
@@ -41,32 +38,24 @@ object AkkaBackendApi {
       def update(id: Id)(cmd: Command): Future[Events] = {
         (aggregateManager ? (id, cmd)).mapTo[Events]
       }
-    }
 
-    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateServiceWithAssignedId[A, Future] = {
-      new AggregateServiceWithAssignedId[A, Future] with AggregateServiceAkka[A] {
-        val aggregateManager = actorOf[A](config)
-
-        def newInstance(id: Id, cmd: Command): Future[Events] = {
-          (aggregateManager ? (id, cmd)).mapTo[Events]
-        }
-
+      def newInstance(cmd: Command): Future[Events] = {
+        (aggregateManager ? cmd).mapTo[Events]
+      }
+      def newInstance(id: Id, cmd: Command): Future[Events] = {
+        (aggregateManager ? (id, cmd)).mapTo[Events]
       }
     }
 
-    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateServiceWithManagedId[A, Future] = {
+    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AsyncAggregateService[A] = {
+      new AggregateServiceAkka(actorOf[A](config))
+    }
 
-      new AggregateServiceWithManagedId[A, Future] with AggregateServiceAkka[A] {
-        val aggregateManager = actorOf[A](config)
-
-        def newInstance(cmd: Command): Future[Events] = {
-          (aggregateManager ? cmd).mapTo[Events]
-        }
-      }
+    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AsyncAggregateService[A] = {
+      new AggregateServiceAkka(actorOf[A](config))
     }
 
     def configure(config: ProjectionConfig): Future[Unit] = {
-
 
       def projectionProps = {
         // which strategy??
@@ -88,7 +77,7 @@ object AkkaBackendApi {
       val actorCreationTimeout = Timeout(3.seconds)
 
       val created = projectionMonitorActorRef
-          .ask(ProjectionMonitorActor.CreateProjection(projectionProps, config.name))(actorCreationTimeout)
+        .ask(ProjectionMonitorActor.CreateProjection(projectionProps, config.name))(actorCreationTimeout)
 
       import scala.concurrent.ExecutionContext.Implicits.global
       created.map(_ => Unit)
@@ -106,13 +95,11 @@ object AkkaBackendApi {
 
   }
 
-
-
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceWithAssignedId[A, Future] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AsyncAggregateService[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceWithManagedId[A, Future] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AsyncAggregateService[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 
@@ -129,6 +116,5 @@ object AkkaBackendApi {
   def projection(sourceProvider: EventsSourceProvider, projection: Projection, name: String): ProjectionConfig = {
     ProjectionConfig(sourceProvider, projection, name)
   }
-
 
 }
