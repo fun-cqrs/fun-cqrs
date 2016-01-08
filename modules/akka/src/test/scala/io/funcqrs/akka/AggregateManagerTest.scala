@@ -5,13 +5,12 @@ import akka.actor.Status.Failure
 import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import io.funcqrs.backend.AkkaBackend
+import io.funcqrs.backend.akka.api._
 import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol.{ ChangeName, CreateUser, NameChanged, UserCreated }
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import org.scalatest._
-import io.funcqrs.backend.asyncApi._
 import scala.concurrent.duration._
 
 class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSystem)
@@ -22,16 +21,15 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
   def this() = this(ActorSystem("test", ConfigFactory.load("application.conf")))
 
-  implicit val backend = new AkkaBackend(actorSystem, 3.seconds)
+  implicit val backend = new AkkaBackend(actorSystem)(3.seconds)
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
 
-  val aggregateManager =
-    backend.actorOf {
-      aggregate[User](User.behavior)
-        .withAssignedId
-    }
+  val aggregateManager = backend.actorOf {
+    aggregate[User](User.behavior)
+      .withAssignedId
+  }
 
   behavior of "An AggregateManager"
 

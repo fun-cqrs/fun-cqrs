@@ -1,9 +1,8 @@
 package io.funcqrs.akka
 
 import akka.actor.ActorContext
+import akka.persistence.query.EventEnvelope
 import akka.stream.scaladsl.Source
-import io.funcqrs.backend.{ EventsPublisherProvider, EventEnvelope }
-import org.reactivestreams.{Subscriber, Publisher}
 
 /**
  * Provides an Akka-Streams [[Source]] that produces [[EventEnvelope]]s.
@@ -15,15 +14,3 @@ trait EventsSourceProvider {
 
 }
 
-
-object EventsSourceProvider {
-
-  def fromPublisher(publisherProvider: EventsPublisherProvider) = {
-    new EventsSourceProvider {
-      def source(offset: Long)(implicit context: ActorContext): Source[EventEnvelope, Unit] = {
-        Source(publisherProvider.publisher(offset))
-      }
-    }
-  }
-
-}
