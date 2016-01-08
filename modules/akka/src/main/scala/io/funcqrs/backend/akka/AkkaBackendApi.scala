@@ -1,10 +1,10 @@
 package io.funcqrs.backend.akka
 
-import _root_.akka.actor.{ActorRef, ActorSystem, Props}
+import _root_.akka.actor.{ ActorRef, ActorSystem, Props }
 import _root_.akka.pattern._
 import _root_.akka.util.Timeout
 import io.funcqrs._
-import io.funcqrs.akka.AggregateManager.{Exists, GetState}
+import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.akka._
 import io.funcqrs.behavior.Behavior
 
@@ -15,51 +15,21 @@ import scala.util.Try
 object AkkaBackendApi {
 
   class AkkaBackend(val actorSystem: ActorSystem)(implicit askTimeout: Timeout) {
-    /**
-     * Parent actor for all projections!
-     */
+
+    /** Parent actor for all projections! */
     private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
 
-    class AggregateServiceAkka[A <: AggregateLike](aggregateManager: ActorRef) extends AsyncAggregateService[A] {
+    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateServiceAkka[A] =
+      new AggregateServiceAkka(actorOf[A](config), projectionMonitorActorRef)
 
-      def state(id: Id): Future[A] = {
-        import scala.concurrent.ExecutionContext.Implicits.global
-        (aggregateManager ? GetState(id)).flatMap { res =>
-          // can't use mapTo since we don't have a ClassTag for Aggregate in scope
-          val tryCast = Try(res.asInstanceOf[Aggregate])
-          Future.fromTry(tryCast)
-        }
-      }
-
-      def exists(id: Id): Future[Boolean] = {
-        (aggregateManager ? Exists(id)).mapTo[Boolean]
-      }
-
-      def update(id: Id)(cmd: Command): Future[Events] = {
-        (aggregateManager ? (id, cmd)).mapTo[Events]
-      }
-
-      def newInstance(cmd: Command): Future[Events] = {
-        (aggregateManager ? cmd).mapTo[Events]
-      }
-      def newInstance(id: Id, cmd: Command): Future[Events] = {
-        (aggregateManager ? (id, cmd)).mapTo[Events]
-      }
-    }
-
-    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AsyncAggregateService[A] = {
-      new AggregateServiceAkka(actorOf[A](config))
-    }
-
-    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AsyncAggregateService[A] = {
-      new AggregateServiceAkka(actorOf[A](config))
-    }
+    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateServiceAkka[A] =
+      new AggregateServiceAkka(actorOf[A](config), projectionMonitorActorRef)
 
     def configure(config: ProjectionConfig): Future[Unit] = {
 
+      // which strategy??
+      // build different ProjectionActor depending on the chosen Offset Persistence Strategy
       def projectionProps = {
-        // which strategy??
-        // build different ProjectionActor depending on the chosen Offset Persistence Strategy
         config.offsetPersistenceStrategy match {
 
           case NoOffsetPersistenceStrategy =>
@@ -95,11 +65,11 @@ object AkkaBackendApi {
 
   }
 
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AsyncAggregateService[A] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceAkka[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AsyncAggregateService[A] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceAkka[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 
@@ -116,5 +86,6 @@ object AkkaBackendApi {
   def projection(sourceProvider: EventsSourceProvider, projection: Projection, name: String): ProjectionConfig = {
     ProjectionConfig(sourceProvider, projection, name)
   }
+
 
 }

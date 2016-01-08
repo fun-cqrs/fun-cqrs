@@ -71,3 +71,15 @@ EOF
 
   lottery.api.patch lottery/$1
 }
+
+
+
+lottery.Reset() {
+cat << EOF > last.json
+{
+  "_type": "Lottery.Reset"
+}
+EOF
+
+  lottery.api.patch lottery/$1
+}

@@ -1,6 +1,7 @@
 package lottery.api
 
 import akka.util.Timeout
+import io.funcqrs.backend.akka.ViewBoundedAggregateService
 import io.funcqrs.{AggregateAliases, AsyncAggregateService}
 import lottery.api.routes.{LotteryQueryController => ReverseQueryCtrl}
 import lottery.domain.model.{Lottery, LotteryId, LotteryProtocol}
@@ -11,7 +12,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class LotteryCmdController(val aggregateService: AsyncAggregateService[Lottery]) extends Controller with AggregateAliases {
+class LotteryCmdController(val aggregateService: ViewBoundedAggregateService[Lottery]) extends Controller with AggregateAliases {
 
   type Aggregate = aggregateService.Aggregate
 
@@ -41,7 +42,7 @@ class LotteryCmdController(val aggregateService: AsyncAggregateService[Lottery])
 
     updateCmd match {
       case JsSuccess(cmd, _) =>
-        aggregateService.update(aggregateId)(cmd).map(_ => Ok("done"))
+        aggregateService.update(aggregateId)(cmd).map{ _ => Ok("done") }
 
       case e: JsError => Future.successful(BadRequest(JsError.toJson(e)))
     }

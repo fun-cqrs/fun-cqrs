@@ -20,7 +20,7 @@ trait LotteryModule {
   val lotteryService =
     configure {
       aggregate[Lottery](Lottery.behavior)
-    }
+    }.join("LotteryViewProjection")
 
   //----------------------------------------------------------------------
   // READ side wiring
@@ -30,7 +30,7 @@ trait LotteryModule {
     projection(
       sourceProvider = new LevelDbTaggedEventsSource(Lottery.tag),
       projection = new LotteryViewProjection(lotteryViewRepo),
-      name = "LotteryViewProjectionActor"
+      name = "LotteryViewProjection"
     )
   }
 

@@ -102,7 +102,8 @@ object LotteryProtocol extends ProtocolLike {
       Json.format[CreateLottery].withTypeHint("Lottery.Create"),
       Json.format[AddParticipant].withTypeHint("Lottery.AddParticipant"),
       Json.format[RemoveParticipant].withTypeHint("Lottery.RemoveParticipant"),
-      hintedObject(Run, "Lottery.Run")
+      hintedObject(Run, "Lottery.Run"),
+      hintedObject(Reset, "Lottery.Reset")
     )
   }
 
