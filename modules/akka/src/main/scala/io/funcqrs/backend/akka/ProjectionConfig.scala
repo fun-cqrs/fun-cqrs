@@ -5,10 +5,12 @@ import io.funcqrs.akka.EventsSourceProvider
 
 import scala.concurrent.Future
 
-case class ProjectionConfig(sourceProvider: EventsSourceProvider,
-                            projection: Projection,
-                            name: String,
-                            offsetPersistenceStrategy: OffsetPersistenceStrategy = NoOffsetPersistenceStrategy) {
+case class ProjectionConfig(
+    sourceProvider: EventsSourceProvider,
+    projection: Projection,
+    name: String,
+    offsetPersistenceStrategy: OffsetPersistenceStrategy = NoOffsetPersistenceStrategy
+) {
 
   def withoutOffsetPersistence(): ProjectionConfig = {
     copy(offsetPersistenceStrategy = NoOffsetPersistenceStrategy)

@@ -12,7 +12,7 @@ trait AggregateIdExtractors {
       // FIXME: this is can't type check properly, need to find a solution
       Try(aggregateId.asInstanceOf[Aggregate#Id]) match {
         case Success(id) => Some(id)
-        case _           => None
+        case _ => None
       }
     }
   }
@@ -23,7 +23,7 @@ trait AggregateIdExtractors {
       // FIXME: this is can't type check properly, need to find a solution
       Try(aggregateId.asInstanceOf[Aggregate#Id]) match {
         case Success(_) => None
-        case _          => Some(aggregateId)
+        case _ => Some(aggregateId)
       }
     }
   }

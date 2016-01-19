@@ -18,8 +18,8 @@ class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends In
   def handleCommand(cmd: Command): Future[Events] = {
 
     behavior.handleCommand(cmd) match {
-      case IdCommandHandlerInvoker(handler)     => Future.successful(handler(cmd))
-      case TryCommandHandlerInvoker(handler)    => Future.fromTry(handler(cmd))
+      case IdCommandHandlerInvoker(handler) => Future.successful(handler(cmd))
+      case TryCommandHandlerInvoker(handler) => Future.fromTry(handler(cmd))
       case FutureCommandHandlerInvoker(handler) => handler(cmd)
     }
   }
@@ -27,8 +27,8 @@ class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends In
   def handleCommand(aggregate: A, cmd: Command): Future[Events] = {
 
     behavior.handleCommand(aggregate, cmd) match {
-      case IdCommandHandlerInvoker(handler)     => Future.successful(handler(cmd))
-      case TryCommandHandlerInvoker(handler)    => Future.fromTry(handler(cmd))
+      case IdCommandHandlerInvoker(handler) => Future.successful(handler(cmd))
+      case TryCommandHandlerInvoker(handler) => Future.fromTry(handler(cmd))
       case FutureCommandHandlerInvoker(handler) => handler(cmd)
     }
   }

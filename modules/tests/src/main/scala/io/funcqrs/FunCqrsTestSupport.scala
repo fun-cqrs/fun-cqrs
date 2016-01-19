@@ -111,9 +111,11 @@ trait FunCqrsTestSupport {
 
     }
 
-    protected def sendUpdateCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(events: behavior.Events,
-                                                                                        aggregate: behavior.Aggregate,
-                                                                                        cmds: behavior.Command*): Identity[(behavior.Events, behavior.Aggregate)] = {
+    protected def sendUpdateCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(
+      events: behavior.Events,
+      aggregate: behavior.Aggregate,
+      cmds: behavior.Command*
+    ): Identity[(behavior.Events, behavior.Aggregate)] = {
 
       val interpreter = IdentityInterpreter(behavior)
 

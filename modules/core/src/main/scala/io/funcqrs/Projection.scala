@@ -24,8 +24,6 @@ trait Projection {
     }
   }
 
-
-
   /**
    * Builds a [[AndThenProjection]] composed of this Projection and the passed Projection.
    *

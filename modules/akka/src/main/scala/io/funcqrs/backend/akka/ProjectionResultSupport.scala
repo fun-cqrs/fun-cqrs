@@ -1,6 +1,6 @@
 package io.funcqrs.backend.akka
 
-import io.funcqrs.{AggregateAliases, AggregateLike}
+import io.funcqrs.{ AggregateAliases, AggregateLike }
 
 trait ProjectionResultSupport[A <: AggregateLike] extends AggregateAliases {
 

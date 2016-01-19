@@ -11,9 +11,11 @@ import io.funcqrs.interpreters.AsyncInterpreter
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: AggregateLike](identifier: A#Id,
-                                         behavior: Behavior[A],
-                                         inactivityTimeout: Option[Duration] = None)
+class AggregateActor[A <: AggregateLike](
+  identifier: A#Id,
+  behavior: Behavior[A],
+  inactivityTimeout: Option[Duration] = None
+)
     extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
@@ -102,10 +104,10 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   private def busy: Receive = {
 
-    case StateRequest(requester)                => sendState(requester)
+    case StateRequest(requester) => sendState(requester)
     case SuccessfulCreation(events, origSender) => onSuccessfulCreation(events, origSender)
-    case SuccessfulUpdate(events, origSender)   => onSuccessfulUpdate(events, origSender)
-    case failedCmd: FailedCommand               => onCommandFailure(failedCmd)
+    case SuccessfulUpdate(events, origSender) => onSuccessfulUpdate(events, origSender)
+    case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
     case anyOther =>
       log.debug(s"received $anyOther while processing another command")
@@ -114,8 +116,8 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
   protected def defaultReceive: Receive = {
     case StateRequest(requester) => sendState(requester)
-    case Exists(requester)       => requester ! aggregateOpt.isDefined
-    case KillAggregate           => context.stop(self)
+    case Exists(requester) => requester ! aggregateOpt.isDefined
+    case KillAggregate => context.stop(self)
   }
 
   /**
@@ -168,7 +170,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
     (aggregateOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Event)            => Some(behavior.onEvent(evt))
+      case (None, evt: Event) => Some(behavior.onEvent(evt))
 
       // Update events are applied on current state
       case (Some(aggregate), evt: Event) => Some(behavior.onEvent(aggregate, evt))
@@ -176,7 +178,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
       // in both cases we must ignore it and return current state
-      case _                             => aggregateOpt
+      case _ => aggregateOpt
     }
   }
 
@@ -207,7 +209,7 @@ class AggregateActor[A <: AggregateLike](identifier: A#Id,
 
     case event: DomainEvent => onEvent(event)
 
-    case unknown            => log.debug(s"Unknown message on recovery")
+    case unknown => log.debug(s"Unknown message on recovery")
   }
 
   protected def onEvent(evt: DomainEvent): Unit = {

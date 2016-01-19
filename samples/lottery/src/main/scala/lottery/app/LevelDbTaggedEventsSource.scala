@@ -2,7 +2,7 @@ package lottery.app
 
 import akka.actor.ActorContext
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.{EventEnvelope, PersistenceQuery}
+import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
 import akka.stream.scaladsl.Source
 import io.funcqrs.Tag
 import io.funcqrs.akka.EventsSourceProvider

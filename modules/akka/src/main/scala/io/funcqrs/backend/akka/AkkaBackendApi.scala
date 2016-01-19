@@ -87,5 +87,4 @@ object AkkaBackendApi {
     ProjectionConfig(sourceProvider, projection, name)
   }
 
-
 }

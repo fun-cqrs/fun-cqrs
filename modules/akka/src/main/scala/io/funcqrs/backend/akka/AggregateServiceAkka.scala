@@ -46,10 +46,12 @@ class AggregateServiceAkka[A <: AggregateLike](aggregateManager: ActorRef, proje
   }
 }
 
-class ViewBoundedAggregateService[A <: AggregateLike](asyncAggregateService: AggregateServiceAkka[A],
-                                                      defaultView: String,
-                                                      projectionMonitorActorRef: ActorRef,
-                                                      eventsFilter: EventsFilter = All)
+class ViewBoundedAggregateService[A <: AggregateLike](
+  asyncAggregateService: AggregateServiceAkka[A],
+  defaultView: String,
+  projectionMonitorActorRef: ActorRef,
+  eventsFilter: EventsFilter = All
+)
     extends ProjectionResultSupport[A] {
 
   // need to override because both ProjectionResultSupport and

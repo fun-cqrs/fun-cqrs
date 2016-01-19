@@ -11,9 +11,12 @@ import play.api.libs.json.Json
 
 import scala.util.{ Failure, Random, Success, Try }
 
-case class Lottery(name: String, participants: List[String] = List(),
-                   winner: Option[String] = None,
-                   id: LotteryId) extends AggregateLike {
+case class Lottery(
+    name: String,
+    participants: List[String] = List(),
+    winner: Option[String] = None,
+    id: LotteryId
+) extends AggregateLike {
 
   type Id = LotteryId
   type Protocol = LotteryProtocol.type
@@ -60,11 +63,13 @@ object LotteryId {
 
 object LotteryProtocol extends ProtocolLike {
 
-  case class LotteryMetadata(aggregateId: LotteryId,
-                             commandId: CommandId,
-                             eventId: EventId = EventId(),
-                             date: OffsetDateTime = OffsetDateTime.now(),
-                             tags: Set[Tag] = Set()) extends Metadata with JavaTime {
+  case class LotteryMetadata(
+      aggregateId: LotteryId,
+      commandId: CommandId,
+      eventId: EventId = EventId(),
+      date: OffsetDateTime = OffsetDateTime.now(),
+      tags: Set[Tag] = Set()
+  ) extends Metadata with JavaTime {
 
     type Id = LotteryId
   }
@@ -84,8 +89,10 @@ object LotteryProtocol extends ProtocolLike {
 
   sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata]
 
-  case class LotteryCreated(name: String,
-                            metadata: LotteryMetadata) extends LotteryEvent
+  case class LotteryCreated(
+    name: String,
+    metadata: LotteryMetadata
+  ) extends LotteryEvent
 
   sealed trait LotteryUpdateEvent extends LotteryEvent
 

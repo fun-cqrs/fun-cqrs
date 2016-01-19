@@ -1,7 +1,6 @@
 //@formatter:off
 
 import Dependencies._
-import Settings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
@@ -21,7 +20,7 @@ lazy val root = Project(
   base = file("."),
   settings = Seq(
     publishArtifact := false
-  ) ++ commonSettings
+  )
 ) aggregate(
   funCqrs,
   funCqrsAkka,
@@ -36,7 +35,7 @@ lazy val root = Project(
 lazy val funCqrs = Project(
   id = "fun-cqrs-core",
   base = file("modules/core"),
-  settings = mainDeps ++ commonSettings
+  settings = mainDeps
 )
 //================================================
 
@@ -45,7 +44,7 @@ lazy val funCqrs = Project(
 lazy val funCqrsAkka = Project(
   id = "fun-cqrs-akka",
   base = file("modules/akka"),
-  settings = mainDeps ++ akkaDeps ++ commonSettings
+  settings = mainDeps ++ akkaDeps
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
@@ -55,7 +54,7 @@ lazy val funCqrsAkka = Project(
 lazy val funPlayJsonSupport = Project(
   id = "fun-cqrs-play-json",
   base = file("modules/play-json"),
-  settings = mainDeps ++ Seq(libraryDependencies += playJson) ++ commonSettings
+  settings = mainDeps ++ Seq(libraryDependencies += playJson)
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
@@ -65,7 +64,7 @@ lazy val funPlayJsonSupport = Project(
 lazy val funCqrsTestKit = Project(
   id = "fun-cqrs-test-kit",
   base = file("modules/tests"),
-  settings = mainDeps ++ commonSettings
+  settings = mainDeps
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
@@ -81,7 +80,7 @@ lazy val funCqrsTestKit = Project(
 //  settings = Seq(
 //    publishArtifact := false,
 //    routesGenerator := InjectedRoutesGenerator
-//  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
+//  ) ++ mainDeps ++ playSampleDeps
 //).enablePlugins(PlayScala)
 //  .disablePlugins(PlayLayoutPlugin)
 //  .dependsOn(funCqrs)
@@ -94,7 +93,7 @@ lazy val lotteryApp = Project(
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ mainDeps ++ playSampleDeps ++ commonSettings
+  ) ++ mainDeps ++ playSampleDeps
 ).enablePlugins(PlayScala)
   .disablePlugins(PlayLayoutPlugin)
   .dependsOn(funCqrs)
@@ -103,8 +102,5 @@ lazy val lotteryApp = Project(
 
 addCommandAlias("runShopSample", "sample-shop/run")
 addCommandAlias("runLotterySample", "sample-lottery/run")
-
-addCommandAlias("format", ";scalariformFormat;test:scalariformFormat")
-
 
 //@formatter:on

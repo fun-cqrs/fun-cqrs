@@ -12,7 +12,7 @@ import scala.concurrent.Future
 class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyLogging {
 
   def handleEvent: HandleEvent = {
-    case e: LotteryCreated     => create(e)
+    case e: LotteryCreated => create(e)
     case e: LotteryUpdateEvent => update(e)
 
   }
@@ -30,8 +30,8 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyL
 
   private def updateFunc(view: LotteryView, evt: LotteryUpdateEvent): LotteryView = {
     evt match {
-      case e: ParticipantAdded   => view.copy(participants = view.participants :+ newParticipant(e))
-      case e: WinnerSelected     => view.copy(winner = Some(e.winner), runDate = Some(e.date))
+      case e: ParticipantAdded => view.copy(participants = view.participants :+ newParticipant(e))
+      case e: WinnerSelected => view.copy(winner = Some(e.winner), runDate = Some(e.date))
       case e: ParticipantRemoved => view.copy(participants = view.participants.filter(_.name != e.name))
     }
   }

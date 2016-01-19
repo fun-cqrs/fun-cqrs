@@ -54,7 +54,7 @@ object TypedJson {
         // toevoegen van type informatie
         case jsObject: JsObject => Json.obj(typeHintKey -> typeHint) ++ jsObject
         // het heeft geen zin om een type discriminator toe te voegen op een 'primitive' JsValue
-        case js                 => js
+        case js => js
       }
     }
 

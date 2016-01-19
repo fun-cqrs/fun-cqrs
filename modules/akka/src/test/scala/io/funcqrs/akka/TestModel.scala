@@ -44,11 +44,13 @@ object TestModel {
 
   object UserProtocol extends ProtocolLike {
 
-    case class UserMetadata(aggregateId: UserId,
-                            commandId: CommandId,
-                            eventId: EventId = EventId(),
-                            date: OffsetDateTime = OffsetDateTime.now(),
-                            tags: Set[Tag] = Set()) extends Metadata with JavaTime {
+    case class UserMetadata(
+        aggregateId: UserId,
+        commandId: CommandId,
+        eventId: EventId = EventId(),
+        date: OffsetDateTime = OffsetDateTime.now(),
+        tags: Set[Tag] = Set()
+    ) extends Metadata with JavaTime {
 
       type Id = UserId
     }

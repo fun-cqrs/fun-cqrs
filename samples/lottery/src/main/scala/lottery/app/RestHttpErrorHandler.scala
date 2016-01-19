@@ -21,9 +21,9 @@ class RestHttpErrorHandler extends HttpErrorHandler {
     val result =
       exception match {
         case e: IllegalArgumentException => mapTo(Status.BAD_REQUEST)
-        case e: NoSuchElementException   => mapTo(Status.NOT_FOUND)
-        case e: CommandException         => mapTo(Status.PRECONDITION_FAILED)
-        case e                           => mapTo(Status.INTERNAL_SERVER_ERROR)
+        case e: NoSuchElementException => mapTo(Status.NOT_FOUND)
+        case e: CommandException => mapTo(Status.PRECONDITION_FAILED)
+        case e => mapTo(Status.INTERNAL_SERVER_ERROR)
       }
 
     Future.successful(result)

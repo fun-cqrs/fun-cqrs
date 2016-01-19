@@ -24,8 +24,8 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
   def handleCommand(cmd: Command): Identity[Events] = {
 
     behavior.handleCommand(cmd) match {
-      case IdCommandHandlerInvoker(handler)     => handler(cmd)
-      case TryCommandHandlerInvoker(handler)    => handler(cmd).get
+      case IdCommandHandlerInvoker(handler) => handler(cmd)
+      case TryCommandHandlerInvoker(handler) => handler(cmd).get
       case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
     }
 
@@ -34,8 +34,8 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
   def handleCommand(aggregate: A, cmd: Command): Identity[Events] = {
 
     behavior.handleCommand(aggregate, cmd) match {
-      case IdCommandHandlerInvoker(handler)     => handler(cmd)
-      case TryCommandHandlerInvoker(handler)    => handler(cmd).get
+      case IdCommandHandlerInvoker(handler) => handler(cmd)
+      case TryCommandHandlerInvoker(handler) => handler(cmd).get
       case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
     }
 

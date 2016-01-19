@@ -25,8 +25,8 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
   def handleCommand(cmd: Command): Try[Events] = {
 
     behavior.handleCommand(cmd) match {
-      case IdCommandHandlerInvoker(handler)     => Try(handler(cmd))
-      case TryCommandHandlerInvoker(handler)    => handler(cmd)
+      case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
+      case TryCommandHandlerInvoker(handler) => handler(cmd)
       case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
     }
 
@@ -35,8 +35,8 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
   def handleCommand(aggregate: A, cmd: Command): Try[Events] = {
 
     behavior.handleCommand(aggregate, cmd) match {
-      case IdCommandHandlerInvoker(handler)     => Try(handler(cmd))
-      case TryCommandHandlerInvoker(handler)    => handler(cmd)
+      case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
+      case TryCommandHandlerInvoker(handler) => handler(cmd)
       case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
     }
 

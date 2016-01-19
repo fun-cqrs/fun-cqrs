@@ -15,7 +15,7 @@ trait AggregateService[A <: AggregateLike, +F[_]] extends AggregateAliases {
   def newInstance(id: Id, cmd: Command): F[Events]
   def newInstance(cmd: Command): F[Events]
 
-  def state(id:Id): F[Aggregate]
+  def state(id: Id): F[Aggregate]
   def exists(id: Id): F[Boolean]
 
 }

@@ -269,11 +269,15 @@ object BindingDsl {
 
 }
 
-case class CreationSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
-                                            eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty)
+case class CreationSpec[A <: AggregateLike](
+  cmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+  eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty
+)
 
-case class UpdateSpec[A <: AggregateLike](cmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
-                                          eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty)
+case class UpdateSpec[A <: AggregateLike](
+  cmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+  eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty
+)
 
 case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], updateSpec: UpdateSpec[A]) extends AggregateAliases {
 

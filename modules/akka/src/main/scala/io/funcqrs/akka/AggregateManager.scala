@@ -20,7 +20,8 @@ case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
 
 case class AggregatePassivationStrategy(
   inactivityTimeout: Option[Duration] = None,
-  maxChildren: Option[MaxChildren] = None)
+  maxChildren: Option[MaxChildren] = None
+)
 
 /**
  * Base aggregate manager.
@@ -63,7 +64,7 @@ trait AggregateManager extends Actor
       val (id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
       id match {
         case GoodId(_) => processAggregateCommand(id, cmd)
-        case _         => badAggregateId(id)
+        case _ => badAggregateId(id)
       }
   }
 
@@ -78,12 +79,12 @@ trait AggregateManager extends Actor
   }
   private def defaultProcessCommand: Receive = {
 
-    case Terminated(actor)    => handleTermination(actor)
+    case Terminated(actor) => handleTermination(actor)
     case GetState(GoodId(id)) => fetchState(id)
-    case GetState(BadId(id))  => badAggregateId(id)
+    case GetState(BadId(id)) => badAggregateId(id)
 
-    case Exists(GoodId(id))   => exists(id)
-    case Exists(BadId(id))    => badAggregateId(id)
+    case Exists(GoodId(id)) => exists(id)
+    case Exists(BadId(id)) => badAggregateId(id)
 
     case cmd: Command =>
       log.error(
@@ -94,7 +95,8 @@ trait AggregateManager extends Actor
            |# Have you configured your aggregate to use assigned IDs?                     #
            |# In that case, you must always send commands together with the aggregate ID! #
            |#=============================================================================#
-         """.stripMargin)
+         """.stripMargin
+      )
       sender() ! Status.Failure(
         new IllegalArgumentException(s"Command send without AggregateId: $cmd!")
       )
