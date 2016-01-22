@@ -73,20 +73,6 @@ lazy val funCqrsTestKit = Project(
 // #                     SAMPLES                      #
 // #####################################################
 
-// contains Play / Akka / Macwire sample
-//lazy val shopApp = Project(
-//  id = "sample-shop",
-//  base = file("samples/shop"),
-//  settings = Seq(
-//    publishArtifact := false,
-//    routesGenerator := InjectedRoutesGenerator
-//  ) ++ mainDeps ++ playSampleDeps
-//).enablePlugins(PlayScala)
-//  .disablePlugins(PlayLayoutPlugin)
-//  .dependsOn(funCqrs)
-//  .dependsOn(funCqrsAkka)
-//================================================
-
 lazy val lotteryApp = Project(
   id = "sample-lottery",
   base = file("samples/lottery"),
@@ -94,11 +80,9 @@ lazy val lotteryApp = Project(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
   ) ++ mainDeps ++ playSampleDeps
-).enablePlugins(PlayScala)
-  .disablePlugins(PlayLayoutPlugin)
-  .dependsOn(funCqrs)
-  .dependsOn(funCqrsTestKit)
-  .dependsOn(funCqrsAkka)
+).dependsOn(funCqrs)
+ .dependsOn(funCqrsTestKit)
+ .dependsOn(funCqrsAkka)
 
 addCommandAlias("runShopSample", "sample-shop/run")
 addCommandAlias("runLotterySample", "sample-lottery/run")

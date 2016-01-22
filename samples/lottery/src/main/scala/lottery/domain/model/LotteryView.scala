@@ -2,26 +2,28 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 
-import play.api.libs.json._
-
 case class LotteryView(
   name: String,
-  participants: List[LotteryView.Participant] = List(),
-  winner: Option[String] = None,
-  runDate: Option[OffsetDateTime] = None,
-  id: LotteryId
-)
+    participants: List[LotteryView.Participant] = List(),
+    winner: Option[String] = None,
+    runDate: Option[OffsetDateTime] = None,
+    id: LotteryId
+) {
 
-object LotteryView {
-
-  import OffsetDateTimeFormat._
-
-  case class Participant(name: String, date: OffsetDateTime)
-
-  object Participant {
-    implicit val format = Json.writes[Participant]
+  override def toString: String = {
+    val participantsString =
+      participants.map { p => s"name: ${p.name} - date: ${p.date}" }.mkString(" | ")
+    s"""
+       |LotteryView
+       |  name: $name
+       |  participants: $participantsString
+       |  winner: ${winner.getOrElse("N/A")}
+       |  runDate: ${runDate.map(_.toString).getOrElse("")}
+       |  id: $id
+     """.stripMargin
   }
-
-  implicit val format = Json.writes[LotteryView]
 }
 
+object LotteryView {
+  case class Participant(name: String, date: OffsetDateTime)
+}

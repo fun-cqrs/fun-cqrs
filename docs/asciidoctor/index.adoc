@@ -1,0 +1,118 @@
+= Fun.CQRS
+// :toc: macro
+:toc2:
+:linkcss:
+:icons: font
+:source-highlighter: pygments
+:pygments-style: monokai
+:pygments-linenums-mode: inline
+:author: Renato Cavalcanti - Strong[Typed]
+
+**Fun.CQRS** is a Scala library for building DDD/CQRS application. It provides the basic blocks to build event driven aggregates backed by **Akka** for event sourcing.
+
+// toc::[]
+
+### Project artifact
+The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
+
+```scala
+  libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "1.0.0"
+```
+
+## Introduction
+
+In **Fun.CQRS**, Aggregates are immutable classes (case class) that live inside an Actor. When using **Fun.CQRS** you don't have to deal much with **Akka** and it's powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how **Akka** works and how to configure **Akka Persistence** to use your persistence plugin of choice.
+
+That said, in **Fun.CQRS**, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events and recover aggregate states.
+
+
+
+## Lottery Example
+
+In the following section we will build a simple aggregate. As an example use case we build a **Lottery** application.
+
+A **Lottery** application has the following requirements:
+
+- An user can create a new lottery game
+
+- Participants can be added
+  **condition**: a participant can only be added once
+  **condition**: a participant can only be added if a winner is not yet selected
+
+- A participant can be removed
+	**condition**: if a winner is not yet selected
+
+- An winner can be selected
+ 	**condition**: we can only select a winner if there is at least one participant
+ 	**condition**: we can only select a winner once, afterwards an error is produced when trying to select a new winner
+
+### Type-safe IDs
+
+**Fun.CQRS** uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific Id type to be used by the system. As such, we avoid Id clashing. It also provides better logging as we can clear see in the logs from each aggregate it comes.
+
+First we define a type representing the Aggregate Id. We define it by extending the trait `io.funcqrs.AggregateId`.
+
+[source,scala]
+----
+import io.funcqrs.AggregateId
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-id]
+----
+
+### Lottery Protocol
+
+Next we define a Protocol for a Lottery.
+
+A `Protocol` is the set of `Commands` and `Events` for a given `Aggregate`. An `Aggregate` can only receive `Commands` from its `Protocol`. Its command handlers can only emit `Events` that belong to this same `Protocol`. And finally, event listeners that will instantiate or update an `Aggregate` can only react to `Events` define by the `Protocol`.
+
+Therefore, an Aggregate's Protocol defines the totallity of operations and effects of a given `Aggregate`.
+
+The code below demonstrates how to define a protocol.
+
+[source,scala]
+----
+import io.funcqrs.ProtocolLike
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-protocol]
+----
+
+<1> A Protocol is defined as a Scala object (not a class) and it extends the trait `ProtocolLike`.
+`ProtocolLike` trait brings two new traits in scope: `ProtocolCommand` and `ProtocolEvent`.
+<2> Each Lottery Command extends `ProtocolCommand` via sealed trait `LotteryCommnad`.
+<3> Each Lottery Event extends `ProtocolEvent` via sealed trait `LotteryEvent`.
+<4> Each Event has a unique `EventId` generated at construction time.
+<5> Each Event carries the `CommandId` of the command that generated it. `CommandIds` are automatically generated and is defined as a val by `ProtocolCommand`. `CommandIds` are guaranteed to be unique.
+
+### Event Metadata
+
+### Coding the Aggregate
+
+The next step is to code the  aggregate itself.
+
+[source,scala]
+----
+import io.funcqrs.AggregateLike
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-aggregate]
+----
+
+We define the **Lottery** aggregate by extending the trait `io.funcqrs.AggregateLike`. As a consequence we need to define two type parameters:
+
+  1. the `Id` which should point to an `AggregateId`. In our case the previously defined `LotteryId`.
+  2. the `Protocol` which in our case will point to `LotteryProtocol`.
+
+Note that the **Lottery** aggregate is a pure and simple case class in the sense that it has regular methods to 'modify' its state by copying the case class and returning it. It does check the invariants of the aggregate **Lottery**, but it doesn't work at the level of `Commands` and `Events`. This is rather a design choice. Nothing forbid us to have **Lottery** reacting direct to `Commands` and `Events`.
+
+
+### Mapping Commands and Events
+
+Up to now, we have an **Aggregate** with a type-safe **Id** and its protocol defining all possible `Commands` and `Evetns`. We need a way to bind each `Command` to the right operation in the aggregate, let it produces the right `Events` and react to the `Events` accordingly.
+
+
+## Projections
+
+
+## Testing
+
+## Akka Configuration
+
+### Contribution policy
+
+Contributions via GitHub pull requests are gladly accepted from their original author. Along with any pull requests, please state that the contribution is your original work and that you license the work to the project under the project's open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project's open source license and warrant that you have the legal authority to do so.

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.2">
+<meta name="author" content="Renato Cavalcanti - Strong[Typed]">
+<title>Fun.CQRS</title>
+<link rel="stylesheet" href="./foundation-potion.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="./pygments-monokai.css">
+</head>
+<body class="article toc2 toc-left">
+<div id="header">
+<h1>Fun.CQRS</h1>
+<div class="details">
+<span id="author" class="author">Renato Cavalcanti - Strong[Typed]</span><br>
+</div>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel2">
+<li><a href="#_project_artifact">Project artifact</a></li>
+<li><a href="#_introduction">Introduction</a></li>
+<li><a href="#_lottery_example">Lottery Example</a>
+<ul class="sectlevel2">
+<li><a href="#_type_safe_ids">Type-safe IDs</a></li>
+<li><a href="#_lottery_protocol">Lottery Protocol</a></li>
+<li><a href="#_event_metadata">Event Metadata</a></li>
+<li><a href="#_coding_the_aggregate">Coding the Aggregate</a></li>
+<li><a href="#_mapping_commands_and_events">Mapping Commands and Events</a></li>
+</ul>
+</li>
+<li><a href="#_projections">Projections</a></li>
+<li><a href="#_testing">Testing</a></li>
+<li><a href="#_akka_configuration">Akka Configuration</a>
+<ul class="sectlevel2">
+<li><a href="#_contribution_policy">Contribution policy</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p><strong>Fun.CQRS</strong> is a Scala library for building DDD/CQRS application. It provides the basic blocks to build event driven aggregates backed by <strong>Akka</strong> for event sourcing.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_project_artifact">Project artifact</h3>
+<div class="paragraph">
+<p>The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="scala">  <span class="tok-n">libraryDependencies</span> <span class="tok-o">+=</span> <span class="tok-s">&quot;io.strongtyped&quot;</span> <span class="tok-o">%%</span> <span class="tok-s">&quot;fun-cqrs&quot;</span> <span class="tok-o">%</span> <span class="tok-s">&quot;1.0.0&quot;</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_introduction">Introduction</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In <strong>Fun.CQRS</strong>, Aggregates are immutable classes (case class) that live inside an Actor. When using <strong>Fun.CQRS</strong> you don&#8217;t have to deal much with <strong>Akka</strong> and it&#8217;s powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how <strong>Akka</strong> works and how to configure <strong>Akka Persistence</strong> to use your persistence plugin of choice.</p>
+</div>
+<div class="paragraph">
+<p>That said, in <strong>Fun.CQRS</strong>, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events and recover aggregate states.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_lottery_example">Lottery Example</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>In the following section we will build a simple aggregate. As an example use case we build a <strong>Lottery</strong> application.</p>
+</div>
+<div class="paragraph">
+<p>A <strong>Lottery</strong> application has the following requirements:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>An user can create a new lottery game</p>
+</li>
+<li>
+<p>Participants can be added
+<strong>condition</strong>: a participant can only be added once
+<strong>condition</strong>: a participant can only be added if a winner is not yet selected</p>
+</li>
+<li>
+<p>A participant can be removed
+<strong>condition</strong>: if a winner is not yet selected</p>
+</li>
+<li>
+<p>An winner can be selected
+<strong>condition</strong>: we can only select a winner if there is at least one participant
+<strong>condition</strong>: we can only select a winner once, afterwards an error is produced when trying to select a new winner</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="_type_safe_ids">Type-safe IDs</h3>
+<div class="paragraph">
+<p><strong>Fun.CQRS</strong> uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific Id type to be used by the system. As such, we avoid Id clashing. It also provides better logging as we can clear see in the logs from each aggregate it comes.</p>
+</div>
+<div class="paragraph">
+<p>First we define a type representing the Aggregate Id. We define it by extending the trait <code>io.funcqrs.AggregateId</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="scala"><span class="tok-k">import</span> <span class="tok-nn">io.funcqrs.AggregateId</span>
+<span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">LotteryId</span><span class="tok-o">(</span><span class="tok-n">value</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">AggregateId</span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_lottery_protocol">Lottery Protocol</h3>
+<div class="paragraph">
+<p>Next we define a Protocol for a Lottery.</p>
+</div>
+<div class="paragraph">
+<p>A <code>Protocol</code> is the set of <code>Commands</code> and <code>Events</code> for a given <code>Aggregate</code>. An <code>Aggregate</code> can only receive <code>Commands</code> from its <code>Protocol</code>. Its command handlers can only emit <code>Events</code> that belong to this same <code>Protocol</code>. And finally, event listeners that will instantiate or update an <code>Aggregate</code> can only react to <code>Events</code> define by the <code>Protocol</code>.</p>
+</div>
+<div class="paragraph">
+<p>Therefore, an Aggregate&#8217;s Protocol defines the totallity of operations and effects of a given <code>Aggregate</code>.</p>
+</div>
+<div class="paragraph">
+<p>The code below demonstrates how to define a protocol.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="scala"><span class="tok-k">import</span> <span class="tok-nn">io.funcqrs.ProtocolLike</span>
+<span class="tok-k">object</span> <span class="tok-nc">LotteryProtocol</span> <span class="tok-k">extends</span> <span class="tok-nc">ProtocolLike</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="1"></i><b>(1)</b>
+
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">LotteryMetadata</span><span class="tok-o">(</span>
+      <span class="tok-n">aggregateId</span><span class="tok-k">:</span> <span class="tok-kt">LotteryId</span><span class="tok-o">,</span>
+      <span class="tok-n">commandId</span><span class="tok-k">:</span> <span class="tok-kt">CommandId</span><span class="tok-o">,</span>
+      <span class="tok-n">eventId</span><span class="tok-k">:</span> <span class="tok-kt">EventId</span> <span class="tok-o">=</span> <span class="tok-nc">EventId</span><span class="tok-o">(),</span>
+      <span class="tok-n">date</span><span class="tok-k">:</span> <span class="tok-kt">OffsetDateTime</span> <span class="tok-o">=</span> <span class="tok-nc">OffsetDateTime</span><span class="tok-o">.</span><span class="tok-n">now</span><span class="tok-o">(),</span>
+      <span class="tok-n">tags</span><span class="tok-k">:</span> <span class="tok-kt">Set</span><span class="tok-o">[</span><span class="tok-kt">Tag</span><span class="tok-o">]</span> <span class="tok-k">=</span> <span class="tok-nc">Set</span><span class="tok-o">()</span>
+  <span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">Metadata</span> <span class="tok-k">with</span> <span class="tok-nc">JavaTime</span> <span class="tok-o">{</span>
+    <span class="tok-k">type</span> <span class="tok-kt">Id</span> <span class="tok-o">=</span> <span class="tok-nc">LotteryId</span>
+  <span class="tok-o">}</span>
+
+  <span class="tok-k">sealed</span> <span class="tok-k">trait</span> <span class="tok-nc">LotteryCommand</span> <span class="tok-k">extends</span> <span class="tok-nc">ProtocolCommand</span> <span class="tok-c1">// </span><i class="conum" data-value="2"></i><b>(2)</b>
+
+  <span class="tok-c1">// Creation Commands</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">CreateLottery</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryCommand</span>
+  <span class="tok-c1">// Update Commands</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">AddParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryCommand</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">RemoveParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryCommand</span>
+  <span class="tok-k">case</span> <span class="tok-k">object</span> <span class="tok-nc">Reset</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryCommand</span>
+  <span class="tok-k">case</span> <span class="tok-k">object</span> <span class="tok-nc">Run</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryCommand</span>
+
+  <span class="tok-c1">// base Event</span>
+  <span class="tok-k">sealed</span> <span class="tok-k">trait</span> <span class="tok-nc">LotteryEvent</span> <span class="tok-k">extends</span> <span class="tok-nc">ProtocolEvent</span> <span class="tok-k">with</span> <span class="tok-nc">MetadataFacet</span><span class="tok-o">[</span><span class="tok-kt">LotteryMetadata</span><span class="tok-o">]</span>
+
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">LotteryCreated</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-k">:</span> <span class="tok-kt">LotteryMetadata</span><span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryEvent</span>
+
+  <span class="tok-c1">// Update Events</span>
+  <span class="tok-k">sealed</span> <span class="tok-k">trait</span> <span class="tok-nc">LotteryUpdateEvent</span> <span class="tok-k">extends</span> <span class="tok-nc">LotteryEvent</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">ParticipantAdded</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-k">:</span> <span class="tok-kt">LotteryMetadata</span><span class="tok-o">)</span>
+    <span class="tok-k">extends</span> <span class="tok-nc">LotteryUpdateEvent</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">ParticipantRemoved</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-k">:</span> <span class="tok-kt">LotteryMetadata</span><span class="tok-o">)</span>
+    <span class="tok-k">extends</span> <span class="tok-nc">LotteryUpdateEvent</span>
+  <span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">WinnerSelected</span><span class="tok-o">(</span><span class="tok-n">winner</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-k">:</span> <span class="tok-kt">LotteryMetadata</span><span class="tok-o">)</span>
+    <span class="tok-k">extends</span> <span class="tok-nc">LotteryUpdateEvent</span>
+<span class="tok-o">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>A Protocol is defined as a Scala object (not a class) and it extends the trait <code>ProtocolLike</code>.
+<code>ProtocolLike</code> trait brings two new traits in scope: <code>ProtocolCommand</code> and <code>ProtocolEvent</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Each Lottery Command extends <code>ProtocolCommand</code> via sealed trait <code>LotteryCommnad</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Each Lottery Event extends <code>ProtocolEvent</code> via sealed trait <code>LotteryEvent</code>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Each Event has a unique <code>EventId</code> generated at construction time.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Each Event carries the <code>CommandId</code> of the command that generated it. <code>CommandIds</code> are automatically generated and is defined as a val by <code>ProtocolCommand</code>. <code>CommandIds</code> are guaranteed to be unique.</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_event_metadata">Event Metadata</h3>
+
+</div>
+<div class="sect2">
+<h3 id="_coding_the_aggregate">Coding the Aggregate</h3>
+<div class="paragraph">
+<p>The next step is to code the  aggregate itself.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="scala"><span class="tok-k">import</span> <span class="tok-nn">io.funcqrs.AggregateLike</span>
+<span class="tok-k">case</span> <span class="tok-k">class</span> <span class="tok-nc">Lottery</span><span class="tok-o">(</span>
+    <span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">,</span>
+    <span class="tok-n">participants</span><span class="tok-k">:</span> <span class="tok-kt">List</span><span class="tok-o">[</span><span class="tok-kt">String</span><span class="tok-o">]</span> <span class="tok-k">=</span> <span class="tok-nc">List</span><span class="tok-o">(),</span>
+    <span class="tok-n">winner</span><span class="tok-k">:</span> <span class="tok-kt">Option</span><span class="tok-o">[</span><span class="tok-kt">String</span><span class="tok-o">]</span> <span class="tok-k">=</span> <span class="tok-nc">None</span><span class="tok-o">,</span>
+    <span class="tok-n">id</span><span class="tok-k">:</span> <span class="tok-kt">LotteryId</span>
+<span class="tok-o">)</span> <span class="tok-k">extends</span> <span class="tok-nc">AggregateLike</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="1"></i><b>(1)</b>
+
+  <span class="tok-k">type</span> <span class="tok-kt">Id</span> <span class="tok-o">=</span> <span class="tok-nc">LotteryId</span> <span class="tok-c1">// </span><i class="conum" data-value="2"></i><b>(2)</b>
+  <span class="tok-k">type</span> <span class="tok-kt">Protocol</span> <span class="tok-o">=</span> <span class="tok-nc">LotteryProtocol</span><span class="tok-o">.</span><span class="tok-k">type</span> <span class="tok-kt">//</span> <i class="conum" data-value="3"></i><b>(3)</b>
+
+  <span class="tok-k">def</span> <span class="tok-n">addParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span><span class="tok-k">:</span> <span class="tok-kt">Lottery</span> <span class="tok-o">=</span> <span class="tok-o">{</span>
+    <span class="tok-n">copy</span><span class="tok-o">(</span><span class="tok-n">participants</span> <span class="tok-k">=</span> <span class="tok-n">participants</span> <span class="tok-o">:+</span> <span class="tok-n">name</span><span class="tok-o">)</span>
+  <span class="tok-o">}</span>
+
+  <span class="tok-k">def</span> <span class="tok-n">removeParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span><span class="tok-k">:</span> <span class="tok-kt">Lottery</span> <span class="tok-o">=</span> <span class="tok-o">{</span>
+    <span class="tok-n">copy</span><span class="tok-o">(</span><span class="tok-n">participants</span> <span class="tok-k">=</span> <span class="tok-n">participants</span><span class="tok-o">.</span><span class="tok-n">filter</span><span class="tok-o">(</span><span class="tok-k">_</span> <span class="tok-o">!=</span> <span class="tok-n">name</span><span class="tok-o">))</span>
+  <span class="tok-o">}</span>
+
+  <span class="tok-k">def</span> <span class="tok-n">selectParticipant</span><span class="tok-o">()</span><span class="tok-k">:</span> <span class="tok-kt">String</span> <span class="tok-o">=</span> <span class="tok-o">{</span>
+    <span class="tok-k">val</span> <span class="tok-n">index</span> <span class="tok-k">=</span> <span class="tok-nc">Random</span><span class="tok-o">.</span><span class="tok-n">nextInt</span><span class="tok-o">(</span><span class="tok-n">participants</span><span class="tok-o">.</span><span class="tok-n">size</span><span class="tok-o">)</span>
+    <span class="tok-n">participants</span><span class="tok-o">(</span><span class="tok-n">index</span><span class="tok-o">)</span>
+  <span class="tok-o">}</span>
+
+  <span class="tok-k">def</span> <span class="tok-n">hasWinner</span> <span class="tok-k">=</span> <span class="tok-n">winner</span><span class="tok-o">.</span><span class="tok-n">isDefined</span>
+
+  <span class="tok-k">def</span> <span class="tok-n">hasNoParticipants</span> <span class="tok-k">=</span> <span class="tok-n">participants</span><span class="tok-o">.</span><span class="tok-n">isEmpty</span>
+
+  <span class="tok-k">def</span> <span class="tok-n">hasParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">=</span> <span class="tok-n">participants</span><span class="tok-o">.</span><span class="tok-n">contains</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-o">)</span>
+  <span class="tok-k">def</span> <span class="tok-n">isNewParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-k">:</span> <span class="tok-kt">String</span><span class="tok-o">)</span> <span class="tok-k">=</span> <span class="tok-o">!</span><span class="tok-n">hasParticipant</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-o">)</span>
+<span class="tok-o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>We define the <strong>Lottery</strong> aggregate by extending the trait <code>io.funcqrs.AggregateLike</code>. As a consequence we need to define two type parameters:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>the <code>Id</code> which should point to an <code>AggregateId</code>. In our case the previously defined <code>LotteryId</code>.</p>
+</li>
+<li>
+<p>the <code>Protocol</code> which in our case will point to <code>LotteryProtocol</code>.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Note that the <strong>Lottery</strong> aggregate is a pure and simple case class in the sense that it has regular methods to 'modify' its state by copying the case class and returning it. It does check the invariants of the aggregate <strong>Lottery</strong>, but it doesn&#8217;t work at the level of <code>Commands</code> and <code>Events</code>. This is rather a design choice. Nothing forbid us to have <strong>Lottery</strong> reacting direct to <code>Commands</code> and <code>Events</code>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_mapping_commands_and_events">Mapping Commands and Events</h3>
+<div class="paragraph">
+<p>Up to now, we have an <strong>Aggregate</strong> with a type-safe <strong>Id</strong> and its protocol defining all possible <code>Commands</code> and <code>Evetns</code>. We need a way to bind each <code>Command</code> to the right operation in the aggregate, let it produces the right <code>Events</code> and react to the <code>Events</code> accordingly.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_projections">Projections</h2>
+<div class="sectionbody">
+
+</div>
+</div>
+<div class="sect1">
+<h2 id="_testing">Testing</h2>
+<div class="sectionbody">
+
+</div>
+</div>
+<div class="sect1">
+<h2 id="_akka_configuration">Akka Configuration</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_contribution_policy">Contribution policy</h3>
+<div class="paragraph">
+<p>Contributions via GitHub pull requests are gladly accepted from their original author. Along with any pull requests, please state that the contribution is your original work and that you license the work to the project under the project&#8217;s open source license. Whether or not you state this explicitly, by submitting any copyrighted material via pull request, email, or other means you agree to license the material under the project&#8217;s open source license and warrant that you have the legal authority to do so.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2016-01-23 00:39:39 CET
+</div>
+</div>
+</body>
+</html>

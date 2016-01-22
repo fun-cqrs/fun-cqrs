@@ -5,6 +5,7 @@ import io.funcqrs.Projection
 import io.funcqrs.HandleEvent
 import lottery.domain.model.LotteryProtocol._
 import lottery.domain.model.LotteryView
+import lottery.domain.model.LotteryView.Participant
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -22,7 +23,7 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyL
   }
 
   def update(e: LotteryUpdateEvent): Future[Unit] = {
-    repo.updateById(e.aggregateId) { lot =>
+    repo.updateById(e.metadata.aggregateId) { lot =>
       updateFunc(lot, e)
     }.map(_ => ())
 
@@ -36,6 +37,6 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection with LazyL
     }
   }
 
-  private def newParticipant(evt: ParticipantAdded): LotteryView.Participant =
+  private def newParticipant(evt: ParticipantAdded): Participant =
     LotteryView.Participant(evt.name, evt.date)
 }

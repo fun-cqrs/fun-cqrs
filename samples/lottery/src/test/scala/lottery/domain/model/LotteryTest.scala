@@ -108,4 +108,56 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
     }
   }
+
+  test("Illegal to Reset a lottery that has a winner already") {
+
+    new End2EndTestSupport(projection) {
+
+      val lottery =
+        lotteryBehavior
+          .newInstance(CreateLottery("TestLottery"))
+          .update(AddParticipant("John"))
+          .update(AddParticipant("Paul"))
+          .update(Run)
+
+      val view = repo.find(lottery.aggregate.id).futureValue
+      view.participants should have size 2
+
+      intercept[IllegalArgumentException] {
+
+        lottery.update(Reset) // reseting is illegal if a winner is selected
+
+      }.getMessage shouldBe "Lottery has already a winner!"
+
+      val updateView = repo.find(lottery.aggregate.id).futureValue
+      updateView.participants should have size 2
+
+    }
+  }
+
+  test("Illegal to add new participants to a lottery that has a winner already") {
+
+    new End2EndTestSupport(projection) {
+
+      val lottery =
+        lotteryBehavior
+          .newInstance(CreateLottery("TestLottery"))
+          .update(AddParticipant("John"))
+          .update(AddParticipant("Paul"))
+          .update(Run)
+
+      val view = repo.find(lottery.aggregate.id).futureValue
+      view.participants should have size 2
+
+      intercept[IllegalArgumentException] {
+
+        lottery.update(AddParticipant("Ringo")) // reseting is illegal if a winner is selected
+
+      }.getMessage shouldBe "Lottery has already a winner!"
+
+      val updateView = repo.find(lottery.aggregate.id).futureValue
+      updateView.participants should have size 2
+
+    }
+  }
 }
