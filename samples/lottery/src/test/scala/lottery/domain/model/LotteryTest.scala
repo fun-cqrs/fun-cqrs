@@ -1,7 +1,7 @@
 package lottery.domain.model
 
 import io.funcqrs._
-import lottery.domain.model.LotteryProtocol.{ Reset, AddParticipant, CreateLottery, Run }
+import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, Reset, Run }
 import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.time.{ Seconds, Span }
@@ -29,7 +29,6 @@ class LotteryTest extends FunSuite with Matchers with Futures
           .update(AddParticipant("John"))
           .update(AddParticipant("Paul"))
           .update(Run)
-          .futureValue
 
       lottery.aggregate.hasWinner shouldBe true
       lottery.aggregate.participants should have size 2
@@ -45,7 +44,8 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
     new End2EndTestSupport(projection) {
 
-      val lotteryFut =
+      intercept[IllegalArgumentException] {
+
         lotteryBehavior
           .newInstance(CreateLottery("TestLottery"))
           .update(AddParticipant("John"))
@@ -53,9 +53,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
           .update(Run)
           .update(Run)
 
-      whenFailed(lotteryFut) {
-        case e => e.getMessage shouldBe "Lottery has already a winner!"
-      }
+      }.getMessage shouldBe "Lottery has already a winner!"
     }
   }
 
@@ -63,14 +61,13 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
     new End2EndTestSupport(projection) {
 
-      val lotteryFut =
+      intercept[IllegalArgumentException] {
+
         lotteryBehavior
           .newInstance(CreateLottery("TestLottery"))
           .update(Run)
 
-      whenFailed(lotteryFut) {
-        case e => e.getMessage shouldBe "Lottery has no participants"
-      }
+      }.getMessage shouldBe "Lottery has no participants"
     }
 
   }
@@ -79,16 +76,14 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
     new End2EndTestSupport(projection) {
 
-      val lotteryFut =
+      intercept[IllegalArgumentException] {
+
         lotteryBehavior
           .newInstance(CreateLottery("TestLottery"))
           .update(AddParticipant("John"))
           .update(AddParticipant("John"))
 
-      whenFailed(lotteryFut) {
-        case e =>
-          e.getMessage shouldBe "Participant John already added!"
-      }
+      }.getMessage shouldBe "Participant John already added!"
 
     }
   }
@@ -97,25 +92,20 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
     new End2EndTestSupport(projection) {
 
-      val lotteryFut =
+      val lottery =
         lotteryBehavior
           .newInstance(CreateLottery("TestLottery"))
           .update(AddParticipant("John"))
           .update(AddParticipant("Paul"))
 
-      lotteryFut.map { lottery =>
+      val view = repo.find(lottery.aggregate.id).futureValue
+      view.participants should have size 2
 
-        val view = repo.find(lottery.aggregate.id).futureValue
-        view.participants should have size 2
+      lottery.update(Reset)
 
-      }.futureValue
+      val updateView = repo.find(lottery.aggregate.id).futureValue
+      updateView.participants should have size 0
 
-      lotteryFut.update(Reset).map { lottery =>
-
-        val updateView = repo.find(lottery.aggregate.id).futureValue
-        updateView.participants should have size 0
-
-      }.futureValue
     }
   }
 }

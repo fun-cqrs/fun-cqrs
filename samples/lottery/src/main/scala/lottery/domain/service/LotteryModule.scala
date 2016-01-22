@@ -1,36 +1,36 @@
 package lottery.domain.service
 
 import akka.actor.ActorSystem
-import io.funcqrs.akka.FunCQRS
+import akka.util.Timeout
+import io.funcqrs.backend.akka.api._
 import lottery.app.LevelDbTaggedEventsSource
 import lottery.domain.model.Lottery
+
+import scala.concurrent.duration._
 
 trait LotteryModule {
 
   def actorSystem: ActorSystem
 
-  implicit lazy val funCQRS = new FunCQRS(actorSystem)
-
-  import io.funcqrs.akka.FunCQRS.api._
+  implicit val timeout = Timeout(3.seconds)
+  implicit lazy val backend = new AkkaBackend(actorSystem)
 
   //----------------------------------------------------------------------
   // WRITE side wiring
   val lotteryService =
-    config {
+    configure {
       aggregate[Lottery](Lottery.behavior)
-        .withName("LotteryManager")
-        .withAssignedId
-    }
+    }.join("LotteryViewProjection")
 
   //----------------------------------------------------------------------
   // READ side wiring
   val lotteryViewRepo = new LotteryViewRepo
 
-  config {
+  configure {
     projection(
       sourceProvider = new LevelDbTaggedEventsSource(Lottery.tag),
       projection = new LotteryViewProjection(lotteryViewRepo),
-      name = "LotteryViewProjectionActor"
+      name = "LotteryViewProjection"
     )
   }
 

@@ -14,8 +14,9 @@ import io.funcqrs.DomainEvent
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
-/** Parent actor for all ProjectionActors
-  */
+/**
+ * Parent actor for all ProjectionActors
+ */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
@@ -44,19 +45,19 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   def receive = {
     // start new projections child on demand
-    case CreateProjection(props, name)                   => createNewProjection(props, name)
+    case CreateProjection(props, name) => createNewProjection(props, name)
 
     // receive status from child projection
     // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent                                => receivedEventFromProjection(evt)
+    case evt: DomainEvent => receivedEventFromProjection(evt)
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
 
     // child EventsMonitor is ready, can be removed
-    case RemoveMe(eventsMonitor)                         => removeEventMonitor(eventsMonitor)
+    case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
 
-    case anyOther                                        => log.warning(s"Unknown message: $anyOther")
+    case anyOther => log.warning(s"Unknown message: $anyOther")
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {

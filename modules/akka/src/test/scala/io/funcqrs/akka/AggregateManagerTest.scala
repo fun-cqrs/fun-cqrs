@@ -5,31 +5,31 @@ import akka.actor.Status.Failure
 import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import io.funcqrs.{ AggregateID, CommandException, DomainCommand }
+import io.funcqrs.backend.akka.api._
+import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
-import io.funcqrs.akka.TestModel.UserProtocol.{ ChangeName, CreateUser, NameChanged, UserCreated }
+import io.funcqrs.akka.TestModel.UserProtocol._
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import org.scalatest._
-import FunCQRS.api._
 import scala.concurrent.duration._
 
 class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSystem)
-    with ImplicitSender with FunCqrsSuite
+    with ImplicitSender
     with Matchers with FlatSpecLike with BeforeAndAfterAll {
 
   implicit val timeout = Timeout(500.millis)
 
   def this() = this(ActorSystem("test", ConfigFactory.load("application.conf")))
 
+  implicit val backend = new AkkaBackend(actorSystem)(3.seconds)
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
 
-  val aggregateManager =
-    actorOf {
-      aggregate[User](User.behavior)
-        .withAssignedId
-    }
+  val aggregateManager = backend.actorOf {
+    aggregate[User](User.behavior)
+      .withAssignedId
+  }
 
   behavior of "An AggregateManager"
 
@@ -39,7 +39,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "create event") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! GetState(userId)
@@ -87,13 +87,13 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     }
   }
 
-  it should "return true when enquiring for non-existent aggregate" in {
+  it should "return true when enquiring for existent aggregate" in {
 
     val userId = UserId.generate()
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! Exists(userId)
@@ -107,7 +107,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     val userId = UserId.generate()
     aggregateManager ! (userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
-      case evt: UserCreated =>
+      case (evt: UserCreated) :: _ =>
     }
 
     aggregateManager ! (userId, CreateUser("John Doe", 30))
@@ -120,7 +120,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
   // FIXME: we can't type check on Id, need to investigate further
   ignore should "not accept AggregateIDs of another type" in {
 
-    case class BadUserId(value: String) extends AggregateID
+    case class BadUserId(value: String) extends AggregateId
 
     aggregateManager ! (BadUserId("bad-id"), CreateUser("John Doe", 30))
 

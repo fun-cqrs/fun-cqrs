@@ -1,18 +1,18 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs._
+import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
+import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
-import scala.util.{ Success, Try }
 
 object AggregateManager {
 
-  case class GetState(id: AggregateID)
+  case class GetState(id: AggregateId)
 
-  case class Exists(id: AggregateID)
+  case class Exists(id: AggregateId)
 
 }
 
@@ -20,12 +20,14 @@ case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
 
 case class AggregatePassivationStrategy(
   inactivityTimeout: Option[Duration] = None,
-  maxChildren: Option[MaxChildren] = None)
+  maxChildren: Option[MaxChildren] = None
+)
 
-/** Base aggregate manager.
-  * Handles communication between client and aggregate.
-  * It is also capable of aggregates creation and removal.
-  */
+/**
+ * Base aggregate manager.
+ * Handles communication between client and aggregate.
+ * It is also capable of aggregates creation and removal.
+ */
 trait AggregateManager extends Actor
     with ActorLogging with AggregateAliases with AggregateIdExtractors {
 
@@ -42,10 +44,11 @@ trait AggregateManager extends Actor
 
   def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
-  /** Processes command.
-    * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
-    * and call [[AggregateManager.processAggregateCommand]]
-    */
+  /**
+   * Processes command.
+   * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
+   * and call [[AggregateManager.processAggregateCommand]]
+   */
   def processCommand: Receive = PartialFunction.empty
 
   override def receive: PartialFunction[Any, Unit] = {
@@ -61,7 +64,7 @@ trait AggregateManager extends Actor
       val (id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
       id match {
         case GoodId(_) => processAggregateCommand(id, cmd)
-        case _         => badAggregateId(id)
+        case _ => badAggregateId(id)
       }
   }
 
@@ -71,17 +74,32 @@ trait AggregateManager extends Actor
     case (GoodId(id), cmd: Command) => processAggregateCommand(id, cmd)
   }
 
-  private def badAggregateId(id: AggregateID) = {
+  private def badAggregateId(id: AggregateId) = {
     sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
   private def defaultProcessCommand: Receive = {
 
-    case Terminated(actor)    => handleTermination(actor)
+    case Terminated(actor) => handleTermination(actor)
     case GetState(GoodId(id)) => fetchState(id)
-    case GetState(BadId(id))  => badAggregateId(id)
+    case GetState(BadId(id)) => badAggregateId(id)
 
-    case Exists(GoodId(id))   => exists(id)
-    case Exists(BadId(id))    => badAggregateId(id)
+    case Exists(GoodId(id)) => exists(id)
+    case Exists(BadId(id)) => badAggregateId(id)
+
+    case cmd: Command =>
+      log.error(
+        s"""
+           | Received command without AggregateId!
+           | $cmd
+           |#=============================================================================#
+           |# Have you configured your aggregate to use assigned IDs?                     #
+           |# In that case, you must always send commands together with the aggregate ID! #
+           |#=============================================================================#
+         """.stripMargin
+      )
+      sender() ! Status.Failure(
+        new IllegalArgumentException(s"Command send without AggregateId: $cmd!")
+      )
 
     case x =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
@@ -106,10 +124,11 @@ trait AggregateManager extends Actor
     }
   }
 
-  /** Processes aggregate command.
-    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
-    *
-    */
+  /**
+   * Processes aggregate command.
+   * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
+   *
+   */
   def processAggregateCommand(aggregateId: Id, command: Command) = {
 
     val maybeChild = context child aggregateId.value
@@ -145,8 +164,9 @@ trait AggregateManager extends Actor
 
   def behavior(id: Aggregate#Id): Behavior[Aggregate]
 
-  /** Build Props for a new Aggregate Actor with the passed Id
-    */
+  /**
+   * Build Props for a new Aggregate Actor with the passed Id
+   */
   def aggregateActorProps(id: Id): Props = {
     Props(classOf[AggregateActor[Aggregate]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
   }

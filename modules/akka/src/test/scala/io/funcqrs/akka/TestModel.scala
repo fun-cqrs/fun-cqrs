@@ -4,6 +4,10 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 import io.funcqrs._
+import io.funcqrs.behavior.Behavior
+import io.funcqrs.dsl.BindingDsl.api._
+
+import scala.util.{ Failure, Success }
 
 object TestModel {
 
@@ -16,37 +20,37 @@ object TestModel {
 
     def behavior(id: UserId): Behavior[User] = {
       import UserProtocol._
-      import io.funcqrs.dsl.BehaviorDsl
-      val dsl = new BehaviorDsl[User]
-      import dsl.api._
 
-      whenConstructing {
-        _.processesCommands {
-          case cmd: CreateUser if cmd.age >= 0 => UserCreated(cmd.name, cmd.age, metadata(id, cmd))
-        } acceptsEvents {
-          case evt: UserCreated => User(evt.name, evt.age, id)
+      describe[User]
+        .whenCreating {
+
+          tryHandler { cmd: CreateUser =>
+            if (cmd.age >= 0) Success(UserCreated(cmd.name, cmd.age, metadata(id, cmd)))
+            else Failure(new IllegalArgumentException("age must be >= 0"))
+          }.listener { evt => User(evt.name, evt.age, id) }
+
+        } whenUpdating { user =>
+
+          handler { cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd)) }
+            .listener { evt => user.copy(name = evt.newName) }
         }
-      } whenUpdating {
-        _.processesCommands {
-          case (_, cmd: ChangeName) => NameChanged(cmd.newName, metadata(id, cmd))
-        } acceptsEvents {
-          case (user, evt: NameChanged) => user.copy(name = evt.newName)
-        }
-      }
+
     }
   }
-  case class UserId(value: String) extends AggregateID
+  case class UserId(value: String) extends AggregateId
   object UserId {
     def generate() = UserId(UUID.randomUUID().toString)
   }
 
   object UserProtocol extends ProtocolLike {
 
-    case class UserMetadata(aggregateId: UserId,
-                            commandId: CommandId,
-                            eventId: EventId = EventId(),
-                            date: OffsetDateTime = OffsetDateTime.now(),
-                            tags: Set[Tag] = Set()) extends Metadata with JavaTime {
+    case class UserMetadata(
+        aggregateId: UserId,
+        commandId: CommandId,
+        eventId: EventId = EventId(),
+        date: OffsetDateTime = OffsetDateTime.now(),
+        tags: Set[Tag] = Set()
+    ) extends Metadata with JavaTime {
 
       type Id = UserId
     }

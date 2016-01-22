@@ -2,7 +2,7 @@ package lottery
 
 import _root_.controllers.Assets
 import com.softwaremill.macwire.MacwireMacros._
-import lottery.api.{ ApiModule, AkkaModule }
+import lottery.api.ApiModule
 import lottery.app.RestHttpErrorHandler
 import lottery.domain.service.{ ServiceModule, LotteryModule }
 import play.api.ApplicationLoader.Context

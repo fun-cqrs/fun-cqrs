@@ -12,7 +12,7 @@ trait PlayJsonFormats {
   implicit val offsetDateTimeFormat = new Format[OffsetDateTime] {
     override def reads(json: JsValue) = json match {
       case JsString(s) => JsSuccess(OffsetDateTime.parse(s))
-      case _           => JsError("error.expected.jsstring")
+      case _ => JsError("error.expected.jsstring")
     }
 
     override def writes(o: OffsetDateTime): JsValue = JsString(o.toString)
@@ -27,7 +27,7 @@ trait PlayJsonFormats {
   def readJsonId[T](json: JsValue)(toJsResult: (String) => JsResult[T]) = {
     json match {
       case JsString(id) => toJsResult(id)
-      case _            => JsError("error.expected.jsstring")
+      case _ => JsError("error.expected.jsstring")
     }
   }
 
@@ -47,8 +47,9 @@ trait PlayJsonFormats {
 
   implicit val tagFormat = Json.format[Tag]
 
-  /** Json format for case classes that just wrap a String value. The json representation is just the string.
-    */
+  /**
+   * Json format for case classes that just wrap a String value. The json representation is just the string.
+   */
   def simpleStringWrapper[W](creator: (String) => W)(extractor: W => String): Format[W] = {
 
     new Format[W] {
