@@ -99,10 +99,6 @@ class AggregateActor[A <: AggregateLike](
     availableReceive orElse defaultReceive
   }
 
-
-      changeState(Busy)
-  }
-
   def onCommandFailure(failedCmd: FailedCommand): Unit = {
     failedCmd.origSender ! Status.Failure(failedCmd.cause)
     changeState(failedCmd.state)
@@ -223,6 +219,7 @@ class AggregateActor[A <: AggregateLike](
     eventsSinceLastSnapshot += 1
     aggregateOpt = applyEvent(evt)
     log.debug(s"State after event $aggregateOpt")
+
     changeState(Available)
   }
 
@@ -321,6 +318,7 @@ class AggregateActor[A <: AggregateLike](
       }
       origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
     }
+
     changeState(Available)
   }
 
