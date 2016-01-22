@@ -29,7 +29,7 @@ case class AggregatePassivationStrategy(
  * It is also capable of aggregates creation and removal.
  */
 trait AggregateManager extends Actor
-    with ActorLogging with AggregateAliases with AggregateIdExtractors {
+    with ActorLogging with AggregateAliases with AggregateMessageExtractors {
 
   import scala.collection.immutable._
 
@@ -44,34 +44,38 @@ trait AggregateManager extends Actor
 
   def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
-  /**
-   * Processes command.
-   * In most cases it should transform message to appropriate aggregate command (and apply some additional logic if needed)
-   * and call [[AggregateManager.processAggregateCommand]]
-   */
-  def processCommand: Receive = PartialFunction.empty
-
   override def receive: PartialFunction[Any, Unit] = {
-    processCommand orElse
-      processCreation orElse
+    processCreation orElse
       processUpdate orElse
       defaultProcessCommand
   }
 
   def processCreation: Receive = {
-    // can `any` be convert to the seed tuple (Id, Command)?
-    case creationCommand if idStrategy.beforeReceiveCreateCommand.isDefinedAt(creationCommand) =>
-      val (id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
-      id match {
-        case GoodId(_) => processAggregateCommand(id, cmd)
-        case _ => badAggregateId(id)
+
+    def isValidMessage(any: Any): Boolean = {
+      // can `any` be convert to the CommandMsg?
+      if (idStrategy.beforeReceiveCreateCommand.isDefinedAt(any)) {
+        val cmdMessage = idStrategy.beforeReceiveCreateCommand(any)
+        cmdMessage match {
+          case IdAndCommand(id, cmd) => true
+          case _ => false
+        }
+      } else {
+        false
       }
+    }
+
+    {
+      case creationCommand if isValidMessage(creationCommand) =>
+        val IdAndCommand(id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
+        processAggregateCommand(id, cmd)
+    }
   }
 
   // def processCreation: Receive
 
   def processUpdate: Receive = {
-    case (GoodId(id), cmd: Command) => processAggregateCommand(id, cmd)
+    case IdAndCommand(id, cmd) => processAggregateCommand(id, cmd)
   }
 
   private def badAggregateId(id: AggregateId) = {

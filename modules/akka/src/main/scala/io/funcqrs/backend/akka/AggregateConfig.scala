@@ -1,6 +1,7 @@
 package io.funcqrs.backend.akka
 
 import io.funcqrs._
+import io.funcqrs.{ SingletonIdStrategy, GeneratedIdStrategy, AssignedIdStrategy, AggregateIdStrategy }
 import io.funcqrs.behavior.Behavior
 
 // ================================================================================

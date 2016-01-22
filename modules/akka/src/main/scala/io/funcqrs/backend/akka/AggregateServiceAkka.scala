@@ -34,14 +34,14 @@ class AggregateServiceAkka[A <: AggregateLike](
   }
 
   def update(id: Id)(cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
-    (aggregateManager ? (id, cmd)).mapTo[Events]
+    (aggregateManager ? CommandMsg(id, cmd)).mapTo[Events]
   }
 
   def newInstance(cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
     (aggregateManager ? cmd).mapTo[Events]
   }
   def newInstance(id: Id, cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
-    (aggregateManager ? (id, cmd)).mapTo[Events]
+    (aggregateManager ? CommandMsg(id, cmd)).mapTo[Events]
   }
 
   def join(viewName: String): ViewBoundedAggregateService[A] = {

@@ -6,7 +6,7 @@ import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.backend.akka.api._
-import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
+import io.funcqrs.{ CommandMsg, AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol._
 import io.funcqrs.akka.TestModel.{ User, UserId }
@@ -35,9 +35,11 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
   it should "initialize a new actor when receiving a creational command" in {
 
+    type Aggregate = User
+
     val userId = UserId.generate()
 
-    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "create event") {
       case (evt: UserCreated) :: _ =>
     }
@@ -49,7 +51,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
         user.age shouldBe 30
     }
 
-    aggregateManager ! (userId, ChangeName("Osvaldo"))
+    aggregateManager ! CommandMsg(userId, ChangeName("Osvaldo"))
     expectMsgPF(hint = "update name") {
       case (evt: NameChanged) :: _ =>
     }
@@ -58,22 +60,6 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     expectMsgPF(hint = "check aggregate state - name changed") {
       case user: User =>
         user.name shouldBe "Osvaldo"
-    }
-  }
-
-  it should "reject commands not defined in by its behavior" in {
-
-    // no generated id so we can check error message
-    val userId = UserId("test")
-
-    val badCommand = new DomainCommand {
-      override def toString: String = "BadCommand"
-    }
-
-    aggregateManager ! (userId, badCommand)
-    expectMsgPF(hint = "sending bad command") {
-      case Failure(exp: IllegalArgumentException) =>
-        exp.getMessage shouldBe "Unknown message: (UserId(test),BadCommand)"
     }
   }
 
@@ -91,7 +77,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     val userId = UserId.generate()
 
-    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
@@ -105,12 +91,12 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
   it should "not accept a create command twice" in {
 
     val userId = UserId.generate()
-    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
 
-    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case Failure(exp: CommandException) =>
         exp.getMessage contains "CreateUser(John Doe,30) for aggregate UserId"
@@ -121,20 +107,36 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     // no generated id so we can check error message
     val userId = UserId.generate()
-    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
 
-    aggregateManager ! (userId, DeleteUser)
+    aggregateManager ! CommandMsg(userId, DeleteUser)
     expectMsgPF(hint = "sending delete command") {
       case (evt: UserDeleted) :: _ => //ok
     }
 
-    aggregateManager ! (userId, ChangeName("Osvaldo"))
+    aggregateManager ! CommandMsg(userId, ChangeName("Osvaldo"))
     expectMsgPF(hint = "update name") {
       case Failure(exp: IllegalArgumentException) =>
         exp.getMessage contains "User is already deleted!"
+    }
+  }
+
+  it should "reject commands not defined in by its behavior" in {
+
+    // no generated id so we can check error message
+    val userId = UserId("test")
+
+    val badCommand = new DomainCommand {
+      override def toString: String = "BadCommand"
+    }
+
+    aggregateManager ! CommandMsg(userId, badCommand)
+    expectMsgPF(hint = "sending bad command") {
+      case Failure(exp: IllegalArgumentException) =>
+        exp.getMessage shouldBe "Unknown message: CommandMsg(UserId(test),BadCommand)"
     }
   }
 
@@ -143,7 +145,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     case class BadUserId(value: String) extends AggregateId
 
-    aggregateManager ! (BadUserId("bad-id"), CreateUser("John Doe", 30))
+    aggregateManager ! CommandMsg(BadUserId("bad-id"), CreateUser("John Doe", 30))
 
     expectMsgPF(hint = "creating user") {
       case Failure(exp: IllegalArgumentException) =>
