@@ -8,7 +8,7 @@ import com.typesafe.config.ConfigFactory
 import io.funcqrs.backend.akka.api._
 import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
-import io.funcqrs.akka.TestModel.UserProtocol.{ ChangeName, CreateUser, NameChanged, UserCreated }
+import io.funcqrs.akka.TestModel.UserProtocol._
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import org.scalatest._
 import scala.concurrent.duration._
@@ -87,7 +87,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     }
   }
 
-  it should "return true when enquiring for non-existent aggregate" in {
+  it should "return true when enquiring for existent aggregate" in {
 
     val userId = UserId.generate()
 

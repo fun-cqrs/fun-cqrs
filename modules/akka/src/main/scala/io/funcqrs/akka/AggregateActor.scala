@@ -44,55 +44,61 @@ class AggregateActor[A <: AggregateLike](
    * PartialFunction to handle commands when the Actor is in the [[Uninitialized]] state
    */
   protected def initializing: Receive = {
+
+    val initialReceive: Receive = {
+
+      case cmd: Command =>
+        log.debug(s"Received creation cmd: $cmd")
+        val eventualEvents = interpreter.handleCommand(cmd)
+        val origSender = sender()
+
+        eventualEvents map {
+          events => SuccessfulCreation(events, origSender)
+        } recover {
+          case NonFatal(cause: DomainException) =>
+            FailedCommand(cause, origSender, Uninitialized)
+          case NonFatal(cause) =>
+            log.error(cause, s"Error while processing creational command: $cmd")
+            FailedCommand(cause, origSender, Uninitialized)
+        } pipeTo self
+
+        changeState(Busy)
+
+    }
+
     // always compose with defaultReceive
     initialReceive orElse defaultReceive
-  }
-
-  protected def initialReceive: Receive = {
-
-    case cmd: Command =>
-      log.debug(s"Received creation cmd: $cmd")
-      val eventualEvents = interpreter.handleCommand(cmd)
-      val origSender = sender()
-
-      eventualEvents map {
-        events => SuccessfulCreation(events, origSender)
-      } recover {
-        case NonFatal(cause: DomainException) =>
-          FailedCommand(cause, origSender, Uninitialized)
-        case NonFatal(cause) =>
-          log.error(cause, s"Error while processing creational command: $cmd")
-          FailedCommand(cause, origSender, Uninitialized)
-      } pipeTo self
-
-      changeState(Busy)
-
   }
 
   /**
    * PartialFunction to handle commands when the Actor is in the [[Available]] state
    */
   protected def available: Receive = {
+
+    val availableReceive: Receive = {
+
+      case cmd: Command =>
+        log.debug(s"Received cmd: $cmd")
+        val eventualEvents = interpreter.handleCommand(aggregateOpt.get, cmd)
+        val origSender = sender()
+
+        eventualEvents.map {
+          events => SuccessfulUpdate(events, origSender)
+        } recover {
+          case NonFatal(cause: DomainException) =>
+            FailedCommand(cause, origSender, Available)
+          case NonFatal(cause) =>
+            log.error(cause, s"Error while processing update command: $cmd")
+            FailedCommand(cause, origSender, Available)
+        } pipeTo self
+
+        changeState(Busy)
+    }
+
     // always compose with defaultReceive
     availableReceive orElse defaultReceive
   }
 
-  protected def availableReceive: Receive = {
-
-    case cmd: Command =>
-      log.debug(s"Received cmd: $cmd")
-      val eventualEvents = interpreter.handleCommand(aggregateOpt.get, cmd)
-      val origSender = sender()
-
-      eventualEvents.map {
-        events => SuccessfulUpdate(events, origSender)
-      } recover {
-        case NonFatal(cause: DomainException) =>
-          FailedCommand(cause, origSender, Available)
-        case NonFatal(cause) =>
-          log.error(cause, s"Error while processing update command: $cmd")
-          FailedCommand(cause, origSender, Available)
-      } pipeTo self
 
       changeState(Busy)
   }
@@ -194,7 +200,7 @@ class AggregateActor[A <: AggregateLike](
    */
   override val receiveRecover: Receive = {
 
-    case SnapshotOffer(metadata, (state: State, data: Option[Aggregate])) =>
+    case SnapshotOffer(metadata, (state: State, data: Option[Aggregate] @unchecked)) =>
       eventsSinceLastSnapshot = 0
       log.debug("recovering aggregate from snapshot")
       restoreState(metadata, state, data)
