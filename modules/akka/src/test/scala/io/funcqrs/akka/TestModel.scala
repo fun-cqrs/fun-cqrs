@@ -7,13 +7,12 @@ import io.funcqrs._
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.dsl.BindingDsl.api._
 
-import scala.util.{ Failure, Success }
-
 object TestModel {
 
-  case class User(name: String, age: Int, id: UserId) extends AggregateLike {
+  case class User(name: String, age: Int, id: UserId, deleted: Boolean = false) extends AggregateLike {
     type Id = UserId
     type Protocol = UserProtocol.type
+    def isDeleted = deleted
   }
 
   object User {
@@ -23,16 +22,26 @@ object TestModel {
 
       describe[User]
         .whenCreating {
-
-          tryHandler { cmd: CreateUser =>
-            if (cmd.age >= 0) Success(UserCreated(cmd.name, cmd.age, metadata(id, cmd)))
-            else Failure(new IllegalArgumentException("age must be >= 0"))
-          }.listener { evt => User(evt.name, evt.age, id) }
-
-        } whenUpdating { user =>
-
+          rejectCommand {
+            case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
+          }
+        }
+        .whenCreating {
+          handler { cmd: CreateUser => UserCreated(cmd.name, cmd.age, metadata(id, cmd)) }
+            .listener { evt => User(evt.name, evt.age, id) }
+        }
+        .whenUpdating { user =>
+          rejectCommand {
+            case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
+          }
+        }
+        .whenUpdating { user =>
           handler { cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd)) }
             .listener { evt => user.copy(name = evt.newName) }
+        }
+        .whenUpdating { user =>
+          handler { cmd: DeleteUser.type => UserDeleted(metadata(id, cmd)) }
+            .listener { evt => user.copy(deleted = true) }
         }
 
     }
@@ -64,6 +73,9 @@ object TestModel {
 
     case class CreateUser(name: String, age: Int) extends UserCmd
     case class UserCreated(name: String, age: Int, metadata: UserMetadata) extends UserEvt
+
+    case object DeleteUser extends UserCmd
+    case class UserDeleted(metadata: UserMetadata) extends UserEvt
 
     case class ChangeName(newName: String) extends UserCmd
     case class NameChanged(newName: String, metadata: UserMetadata) extends UserEvt

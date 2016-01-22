@@ -2,13 +2,13 @@ package io.funcqrs.dsl
 
 import io.funcqrs._
 import io.funcqrs.behavior._
-import io.funcqrs.dsl.BindingDsl.Api.Binding
+import io.funcqrs.dsl.BindingDsl.Api.{ GuardBinding, FullBinding, Binding }
 import io.funcqrs.interpreters.Identity
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.language.{ higherKinds, implicitConversions }
 import scala.reflect.ClassTag
-import scala.util.Try
+import scala.util.{ Failure, Try }
 
 object BindingDsl {
 
@@ -46,6 +46,20 @@ object BindingDsl {
       // wrap single event in immutable.Seq
       val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
       new SingleEventBinder(handlerWithSeq)(IdCommandHandlerInvoker(_))
+    }
+
+    /**
+     *  Declares a GuardBinding to reject commands.
+     * @param cmdHandler - a PartialFunction from Command to Throwable.
+     * @tparam A - the aggregate type
+     * @return - return a [[GuardBinding]].
+     */
+    def rejectCommand[A <: AggregateLike](cmdHandler: PartialFunction[A#Command, Throwable]) = {
+      val cmdInvokerPF: PartialFunction[A#Command, Try[A#Events]] = {
+        case cmd if cmdHandler.isDefinedAt(cmd) => Failure(cmdHandler(cmd))
+      }
+      val invoker = TryCommandHandlerInvoker(cmdInvokerPF)
+      GuardBinding(invoker)
     }
 
     /**
@@ -201,7 +215,7 @@ object BindingDsl {
         }
 
         // safe to call asInstanceOf since we have evidence that C is a A#Commnd and E is a A#Event
-        Binding(
+        FullBinding(
           consInvoker(cmdHandlerPF).asInstanceOf[CommandHandlerInvoker[A#Command, A#Event]],
           eventListenerPF.asInstanceOf[EventListener[A#Event, A]]
         )
@@ -237,7 +251,7 @@ object BindingDsl {
        */
       def listener[A <: AggregateLike](eventListenerPF: EventListener[E, A])(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event): Binding[A] = {
         // safe to call asInstanceOf since we have evidence that C is a A#Commnd and E is a A#Event
-        Binding(
+        FullBinding(
           consInvoker(cmdHandlerPF).asInstanceOf[CommandHandlerInvoker[A#Command, A#Event]],
           eventListenerPF.asInstanceOf[EventListener[A#Event, A]]
         )
@@ -247,19 +261,39 @@ object BindingDsl {
 
     /**
      * A Binding express the relation between a DomainCommand, the DomainEvents it can generate and its application on a Aggregate.
-     * @param cmdInvoker - the CommandHandlerInvoker that will produce one or more Events from a given DomainCommnad
-     * @param eventListener - a PartialFunction from Event to Aggregate. It's used to create or update the Aggregate
      * @tparam A - the Aggregate type to which the command and events belong
      */
-    case class Binding[A <: AggregateLike](cmdInvoker: CommandHandlerInvoker[A#Command, A#Event], eventListener: EventListener[A#Event, A])
-        extends AggregateAliases {
+    trait Binding[A <: AggregateLike] extends AggregateAliases {
 
       type Aggregate = A
+      /**  CommandHandlerInvoker that will produce one or more Events from a given DomainCommnad */
+      def cmdInvoker: CommandHandlerInvoker[A#Command, A#Event]
+      /** a PartialFunction from Event to Aggregate. It's used to create or update the Aggregate */
+      def eventListener: EventListener[A#Event, A]
 
       def cmdInvokerPF: PartialFunction[Command, CommandHandlerInvoker[Command, Event]] = {
         case cmd if cmdInvoker.cmdHandler.isDefinedAt(cmd) => cmdInvoker
       }
 
+    }
+
+    /**
+     * A FullBinding defines both a command handler invoker and an event listener.
+     *
+     * @param cmdInvoker - CommandHandlerInvoker that will produce one or more Events from a given DomainCommnad
+     * @param eventListener - a PartialFunction from Event to Aggregate. It's used to create or update the Aggregate
+     * @tparam A - the Aggregate type to which the command and events belong
+     */
+    case class FullBinding[A <: AggregateLike](cmdInvoker: CommandHandlerInvoker[A#Command, A#Event], eventListener: EventListener[A#Event, A]) extends Binding[A]
+
+    /**
+     * A GuardBinding reject commands. It does not define an event listener because no Events should be generated from a reject command.
+     *
+     * @param cmdInvoker - CommandHandlerInvoker that will produce one or more Events from a given DomainCommnad
+     * @tparam A - the Aggregate type to which the command and events belong
+     */
+    case class GuardBinding[A <: AggregateLike](cmdInvoker: CommandHandlerInvoker[A#Command, A#Event]) extends Binding[A] {
+      val eventListener: EventListener[A#Event, A] = PartialFunction.empty
     }
 
     def describe[A <: AggregateLike]: AggregateSpec[A] = {
@@ -296,6 +330,7 @@ case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], upda
 
     val creationSpecUpdated =
       creationSpec.copy(
+        // full bindings must be prepended to spec PF
         cmdHandlerInvokerPF = creationSpec.cmdHandlerInvokerPF orElse binding.cmdInvokerPF,
         eventListenerPF = creationSpec.eventListenerPF orElse binding.eventListener
       )

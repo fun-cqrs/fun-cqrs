@@ -117,6 +117,27 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
     }
   }
 
+  it should "reject commands is aggregate is 'deleted'" in {
+
+    // no generated id so we can check error message
+    val userId = UserId.generate()
+    aggregateManager ! (userId, CreateUser("John Doe", 30))
+    expectMsgPF(hint = "creating user") {
+      case (evt: UserCreated) :: _ =>
+    }
+
+    aggregateManager ! (userId, DeleteUser)
+    expectMsgPF(hint = "sending delete command") {
+      case (evt: UserDeleted) :: _ => //ok
+    }
+
+    aggregateManager ! (userId, ChangeName("Osvaldo"))
+    expectMsgPF(hint = "update name") {
+      case Failure(exp: IllegalArgumentException) =>
+        exp.getMessage contains "User is already deleted!"
+    }
+  }
+
   // FIXME: we can't type check on Id, need to investigate further
   ignore should "not accept AggregateIDs of another type" in {
 
