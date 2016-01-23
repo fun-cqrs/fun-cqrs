@@ -7,12 +7,10 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
   val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"     % "3.1.0"
-  val reactiveStreams       =   "org.reactivestreams"        % "reactive-streams"   % "1.0.0"
-
   val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0-M10" % "test"
 
   val mainDeps = Seq(
-    libraryDependencies ++= Seq(reactiveStreams, scalaLogging, scalaTest)
+    libraryDependencies ++= Seq(scalaLogging, scalaTest)
   )
   //------------------------------------------------------------------------------------------------------------
 
@@ -44,21 +42,6 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Play Json support
   val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.4"
-  //------------------------------------------------------------------------------------------------------------
-
-
-  //------------------------------------------------------------------------------------------------------------
-  //  PLAY Sample
-  val macwireVersion    =   "1.0.7"
-  val macwireMacros     =   "com.softwaremill.macwire"    %%  "macros"            % macwireVersion
-  val macwireRuntime    =   "com.softwaremill.macwire"    %%  "runtime"           % macwireVersion
-  val levelDb           =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"
-  val levelDbJNI        =   "org.fusesource.leveldbjni"   %   "leveldbjni-all"    % "1.8"
-
-  val playSampleDeps = Seq(
-    libraryDependencies ++= Seq(levelDb, levelDbJNI),
-    libraryDependencies ++= Seq(macwireRuntime, macwireMacros)
-  ) ++ mainDeps ++ akkaDeps
   //------------------------------------------------------------------------------------------------------------
 
 }

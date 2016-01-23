@@ -2,6 +2,8 @@ package io.funcqrs
 
 import java.util.UUID
 
+import io.funcqrs.behavior.Behavior
+
 /**
  * Base trait for Aggregates
  */

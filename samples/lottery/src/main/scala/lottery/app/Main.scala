@@ -16,11 +16,10 @@ import scala.util.{ Failure, Success }
 
 object Main extends App {
 
+  // tag::lottery-actor[]
   implicit val timeout = Timeout(3.seconds)
   val system = ActorSystem("FunCQRS")
   implicit lazy val backend = new AkkaBackend(system)
-
-  val id = LotteryId.generate()
 
   // ---------------------------------------------
   // aggregate config - write model
@@ -28,6 +27,7 @@ object Main extends App {
     configure {
       aggregate[Lottery](Lottery.behavior)
     }
+  // end::lottery-actor[]
 
   // ---------------------------------------------
   // projection config - read model
@@ -41,6 +41,7 @@ object Main extends App {
     )
   }
 
+  val id = LotteryId.generate()
   // ---------------------------------------------
   // create aggregate
   val result =

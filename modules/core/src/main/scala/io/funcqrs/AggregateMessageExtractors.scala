@@ -17,13 +17,7 @@ trait AggregateMessageExtractors {
 
       extracted match {
         case Success(value) => Some(value)
-        case Failure(exp) =>
-          println(s"""
-                   | !!! DEBUG PRINTLN - remove me
-                   | $exp
-                   | ============================================================================
-                   """.stripMargin)
-          None
+        case Failure(exp) => None
       }
     }
   }

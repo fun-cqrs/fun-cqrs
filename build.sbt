@@ -79,7 +79,7 @@ lazy val lotteryApp = Project(
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ mainDeps ++ playSampleDeps
+  ) ++ mainDeps
 ).dependsOn(funCqrs)
  .dependsOn(funCqrsTestKit)
  .dependsOn(funCqrsAkka)

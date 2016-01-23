@@ -14,10 +14,10 @@ case class Lottery(
     participants: List[String] = List(),
     winner: Option[String] = None,
     id: LotteryId
-) extends AggregateLike { // #<1>
+) extends AggregateLike {
 
-  type Id = LotteryId // #<2>
-  type Protocol = LotteryProtocol.type // #<3>
+  type Id = LotteryId // #<1>
+  type Protocol = LotteryProtocol.type // #<2>
 
   def addParticipant(name: String): Lottery = {
     copy(participants = participants :+ name)
@@ -56,19 +56,10 @@ object LotteryId {
 // tag::lottery-protocol[]
 object LotteryProtocol extends ProtocolLike { // #<1>
 
-  case class LotteryMetadata(
-      aggregateId: LotteryId,
-      commandId: CommandId,
-      eventId: EventId = EventId(),
-      date: OffsetDateTime = OffsetDateTime.now(),
-      tags: Set[Tag] = Set()
-  ) extends Metadata with JavaTime {
-    type Id = LotteryId
-  }
-
+  // Commands ============================================================
   sealed trait LotteryCommand extends ProtocolCommand // #<2>
 
-  // Creation Commands
+  // Creation Command
   case class CreateLottery(name: String) extends LotteryCommand
   // Update Commands
   case class AddParticipant(name: String) extends LotteryCommand
@@ -76,91 +67,117 @@ object LotteryProtocol extends ProtocolLike { // #<1>
   case object Reset extends LotteryCommand
   case object Run extends LotteryCommand
 
-  // base Event
-  sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata]
+  // Events ============================================================
+  sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata] // #<3>
 
+  case class LotteryMetadata( // #<4>
+      aggregateId: LotteryId, // #<5>
+      commandId: CommandId, // #<6>
+      eventId: EventId = EventId(), // #<7>
+      date: OffsetDateTime = OffsetDateTime.now(), // #<8>
+      tags: Set[Tag] = Set() // #<9>
+  ) extends Metadata with JavaTime {
+    type Id = LotteryId
+  }
+
+  // Creation Event
   case class LotteryCreated(name: String, metadata: LotteryMetadata) extends LotteryEvent
-
   // Update Events
   sealed trait LotteryUpdateEvent extends LotteryEvent
-  case class ParticipantAdded(name: String, metadata: LotteryMetadata)
-    extends LotteryUpdateEvent
-  case class ParticipantRemoved(name: String, metadata: LotteryMetadata)
-    extends LotteryUpdateEvent
-  case class WinnerSelected(winner: String, metadata: LotteryMetadata)
-    extends LotteryUpdateEvent
+  case class ParticipantAdded(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
+  case class ParticipantRemoved(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
+  case class WinnerSelected(winner: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
 }
 // end::lottery-protocol[]
 
+// tag::lottery-behavior[]
 object Lottery {
 
+  // import the protocol to have access to Commands and Events
   import LotteryProtocol._
 
+  // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
-  def metadata(id: LotteryId, cmd: LotteryCommand) = {
-    LotteryMetadata(id, cmd.id, tags = Set(tag))
-  }
 
   def behavior(lotteryId: LotteryId): Behavior[Lottery] = {
 
+    // convenient method for building LotteryMetatadata
+    def metadata(cmd: LotteryCommand) = {
+      LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
+    }
+
+    // start to describe Lottery Behavior
     describe[Lottery]
 
       .whenCreating {
         // creational command and event
-        handler { cmd: CreateLottery => LotteryCreated(cmd.name, metadata(lotteryId, cmd)) }
-          .listener { evt => Lottery(name = evt.name, id = lotteryId) }
-
+        handler { cmd: CreateLottery =>
+          LotteryCreated(cmd.name, metadata(cmd))
+        } listener { evt =>
+          Lottery(name = evt.name, id = lotteryId)
+        }
       }
 
-      // some guard clauses 
+      // Some guard clauses. 
+      // Commands bellow won't generate events, but be reject with an exception
       .whenUpdating { lottery =>
-
         rejectCommand {
-          // no command accepted after running the lottery 
-          case anyCommand if lottery.hasWinner => new IllegalArgumentException("Lottery has already a winner!")
+          // no command can be accepted after having selected a winner
+          case anyCommand if lottery.hasWinner =>
+            new IllegalArgumentException("Lottery has already a winner!")
         }
       }
       .whenUpdating { lottery =>
         rejectCommand {
           // can't run if there is no participants
-          case _: Run.type if lottery.hasNoParticipants => new IllegalArgumentException("Lottery has no participants")
+          case _: Run.type if lottery.hasNoParticipants =>
+            new IllegalArgumentException("Lottery has no participants")
+        }
+      }
+      .whenUpdating { lottery =>
+        rejectCommand {
+          // can't add participant twice
+          case cmd: AddParticipant if lottery.hasParticipant(cmd.name) =>
+            new IllegalArgumentException(s"Participant ${cmd.name} already added!")
         }
       }
 
-      // logic to update a lottery
+      // Logic to update a lottery. Commands bellow will generate events
       .whenUpdating { lottery =>
-
         // Select a winner when run!
-        handler { cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(lotteryId, cmd)) }
-          .listener { evt => lottery.copy(winner = Option(evt.winner)) }
+        handler {
+          cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
+        } listener { evt =>
+          lottery.copy(winner = Option(evt.winner))
+        }
 
       }
       .whenUpdating { lottery =>
-
-        tryHandler { cmd: AddParticipant =>
-          if (lottery.hasParticipant(cmd.name))
-            Failure(new IllegalArgumentException(s"Participant ${cmd.name} already added!"))
-          else
-            Success(ParticipantAdded(cmd.name, metadata(lotteryId, cmd)))
+        handler {
+          cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
         } listener { evt =>
           lottery.addParticipant(evt.name)
         }
 
       }
       .whenUpdating { lottery =>
-
-        handler { cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(lotteryId, cmd)) }
-          .listener { evt => lottery.removeParticipant(evt.name) }
+        handler {
+          cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
+        } listener { evt =>
+          lottery.removeParticipant(evt.name)
+        }
 
       }
       .whenUpdating { lottery =>
-
+        // Reset is a special case as we need to generate many events
         handler.manyEvents { cmd: Reset.type =>
-          lottery.participants.map { name => ParticipantRemoved(name, metadata(lotteryId, cmd)) }
+          // will produce a List[ParticipantRemoved]
+          lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
         } listener {
+          // MUST be a PartialFunciton when command handler generates a List of events
           case evt: ParticipantRemoved => lottery.removeParticipant(evt.name)
         }
       }
-
   }
 }
+// end::lottery-behavior[]

@@ -8,9 +8,14 @@
 :pygments-linenums-mode: inline
 :author: Renato Cavalcanti - Strong[Typed]
 
+## Introduction
+
 **Fun.CQRS** is a Scala library for building DDD/CQRS application. It provides the basic blocks to build event driven aggregates backed by **Akka** for event sourcing.
 
-// toc::[]
+In **Fun.CQRS**, Aggregates are immutable classes (case class) that live inside an Actor. When using **Fun.CQRS** you don't have to deal much with **Akka** and it's powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how **Akka** works and how to configure **Akka Persistence** to use your persistence plugin of choice.
+
+That said, in **Fun.CQRS**, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events and recover aggregate states.
+
 
 ### Project artifact
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
@@ -18,14 +23,6 @@ The artifacts are published to Sonatype Repository. Simply add the following to 
 ```scala
   libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "1.0.0"
 ```
-
-## Introduction
-
-In **Fun.CQRS**, Aggregates are immutable classes (case class) that live inside an Actor. When using **Fun.CQRS** you don't have to deal much with **Akka** and it's powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how **Akka** works and how to configure **Akka Persistence** to use your persistence plugin of choice.
-
-That said, in **Fun.CQRS**, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events and recover aggregate states.
-
-
 
 ## Lottery Example
 
@@ -70,7 +67,7 @@ The code below demonstrates how to define a protocol.
 
 [source,scala]
 ----
-import io.funcqrs.ProtocolLike
+import io.funcqrs._
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-protocol]
 ----
 
@@ -78,10 +75,13 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 `ProtocolLike` trait brings two new traits in scope: `ProtocolCommand` and `ProtocolEvent`.
 <2> Each Lottery Command extends `ProtocolCommand` via sealed trait `LotteryCommnad`.
 <3> Each Lottery Event extends `ProtocolEvent` via sealed trait `LotteryEvent`.
-<4> Each Event has a unique `EventId` generated at construction time.
-<5> Each Event carries the `CommandId` of the command that generated it. `CommandIds` are automatically generated and is defined as a val by `ProtocolCommand`. `CommandIds` are guaranteed to be unique.
+<4> Each Event has a Metadata object. The Metadata has some basic information about the event, for instance:
+<5> The `AggregateId` for each it was generated;
+<6> The `CommandId` that originated the Event;
+<7> A unique `EventId`
+<8> The event date time
+<9> One or more `Tags`  (we'll see later why tagging is important).
 
-### Event Metadata
 
 ### Coding the Aggregate
 
@@ -95,15 +95,47 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 
 We define the **Lottery** aggregate by extending the trait `io.funcqrs.AggregateLike`. As a consequence we need to define two type parameters:
 
-  1. the `Id` which should point to an `AggregateId`. In our case the previously defined `LotteryId`.
-  2. the `Protocol` which in our case will point to `LotteryProtocol`.
+<1> The `Id` which should point to an `AggregateId`. In our case the previously defined `LotteryId`.
+<2> The `Protocol` which in our case will point to `LotteryProtocol`. Remember: `LotteryProtocol` is an object. To access its type we must write `LotteryProtocol.type`. `LotteryProtocol` gives us the object singleton instance.
 
-Note that the **Lottery** aggregate is a pure and simple case class in the sense that it has regular methods to 'modify' its state by copying the case class and returning it. It does check the invariants of the aggregate **Lottery**, but it doesn't work at the level of `Commands` and `Events`. This is rather a design choice. Nothing forbid us to have **Lottery** reacting direct to `Commands` and `Events`.
+Note that the **Lottery** aggregate is a simple case class with methods to 'modify' its state by copying the case class and returning it. It does NOT check the invariants of the aggregate **Lottery** and it doesn't work at the level of `Commands` and `Events`. This is rather a design choice. Nothing forbid us to have **Lottery** reacting direct to `Commands` and `Events` and enforcing its invariants.
+
+However, for this example we will keep it as a mere data container of the aggregate state. The invariants will be enforced by the `Behavior` we will implement in the next section.
 
 
-### Mapping Commands and Events
+### Aggregate Behavior
 
-Up to now, we have an **Aggregate** with a type-safe **Id** and its protocol defining all possible `Commands` and `Evetns`. We need a way to bind each `Command` to the right operation in the aggregate, let it produces the right `Events` and react to the `Events` accordingly.
+Up to now, we have an **Aggregate** with a type-safe **Id** and its **Protocol** defining all possible `Commands` and `Evetns`. However, we need a way to bind each `Command` to the right operation in the aggregate, let it produces the right `Events` and react to the `Events` accordingly. That all respecting the invariants of the `Lottery` aggregate. Actually, we still need to define how the `Aggregate` should behave.
+
+The `Behavior` can be define by means of a declarative `DSL`. It is defined in terms of `Bindings`. A `Binding` establish the link between the handling of a `Commnad` (a Command Handler) and the action to be executed when the `Events` are applied (the Event Listener). The `DSL` enforces you to declare a event listener for whatever `Event` that is generated by a Command Handler.
+
+It's also possible to define 'guard clauses' for `Commands`. In which case no `Events` will be produced and the `Command` gets reject with an error.
+
+We also need to make a distinction between `Commands` and `Events` that should instantiate an aggregate (creational commands and events) and those that must be validated against an existent aggregate instance (update commands and events). This is done by defined the `Bindings` inside `whenCreating` and `whenUpdating` blocks.
+
+Note that when updating, we need to have access to the current state of the aggregate. Therefore, `whenUpdating` blocks needs a function from Aggregate => Binding where Aggregate is the current state of the `Aggregate`.
+
+The code below demonstrate how we can build a `Behavior` with the help of the `Binding DSL`.
+
+[source,scala]
+----
+import io.funcqrs.behavior.Behavior
+import io.funcqrs.dsl.BindingDsl.api._
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-behavior]
+----
+
+
+### Configuring the Aggregate to live inside Akka
+[source,scala]
+----
+import io.funcqrs.backend.akka.api._
+import akka.actor.ActorSystem
+
+object Main extends App {
+
+include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lottery-actor]
+}
+----
 
 
 ## Projections
