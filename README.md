@@ -21,8 +21,8 @@ Documentation is in the process of being written. For the moment the best way to
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
 
-[Devoxx 2015](https://www.youtube.com/watch?v=fQkKu4tTgCE) (2h45m) 
-[Scala Exchange 2015](https://skillsmatter.com/skillscasts/7047-building-a-cqrs-application-using-the-scala-type-system-and-akka) (45m)
+[Devoxx 2015](https://www.youtube.com/watch?v=fQkKu4tTgCE) (2h45m)  
+[Scala Exchange 2015](https://skillsmatter.com/skillscasts/7047-building-a-cqrs-application-using-the-scala-type-system-and-akka) (45m)  
  Note that this two presentations contains code that have been refactored in the mean time. However, you will get a good picture of the available features by watching the videos. 
   
 
