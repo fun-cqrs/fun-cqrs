@@ -111,10 +111,10 @@ object Lottery {
 
       .whenCreating {
         // creational command and event
-        handler { cmd: CreateLottery =>
-          LotteryCreated(cmd.name, metadata(cmd))
-        } listener { evt =>
-          Lottery(name = evt.name, id = lotteryId)
+        handler {
+          cmd: CreateLottery => LotteryCreated(cmd.name, metadata(cmd))
+        } listener {
+          evt => Lottery(name = evt.name, id = lotteryId)
         }
       }
 
@@ -147,32 +147,36 @@ object Lottery {
         // Select a winner when run!
         handler {
           cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
-        } listener { evt =>
-          lottery.copy(winner = Option(evt.winner))
+        } listener {
+          evt => lottery.copy(winner = Option(evt.winner))
         }
 
       }
       .whenUpdating { lottery =>
         handler {
           cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
-        } listener { evt =>
-          lottery.addParticipant(evt.name)
+        } listener {
+          evt => lottery.addParticipant(evt.name)
         }
 
       }
       .whenUpdating { lottery =>
         handler {
           cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
-        } listener { evt =>
-          lottery.removeParticipant(evt.name)
+        } listener {
+          evt => lottery.removeParticipant(evt.name)
         }
 
       }
       .whenUpdating { lottery =>
         // Reset is a special case as we need to generate many events
-        handler.manyEvents { cmd: Reset.type =>
+        handler.manyEvents {
           // will produce a List[ParticipantRemoved]
-          lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
+          cmd: Reset.type =>
+            lottery.participants.map { name =>
+              ParticipantRemoved(name, metadata(cmd))
+            }
+
         } listener {
           // MUST be a PartialFunciton when command handler generates a List of events
           case evt: ParticipantRemoved => lottery.removeParticipant(evt.name)

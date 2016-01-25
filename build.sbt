@@ -79,12 +79,11 @@ lazy val lotteryApp = Project(
   settings = Seq(
     publishArtifact := false,
     routesGenerator := InjectedRoutesGenerator
-  ) ++ mainDeps
+  ) ++ sampleDeps
 ).dependsOn(funCqrs)
  .dependsOn(funCqrsTestKit)
  .dependsOn(funCqrsAkka)
 
-addCommandAlias("runShopSample", "sample-shop/run")
 addCommandAlias("runLotterySample", "sample-lottery/run")
 
 //@formatter:on

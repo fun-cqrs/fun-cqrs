@@ -13,17 +13,19 @@ import akka.util.Timeout
 import java.util.UUID
 import io.funcqrs.backend.akka.api._
 import scala.util.{ Failure, Success }
+import io.funcqrs.backend.akka.AggregateService
 
 object Main extends App {
 
   // tag::lottery-actor[]
-  implicit val timeout = Timeout(3.seconds)
   val system = ActorSystem("FunCQRS")
-  implicit lazy val backend = new AkkaBackend(system)
+
+  implicit val timeout = Timeout(3.seconds)
+  implicit val backend = new AkkaBackend(system)
 
   // ---------------------------------------------
   // aggregate config - write model
-  val lotteryService =
+  val lotteryService: AggregateService[Lottery] =
     configure {
       aggregate[Lottery](Lottery.behavior)
     }
@@ -41,17 +43,28 @@ object Main extends App {
     )
   }
 
+  // tag::lottery-run[]
   val id = LotteryId.generate()
-  // ---------------------------------------------
-  // create aggregate
-  val result =
+
+  val result = //#<4>
     for {
-      _ <- lotteryService.newInstance(id, CreateLottery("ScalaX"))
-      _ <- lotteryService.update(id)(AddParticipant("John"))
-      _ <- lotteryService.update(id)(AddParticipant("Paul"))
-      _ <- lotteryService.update(id)(AddParticipant("Joe"))
-      res <- lotteryService.update(id)(Run)
-    } yield res
+      // create a lottery
+      createEvts <- lotteryService.newInstance(id, CreateLottery("Demo")) // #<1>
+
+      // add participants
+      johnEvts <- lotteryService.update(id)(AddParticipant("John")) //#<2>
+      paulEvts <- lotteryService.update(id)(AddParticipant("Paul"))
+      ringoEvts <- lotteryService.update(id)(AddParticipant("Ringo"))
+      georgeEvts <- lotteryService.update(id)(AddParticipant("George"))
+
+      // run the lottery
+      runEvts <- lotteryService.update(id)(Run) // #<3>
+
+    } yield {
+      // concatenate all events together
+      createEvts ++ johnEvts ++ paulEvts ++ ringoEvts ++ georgeEvts ++ runEvts
+    }
+  // end::lottery-run[]
 
   waitAndPrint(result)
   Thread.sleep(5000)

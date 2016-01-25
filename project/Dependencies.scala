@@ -44,5 +44,11 @@ object Dependencies {
   val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.4"
   //------------------------------------------------------------------------------------------------------------
 
+  val levelDb           =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"
+  val levelDbJNI        =   "org.fusesource.leveldbjni"   %   "leveldbjni-all"    % "1.8"
+
+  val sampleDeps = Seq(
+    libraryDependencies ++= Seq(levelDb, levelDbJNI)
+  ) ++ mainDeps ++ akkaDeps
 }
 // /@formatter:on

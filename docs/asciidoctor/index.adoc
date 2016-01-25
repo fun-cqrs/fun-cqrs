@@ -2,9 +2,10 @@
 // :toc: macro
 :toc2:
 :linkcss:
+:linkattrs:
 :icons: font
 :source-highlighter: pygments
-:pygments-style: monokai
+:pygments-style: manni
 :pygments-linenums-mode: inline
 :author: Renato Cavalcanti - Strong[Typed]
 
@@ -14,34 +15,26 @@
 
 In **Fun.CQRS**, Aggregates are immutable classes (case class) that live inside an Actor. When using **Fun.CQRS** you don't have to deal much with **Akka** and it's powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how **Akka** works and how to configure **Akka Persistence** to use your persistence plugin of choice.
 
-That said, in **Fun.CQRS**, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events and recover aggregate states.
+That said, in **Fun.CQRS**, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate states and generate read models via projection of the event
 
+## Usage Example
 
-### Project artifact
-The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
-
-```scala
-  libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "1.0.0"
-```
-
-## Lottery Example
-
-In the following section we will build a simple aggregate. As an example use case we build a **Lottery** application.
+In the following section we will build a simple aggregate. As an example use case we build a **Lottery** application. This example is also available as a sample application in the project repository in https://github.com/strongtyped/fun-cqrs[GitHub].
 
 A **Lottery** application has the following requirements:
 
 - An user can create a new lottery game
 
-- Participants can be added
-  **condition**: a participant can only be added once
-  **condition**: a participant can only be added if a winner is not yet selected
+- Participants can be added +
+  **condition**: a participant can only be added once +
+  **condition**: a participant can only be added if a winner is not yet selected +
 
-- A participant can be removed
-	**condition**: if a winner is not yet selected
+- A participant can be removed +
+	**condition**: if a winner is not yet selected +
 
-- An winner can be selected
- 	**condition**: we can only select a winner if there is at least one participant
- 	**condition**: we can only select a winner once, afterwards an error is produced when trying to select a new winner
+- An winner can be selected +
+ 	**condition**: we can only select a winner if there is at least one participant +
+ 	**condition**: we can only select a winner once, afterwards an error is produced when trying to select a new winner +
 
 ### Type-safe IDs
 
@@ -54,6 +47,7 @@ First we define a type representing the Aggregate Id. We define it by extending 
 import io.funcqrs.AggregateId
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-id]
 ----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
 ### Lottery Protocol
 
@@ -70,6 +64,7 @@ The code below demonstrates how to define a protocol.
 import io.funcqrs._
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-protocol]
 ----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
 <1> A Protocol is defined as a Scala object (not a class) and it extends the trait `ProtocolLike`.
 `ProtocolLike` trait brings two new traits in scope: `ProtocolCommand` and `ProtocolEvent`.
@@ -77,7 +72,7 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 <3> Each Lottery Event extends `ProtocolEvent` via sealed trait `LotteryEvent`.
 <4> Each Event has a Metadata object. The Metadata has some basic information about the event, for instance:
 <5> The `AggregateId` for each it was generated;
-<6> The `CommandId` that originated the Event;
+<6> The `CommandId` that originated the `Event`;
 <7> A unique `EventId`
 <8> The event date time
 <9> One or more `Tags`  (we'll see later why tagging is important).
@@ -92,28 +87,35 @@ The next step is to code the  aggregate itself.
 import io.funcqrs.AggregateLike
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-aggregate]
 ----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
-We define the **Lottery** aggregate by extending the trait `io.funcqrs.AggregateLike`. As a consequence we need to define two type parameters:
+We define the **Lottery** aggregate by extending the trait `io.funcqrs.AggregateLike`. As a consequence we need to define two type members:
 
 <1> The `Id` which should point to an `AggregateId`. In our case the previously defined `LotteryId`.
 <2> The `Protocol` which in our case will point to `LotteryProtocol`. Remember: `LotteryProtocol` is an object. To access its type we must write `LotteryProtocol.type`. `LotteryProtocol` gives us the object singleton instance.
 
-Note that the **Lottery** aggregate is a simple case class with methods to 'modify' its state by copying the case class and returning it. It does NOT check the invariants of the aggregate **Lottery** and it doesn't work at the level of `Commands` and `Events`. This is rather a design choice. Nothing forbid us to have **Lottery** reacting direct to `Commands` and `Events` and enforcing its invariants.
+[TIP]
+====
+The **Lottery** aggregate is a simple case class with methods to 'modify' its state by copying the case class and returning it. It does NOT check the invariants of the aggregate **Lottery** and it doesn't work at the level of `Commands` and `Events`. This is rather a design choice. Nothing forbid us to have **Lottery** reacting direct to `Commands` and `Events` and enforcing its invariants.
 
-However, for this example we will keep it as a mere data container of the aggregate state. The invariants will be enforced by the `Behavior` we will implement in the next section.
+For this example we will keep it as a mere data container of the aggregate state. The invariants will be enforced by the `Behavior` we will implement in the next section.
+====
 
 
 ### Aggregate Behavior
 
 Up to now, we have an **Aggregate** with a type-safe **Id** and its **Protocol** defining all possible `Commands` and `Evetns`. However, we need a way to bind each `Command` to the right operation in the aggregate, let it produces the right `Events` and react to the `Events` accordingly. That all respecting the invariants of the `Lottery` aggregate. Actually, we still need to define how the `Aggregate` should behave.
 
-The `Behavior` can be define by means of a declarative `DSL`. It is defined in terms of `Bindings`. A `Binding` establish the link between the handling of a `Commnad` (a Command Handler) and the action to be executed when the `Events` are applied (the Event Listener). The `DSL` enforces you to declare a event listener for whatever `Event` that is generated by a Command Handler.
+The `Behavior` can be define by means of a declarative `DSL`. It is defined in terms of `Bindings`. A `Binding` establish the link between the handling of a `Commnad` (a Command Handler) and the action to be executed when the `Events` are applied (the Event Listener). The `DSL` enforces you to declare a event listener for each `Event` that is generated by a Command Handler.
 
 It's also possible to define 'guard clauses' for `Commands`. In which case no `Events` will be produced and the `Command` gets reject with an error.
 
-We also need to make a distinction between `Commands` and `Events` that should instantiate an aggregate (creational commands and events) and those that must be validated against an existent aggregate instance (update commands and events). This is done by defined the `Bindings` inside `whenCreating` and `whenUpdating` blocks.
+We make a distinction between `Commands` and `Events` that must instantiate an aggregate (creational commands and events) and those that must be validated against an existent aggregate instance (update commands and events). This is done by defining the `Bindings` inside `whenCreating` and `whenUpdating` blocks.
 
-Note that when updating, we need to have access to the current state of the aggregate. Therefore, `whenUpdating` blocks needs a function from Aggregate => Binding where Aggregate is the current state of the `Aggregate`.
+[TIP]
+====
+When updating, we need to have access to the current state of the aggregate. Therefore, `whenUpdating` blocks requires a function from Aggregate => Binding where Aggregate is the current state of the `Aggregate`.
+====
 
 The code below demonstrate how we can build a `Behavior` with the help of the `Binding DSL`.
 
@@ -123,19 +125,40 @@ import io.funcqrs.behavior.Behavior
 import io.funcqrs.dsl.BindingDsl.api._
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-behavior]
 ----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
 
 ### Configuring the Aggregate to live inside Akka
+
+In this last step we configure the **Akka Backend** with our **Lottery** aggregate. the configuration is quite straight forward.
+
 [source,scala]
 ----
 import io.funcqrs.backend.akka.api._
 import akka.actor.ActorSystem
-
-object Main extends App {
+import lottery.domain.model.Lottery
+import io.funcqrs.backend.akka.AggregateService
 
 include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lottery-actor]
-}
 ----
+(ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
+
+
+From the **Akka Backend** we get a `AggregateService` for lottery. Much like in Akka where we can't have access to the Actor itself, in Fun.CQRS we don't have direct access to the aggregate. The `Lottery` aggregate will live inside an actor, but instead of working with its `ActorRef` we work with a fully typed `AggregateService`.
+
+
+[source,scala]
+----
+import lottery.domain.model.LotteryId
+import lottery.domain.model.LotteryProtocol._
+
+include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lottery-run]
+----
+(ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
+
+The `LotteryService` can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a `Future`. In the event of a successful command, we get back a `Future` with the list of generated events. Otherwise a failed `Future` holding the exception
+
+### Behind the scenes, the Akka Backend
 
 
 ## Projections
@@ -144,6 +167,41 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 ## Testing
 
 ## Akka Configuration
+
+## Project Information
+
+**Fun.CQRS** is open source software. Source code is available at: +
+https://github.com/strongtyped/fun-cqrs (development branch)
+
+Stable and released branch can be found at: +
+https://github.com/strongtyped/fun-cqrs/tree/master
+
+### Project artifact
+The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
+
+```scala
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.3.0-SNAPSHOT"
+```
+
+If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
+The core module does NOT include the Akka backend.
+```scala
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.3.0-SNAPSHOT"
+```
+
+
+
+### License
+This software is licensed under the Apache 2 license, quoted below.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this project except in compliance with
+the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+"AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
+language governing permissions and limitations under the License.
+
+Copyright 2014 Strong[Typed] (@StrongTyped)
 
 ### Contribution policy
 

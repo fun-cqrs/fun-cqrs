@@ -13,7 +13,7 @@ import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class AggregateServiceAkka[A <: AggregateLike](
+class AggregateService[A <: AggregateLike](
     aggregateManager: ActorRef,
     projectionMonitorActorRef: ActorRef
 )(implicit askTimeout: Timeout) extends AggregateAliases { service =>
@@ -50,7 +50,7 @@ class AggregateServiceAkka[A <: AggregateLike](
 }
 
 class ViewBoundedAggregateService[A <: AggregateLike](
-    asyncAggregateService: AggregateServiceAkka[A],
+    asyncAggregateService: AggregateService[A],
     defaultView: String,
     projectionMonitorActorRef: ActorRef,
     eventsFilter: EventsFilter = All

@@ -19,11 +19,11 @@ object AkkaBackendApi {
     /** Parent actor for all projections! */
     private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
 
-    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateServiceAkka[A] =
-      new AggregateServiceAkka(actorOf[A](config), projectionMonitorActorRef)
+    def configure[A <: AggregateLike](config: AggregateConfigWithAssignedId[A]): AggregateService[A] =
+      new AggregateService(actorOf[A](config), projectionMonitorActorRef)
 
-    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateServiceAkka[A] =
-      new AggregateServiceAkka(actorOf[A](config), projectionMonitorActorRef)
+    def configure[A <: AggregateLike](config: AggregateConfigWithManagedId[A]): AggregateService[A] =
+      new AggregateService(actorOf[A](config), projectionMonitorActorRef)
 
     def configure(config: ProjectionConfig): Future[Unit] = {
 
@@ -65,11 +65,11 @@ object AkkaBackendApi {
 
   }
 
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceAkka[A] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithAssignedId[A])(implicit akkaBackend: AkkaBackend): AggregateService[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 
-  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AggregateServiceAkka[A] = {
+  def configure[A <: AggregateLike](aggregateConfig: AggregateConfigWithManagedId[A])(implicit akkaBackend: AkkaBackend): AggregateService[A] = {
     akkaBackend.configure(aggregateConfig)
   }
 

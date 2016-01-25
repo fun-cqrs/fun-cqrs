@@ -12,13 +12,21 @@ Small library for building CQRS application using Scala in combination with Akka
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-  libraryDependencies += "io.strongtyped" %% "fun-cqrs" % "0.3.0-SNAPSHOT"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.3.0-SNAPSHOT"
+```
+
+If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
+The core module does NOT include the Akka backend.
+
+```scala
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.3.0-SNAPSHOT"
 ```
 
 ## Documentation
 
 Documentation is in the process of being written.  
 A preview is available [here](http://htmlpreview.github.io/?https://github.com/strongtyped/fun-cqrs/blob/develop/docs/asciidoctor/index.html).
+
 For the moment the best way to learn how to use Fun.CQRS is to check the lottery sample under fun-cqrs/samples/lottery.
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
