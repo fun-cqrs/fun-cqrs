@@ -345,21 +345,21 @@
       <span class="tok-c1">// Some guard clauses.</span>
       <span class="tok-c1">// Commands bellow won&#39;t generate events, but be reject with an exception</span>
       <span class="tok-o">.</span><span class="tok-n">whenUpdating</span> <span class="tok-o">{</span> <span class="tok-n">lottery</span> <span class="tok-k">=&gt;</span>
-        <span class="tok-n">rejectCommand</span> <span class="tok-o">{</span>
+        <span class="tok-n">reject</span> <span class="tok-o">{</span>
           <span class="tok-c1">// no command can be accepted after having selected a winner</span>
           <span class="tok-k">case</span> <span class="tok-n">anyCommand</span> <span class="tok-k">if</span> <span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">hasWinner</span> <span class="tok-k">=&gt;</span>
             <span class="tok-k">new</span> <span class="tok-nc">IllegalArgumentException</span><span class="tok-o">(</span><span class="tok-s">&quot;Lottery has already a winner!&quot;</span><span class="tok-o">)</span>
         <span class="tok-o">}</span>
       <span class="tok-o">}</span>
       <span class="tok-o">.</span><span class="tok-n">whenUpdating</span> <span class="tok-o">{</span> <span class="tok-n">lottery</span> <span class="tok-k">=&gt;</span>
-        <span class="tok-n">rejectCommand</span> <span class="tok-o">{</span>
+        <span class="tok-n">reject</span> <span class="tok-o">{</span>
           <span class="tok-c1">// can&#39;t run if there is no participants</span>
           <span class="tok-k">case</span> <span class="tok-k">_:</span> <span class="tok-kt">Run.</span><span class="tok-k">type</span> <span class="tok-kt">if</span> <span class="tok-kt">lottery.hasNoParticipants</span> <span class="tok-o">=&gt;</span>
             <span class="tok-k">new</span> <span class="tok-nc">IllegalArgumentException</span><span class="tok-o">(</span><span class="tok-s">&quot;Lottery has no participants&quot;</span><span class="tok-o">)</span>
         <span class="tok-o">}</span>
       <span class="tok-o">}</span>
       <span class="tok-o">.</span><span class="tok-n">whenUpdating</span> <span class="tok-o">{</span> <span class="tok-n">lottery</span> <span class="tok-k">=&gt;</span>
-        <span class="tok-n">rejectCommand</span> <span class="tok-o">{</span>
+        <span class="tok-n">reject</span> <span class="tok-o">{</span>
           <span class="tok-c1">// can&#39;t add participant twice</span>
           <span class="tok-k">case</span> <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">AddParticipant</span> <span class="tok-kt">if</span> <span class="tok-kt">lottery.hasParticipant</span><span class="tok-o">(</span><span class="tok-kt">cmd.name</span><span class="tok-o">)</span> <span class="tok-o">=&gt;</span>
             <span class="tok-k">new</span> <span class="tok-nc">IllegalArgumentException</span><span class="tok-o">(</span><span class="tok-n">s</span><span class="tok-s">&quot;Participant ${cmd.name} already added!&quot;</span><span class="tok-o">)</span>
