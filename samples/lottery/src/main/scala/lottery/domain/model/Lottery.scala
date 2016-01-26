@@ -121,21 +121,21 @@ object Lottery {
       // Some guard clauses. 
       // Commands bellow won't generate events, but be reject with an exception
       .whenUpdating { lottery =>
-        rejectCommand {
+        reject {
           // no command can be accepted after having selected a winner
           case anyCommand if lottery.hasWinner =>
             new IllegalArgumentException("Lottery has already a winner!")
         }
       }
       .whenUpdating { lottery =>
-        rejectCommand {
+        reject {
           // can't run if there is no participants
           case _: Run.type if lottery.hasNoParticipants =>
             new IllegalArgumentException("Lottery has no participants")
         }
       }
       .whenUpdating { lottery =>
-        rejectCommand {
+        reject {
           // can't add participant twice
           case cmd: AddParticipant if lottery.hasParticipant(cmd.name) =>
             new IllegalArgumentException(s"Participant ${cmd.name} already added!")

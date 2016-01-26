@@ -22,7 +22,7 @@ object TestModel {
 
       describe[User]
         .whenCreating {
-          rejectCommand {
+          reject {
             case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
           }
         }
@@ -31,7 +31,7 @@ object TestModel {
             .listener { evt => User(evt.name, evt.age, id) }
         }
         .whenUpdating { user =>
-          rejectCommand {
+          reject {
             case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
           }
         }

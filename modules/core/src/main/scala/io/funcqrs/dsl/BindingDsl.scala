@@ -54,7 +54,7 @@ object BindingDsl {
      * @tparam A - the aggregate type
      * @return - return a [[GuardBinding]].
      */
-    def rejectCommand[A <: AggregateLike](cmdHandler: PartialFunction[A#Command, Throwable]) = {
+    def reject[A <: AggregateLike](cmdHandler: PartialFunction[A#Command, Throwable]) = {
       val cmdInvokerPF: PartialFunction[A#Command, Try[A#Events]] = {
         case cmd if cmdHandler.isDefinedAt(cmd) => Failure(cmdHandler(cmd))
       }
