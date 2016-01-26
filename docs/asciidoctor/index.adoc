@@ -144,7 +144,7 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 (ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
 
 
-From the **Akka Backend** we get a `AggregateService` for lottery. Much like in Akka where we can't have access to the Actor itself, in Fun.CQRS we don't have direct access to the aggregate. The `Lottery` aggregate will live inside an actor, but instead of working with its `ActorRef` we work with a fully typed `AggregateService`.
+From the **Akka Backend** we get a `AggregateService` for `Lottery`. Much like in **Akka** where we can't have access to the Actor itself, in Fun.CQRS we don't have direct access to the aggregate. The `Lottery` aggregate will live inside an actor, but instead of working with its `ActorRef` we work with a fully typed `AggregateService`.
 
 
 [source,scala]
@@ -156,17 +156,22 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
 
-The `LotteryService` can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a `Future`. In the event of a successful command, we get back a `Future` with the list of generated events. Otherwise a failed `Future` holding the exception
+The `LotteryService` can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a `Future`. In the event of a successful command, we get back a `Future` with the list of generated events. Otherwise a failed `Future` holding the exception.
 
-### Behind the scenes, the Akka Backend
+<1> We send a create command to the `Lottery` aggregate via its service
+<2> We send four AddParticipant commands for four well-known musicians. All the same aggregate instance identified by `id`.
+<3> Finally we run the **Lottery**
+<4> The result is a `Future` holding all `Events` concatenated in a single `Seq` of `Events`.
 
 
 ## Projections
-
-
-## Testing
+TODO - check Lottery sample for the time being
 
 ## Akka Configuration
+TODO - check Lottery sample for the time being
+
+## Testing
+TODO - check Lottery sample for the time being
 
 ## Project Information
 

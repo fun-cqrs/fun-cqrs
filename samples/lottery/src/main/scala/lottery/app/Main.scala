@@ -46,13 +46,13 @@ object Main extends App {
   // tag::lottery-run[]
   val id = LotteryId.generate()
 
-  val result = //#<4>
+  val result =
     for {
       // create a lottery
       createEvts <- lotteryService.newInstance(id, CreateLottery("Demo")) // #<1>
 
-      // add participants
-      johnEvts <- lotteryService.update(id)(AddParticipant("John")) //#<2>
+      // add participants #<2>
+      johnEvts <- lotteryService.update(id)(AddParticipant("John")) 
       paulEvts <- lotteryService.update(id)(AddParticipant("Paul"))
       ringoEvts <- lotteryService.update(id)(AddParticipant("Ringo"))
       georgeEvts <- lotteryService.update(id)(AddParticipant("George"))
@@ -62,7 +62,7 @@ object Main extends App {
 
     } yield {
       // concatenate all events together
-      createEvts ++ johnEvts ++ paulEvts ++ ringoEvts ++ georgeEvts ++ runEvts
+      createEvts ++ johnEvts ++ paulEvts ++ ringoEvts ++ georgeEvts ++ runEvts // #<4>
     }
   // end::lottery-run[]
 
