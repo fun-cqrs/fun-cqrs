@@ -1,8 +1,0 @@
-target
-.idea
-.ensime
-*.iml
-.DS_Store
-journal/
-snapshots/
-*.log
