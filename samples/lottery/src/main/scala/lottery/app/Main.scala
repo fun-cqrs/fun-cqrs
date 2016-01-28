@@ -52,7 +52,7 @@ object Main extends App {
       createEvts <- lotteryService.newInstance(id, CreateLottery("Demo")) // #<1>
 
       // add participants #<2>
-      johnEvts <- lotteryService.update(id)(AddParticipant("John")) 
+      johnEvts <- lotteryService.update(id)(AddParticipant("John"))
       paulEvts <- lotteryService.update(id)(AddParticipant("Paul"))
       ringoEvts <- lotteryService.update(id)(AddParticipant("Ringo"))
       georgeEvts <- lotteryService.update(id)(AddParticipant("George"))

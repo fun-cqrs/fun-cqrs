@@ -2,7 +2,7 @@ package io.funcqrs.dsl
 
 import io.funcqrs._
 import io.funcqrs.behavior._
-import io.funcqrs.dsl.BindingDsl.Api.{ GuardBinding, FullBinding, Binding }
+import io.funcqrs.dsl.BindingDsl.Api.Binding
 import io.funcqrs.interpreters.Identity
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -95,7 +95,7 @@ object BindingDsl {
      *   tryHandler { cmd: CreateLottery =>  Try(LotteryCreated(cmd.name, metadata(id, cmd))) }
      * }}}
      *
-     * @param cmdHandler - a command handler function from DomainComand to Try[Event]
+     * @param cmdHandler - a command handler function from DomainCommand to Try[Event]
      */
     def tryHandler[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Try[E]) = {
       // wrap single event in immutable.Seq
@@ -124,7 +124,7 @@ object BindingDsl {
        *   handler { cmd: CreateLottery => Try(List(LotteryCreated(cmd.name, metadata(id, cmd)))) }
        * }}}
        *
-       * @param cmdHandler - a command handler function from DomainComand to immutable.Seq[Event]
+       * @param cmdHandler - a command handler function from DomainCommand to immutable.Seq[Event]
        */
       def manyEvents[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Try[immutable.Seq[E]]) = {
         new ManyEventsBinder(cmdHandler)(TryCommandHandlerInvoker(_))
@@ -138,7 +138,7 @@ object BindingDsl {
      *   tryHandler { cmd: CreateLottery =>  Future(LotteryCreated(cmd.name, metadata(id, cmd))) }
      * }}}
      *
-     * @param cmdHandler - a command handler function from DomainComand to Try[Event]
+     * @param cmdHandler - a command handler function from DomainCommand to Try[Event]
      */
     def asyncHandler[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Future[E]) = {
       import scala.concurrent.ExecutionContext.Implicits.global
@@ -168,7 +168,7 @@ object BindingDsl {
        *   handler { cmd: CreateLottery => Future(List(LotteryCreated(cmd.name, metadata(id, cmd)))) }
        * }}}
        *
-       * @param cmdHandler - a command handler function from DomainComand to immutable.Seq[Event]
+       * @param cmdHandler - a command handler function from DomainCommand to immutable.Seq[Event]
        */
       def manyEvents[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag](cmdHandler: C => Future[immutable.Seq[E]]) = {
         new ManyEventsBinder(cmdHandler)(FutureCommandHandlerInvoker(_))
@@ -189,7 +189,9 @@ object BindingDsl {
      * A SingleEventBinder is a in-between step to build a [[Binding]] for a command producing one single Event.
      */
     case class SingleEventBinder[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, F[_]](cmdHandler: C => F[immutable.Seq[E]])(consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]) {
+
       object CmdExtractor extends ClassTagExtractor[C]
+
       val cmdHandlerPF: PartialFunction[C, F[immutable.Seq[E]]] = {
         case CmdExtractor(cmd) => cmdHandler(cmd)
       }
@@ -210,14 +212,15 @@ object BindingDsl {
       def listener[A <: AggregateLike](eventListener: E => A)(implicit evCmd: C <:< A#Command, evEvt: E <:< A#Event): Binding[A] = {
 
         object EvtExtractor extends ClassTagExtractor[E]
-        val eventListenerPF: EventListener[E, A] = {
+
+        val eventListenerPF: EventListener[A#Event, A] = {
           case EvtExtractor(evt) => eventListener(evt)
         }
 
         // safe to call asInstanceOf since we have evidence that C is a A#Commnd and E is a A#Event
         FullBinding(
           consInvoker(cmdHandlerPF).asInstanceOf[CommandHandlerInvoker[A#Command, A#Event]],
-          eventListenerPF.asInstanceOf[EventListener[A#Event, A]]
+          eventListenerPF
         )
       }
     }
@@ -228,6 +231,7 @@ object BindingDsl {
     case class ManyEventsBinder[C <: DomainCommand: ClassTag, E <: DomainEvent: ClassTag, F[_]](cmdHandler: C => F[immutable.Seq[E]])(consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]) {
 
       object CmdExtractor extends ClassTagExtractor[C]
+
       val cmdHandlerPF: PartialFunction[C, F[immutable.Seq[E]]] = {
         case CmdExtractor(cmd) => cmdHandler(cmd)
       }
