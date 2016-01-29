@@ -6,10 +6,8 @@ import akka.actor._
 import akka.event.{ ActorEventBus, LookupClassification }
 import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
-import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
-import io.funcqrs.akka.ProjectionMonitorActor._
 import io.funcqrs.DomainEvent
 
 import scala.concurrent.duration.{ FiniteDuration, _ }

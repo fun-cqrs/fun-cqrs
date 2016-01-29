@@ -1,56 +1,55 @@
-package io.funcqrs.backend.akka
+package io.funcqrs.akka.backend
 
-import _root_.akka.pattern._
-import _root_.akka.actor.ActorRef
+import _root_.akka.actor.{ Actor, ActorRef }
 import _root_.akka.util.Timeout
-import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
+import io.funcqrs.akka.AggregateManager.{ UntypedIdAndCommand, GetState, Exists }
 import io.funcqrs.akka.EventsMonitorActor.Subscribe
 import io.funcqrs.akka.{ EventsMonitorActor, ProjectionMonitorActor }
-import io.funcqrs._
-
+import io.funcqrs.{ DomainEvent, DomainCommand, AggregateLike, AggregateAliases }
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.Try
 import scala.util.control.NonFatal
 
-class AggregateService[A <: AggregateLike](
-    aggregateManager: ActorRef,
-    projectionMonitorActorRef: ActorRef
-)(implicit askTimeout: Timeout) extends AggregateAliases { service =>
+case class AggregateActorRef[A <: AggregateLike](
+    id: A#Id,
+    aggregateManagerActor: ActorRef,
+    projectionMonitor: ActorRef
+) extends AggregateAliases {
 
   type Aggregate = A
 
-  def state(id: Id)(implicit askTimeout: Timeout): Future[A] = {
+  // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
+  private val askableActorRef = akka.pattern.ask(aggregateManagerActor)
+
+  def ?(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
+
+  def ask(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {
+    (askableActorRef ? UntypedIdAndCommand(id, cmd)).mapTo[Events]
+  }
+
+  def state()(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[A] = {
+
     import scala.concurrent.ExecutionContext.Implicits.global
-    (aggregateManager ? GetState(id)).flatMap { res =>
+
+    (askableActorRef ? GetState(id)).flatMap { res =>
       // can't use mapTo since we don't have a ClassTag for Aggregate in scope
       val tryCast = Try(res.asInstanceOf[Aggregate])
       Future.fromTry(tryCast)
     }
   }
 
-  def exists(id: Id)(implicit askTimeout: Timeout): Future[Boolean] = {
-    (aggregateManager ? Exists(id)).mapTo[Boolean]
+  def exists()(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Boolean] = {
+    (askableActorRef ? Exists(id)).mapTo[Boolean]
   }
 
-  def update(id: Id)(cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
-    (aggregateManager ? CommandMsg(id, cmd)).mapTo[Events]
-  }
-
-  def newInstance(cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
-    (aggregateManager ? cmd).mapTo[Events]
-  }
-  def newInstance(id: Id, cmd: Command)(implicit askTimeout: Timeout): Future[Events] = {
-    (aggregateManager ? CommandMsg(id, cmd)).mapTo[Events]
-  }
-
-  def join(viewName: String): ViewBoundedAggregateService[A] = {
-    new ViewBoundedAggregateService[A](service, viewName, projectionMonitorActorRef)
+  def join(viewName: String): ViewBoundedAggregateActorRef[A] = {
+    new ViewBoundedAggregateActorRef[A](this, viewName, projectionMonitor)
   }
 }
 
-class ViewBoundedAggregateService[A <: AggregateLike](
-    asyncAggregateService: AggregateService[A],
+class ViewBoundedAggregateActorRef[A <: AggregateLike](
+    aggregateRef: AggregateActorRef[A],
     defaultView: String,
     projectionMonitorActorRef: ActorRef,
     eventsFilter: EventsFilter = All
@@ -58,32 +57,22 @@ class ViewBoundedAggregateService[A <: AggregateLike](
 
   type Aggregate = A
 
-  val underlyingService = asyncAggregateService
+  val underlyingRef = aggregateRef
 
   // Delegation to underlying AsyncAggregateService
-  def state(id: Id)(implicit askTimeout: Timeout): Future[Aggregate] = underlyingService.state(id)
-  def exists(id: Id)(implicit askTimeout: Timeout): Future[Boolean] = underlyingService.exists(id)
+  def state()(implicit timeout: Timeout, sender: ActorRef): Future[A] = underlyingRef.state()
+  def exists()(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = underlyingRef.exists()
 
-  def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateService[A] =
-    new ViewBoundedAggregateService(asyncAggregateService, defaultView, projectionMonitorActorRef, eventsFilter)
+  def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateActorRef[A] =
+    new ViewBoundedAggregateActorRef(underlyingRef, defaultView, projectionMonitorActorRef, eventsFilter)
 
-  def limit(count: Int): ViewBoundedAggregateService[A] = withFilter(Limit(count))
+  def limit(count: Int): ViewBoundedAggregateActorRef[A] = withFilter(Limit(count))
 
-  def update(id: Id)(cmd: Command)(implicit timeout: Timeout): Future[Events] = {
+  def ?(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
+
+  def ask(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {
     watchEvents(cmd) {
-      asyncAggregateService.update(id)(cmd)
-    }
-  }
-
-  def newInstance(id: Id, cmd: Command)(implicit timeout: Timeout): Future[Events] = {
-    watchEvents(cmd) {
-      asyncAggregateService.newInstance(id, cmd)
-    }
-  }
-
-  def newInstance(cmd: Command)(implicit timeout: Timeout): Future[Events] = {
-    watchEvents(cmd) {
-      asyncAggregateService.newInstance(cmd)
+      underlyingRef ? cmd
     }
   }
 
@@ -101,9 +90,12 @@ class ViewBoundedAggregateService[A <: AggregateLike](
    */
   private def watchEvents(cmd: Command)(sendCommandFunc: => Future[Any])(implicit timeout: Timeout): Future[Events] = {
 
+    // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
+    val askableProjectionMonitorActorRef = akka.pattern.ask(projectionMonitorActorRef)
+
     import scala.concurrent.ExecutionContext.Implicits.global
     def newEventsMonitor() = {
-      (projectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
+      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
     }
 
     val resultOnWrite =
@@ -112,7 +104,9 @@ class ViewBoundedAggregateService[A <: AggregateLike](
         monitor <- newEventsMonitor()
         // send command to Write Model (AggregateManager)
         events <- sendCommandFunc.mapTo[Events]
-      } yield (monitor, events)
+
+        // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
+      } yield (akka.pattern.ask(monitor), events)
 
     val resultOnRead =
       for {
@@ -133,6 +127,7 @@ class ViewBoundedAggregateService[A <: AggregateLike](
   }
 
   class ProjectionJoinException(evts: Events, cause: Throwable) extends RuntimeException
+
 }
 
 trait EventsFilter {

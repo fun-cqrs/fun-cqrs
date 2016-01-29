@@ -1,64 +1,69 @@
 package lottery.app
 
-import akka.actor.ActorSystem
-import lottery.domain.model.Lottery
-import lottery.domain.model.LotteryId
-import lottery.domain.model.LotteryProtocol._
-import lottery.domain.service.{ LevelDbTaggedEventsSource, LotteryViewRepo, LotteryViewProjection }
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import akka.util.Timeout
-import java.util.UUID
-import io.funcqrs.backend.akka.api._
+import io.funcqrs.akka.EventsSourceProvider
+import io.funcqrs.akka.backend.AkkaBackend
+import io.funcqrs.backend.{ Query, QueryByTag }
+import io.funcqrs.config.api._
+import lottery.domain.model.{ Lottery, LotteryId }
+import lottery.domain.model.LotteryProtocol._
+import lottery.domain.service.{ LevelDbTaggedEventsSource, LotteryViewProjection, LotteryViewRepo }
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ Await, Future }
+import scala.concurrent.duration._
 import scala.util.{ Failure, Success }
-import io.funcqrs.backend.akka.AggregateService
 
 object Main extends App {
 
   // tag::lottery-actor[]
-  val system = ActorSystem("FunCQRS")
 
-  implicit val timeout = Timeout(3.seconds)
-  implicit val backend = new AkkaBackend(system)
-
-  // ---------------------------------------------
-  // aggregate config - write model
-  val lotteryService: AggregateService[Lottery] =
-    configure {
-      aggregate[Lottery](Lottery.behavior)
+  val backend = new AkkaBackend {
+    def sourceProvider(query: Query): EventsSourceProvider = {
+      query match {
+        case QueryByTag(tag) => new LevelDbTaggedEventsSource(tag)
+      }
     }
-  // end::lottery-actor[]
-
-  // ---------------------------------------------
-  // projection config - read model
-  val lotteryViewRepo = new LotteryViewRepo
-
-  configure {
-    projection(
-      sourceProvider = new LevelDbTaggedEventsSource(Lottery.tag),
-      projection = new LotteryViewProjection(lotteryViewRepo),
-      name = "LotteryViewProjection"
-    )
   }
 
+  val lotteryViewRepo = new LotteryViewRepo
+
+  backend
+    // ---------------------------------------------
+    // aggregate config - write model
+    .configure {
+      aggregate[Lottery](Lottery.behavior)
+    }
+    // end::lottery-actor[]
+
+    // ---------------------------------------------
+    // projection config - read model
+    .configure {
+      projection(
+        query = QueryByTag(Lottery.tag),
+        projection = new LotteryViewProjection(lotteryViewRepo),
+        name = "LotteryViewProjection"
+      )
+    }
+
   // tag::lottery-run[]
+  implicit val timeout = Timeout(3.seconds)
+
   val id = LotteryId.generate()
+  val aggregateRef = backend.aggregateRef[Lottery](id)
 
   val result =
     for {
       // create a lottery
-      createEvts <- lotteryService.newInstance(id, CreateLottery("Demo")) // #<1>
+      createEvts <- aggregateRef ? CreateLottery("Demo") // #<1>
 
       // add participants #<2>
-      johnEvts <- lotteryService.update(id)(AddParticipant("John"))
-      paulEvts <- lotteryService.update(id)(AddParticipant("Paul"))
-      ringoEvts <- lotteryService.update(id)(AddParticipant("Ringo"))
-      georgeEvts <- lotteryService.update(id)(AddParticipant("George"))
+      johnEvts <- aggregateRef ? AddParticipant("John")
+      paulEvts <- aggregateRef ? AddParticipant("Paul")
+      ringoEvts <- aggregateRef ? AddParticipant("Ringo")
+      georgeEvts <- aggregateRef ? AddParticipant("George")
 
       // run the lottery
-      runEvts <- lotteryService.update(id)(Run) // #<3>
+      runEvts <- aggregateRef ? Run // #<3>
 
     } yield {
       // concatenate all events together
@@ -75,7 +80,7 @@ object Main extends App {
   waitAndPrint(viewResult)
 
   Thread.sleep(1000)
-  system.terminate()
+  backend.actorSystem.terminate()
 
   def waitAndPrint[T](resultFut: Future[T]) = {
     Await.ready(resultFut, 3.seconds)

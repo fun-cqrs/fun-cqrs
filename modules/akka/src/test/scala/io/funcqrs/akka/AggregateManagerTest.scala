@@ -5,15 +5,18 @@ import akka.actor.Status.Failure
 import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import io.funcqrs.backend.akka.api._
-import io.funcqrs.{ CommandMsg, AggregateId, CommandException, DomainCommand }
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol._
 import io.funcqrs.akka.TestModel.{ User, UserId }
+import io.funcqrs.akka.backend.AkkaBackend
+import io.funcqrs.backend.Query
+import io.funcqrs.config.api._
+import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
 import org.scalatest._
+
 import scala.concurrent.duration._
 
-class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSystem)
+class AggregateManagerTest(val actorSys: ActorSystem) extends TestKit(actorSys)
     with ImplicitSender
     with Matchers with FlatSpecLike with BeforeAndAfterAll {
 
@@ -21,15 +24,21 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
   def this() = this(ActorSystem("test", ConfigFactory.load("application.conf")))
 
-  implicit val backend = new AkkaBackend(actorSystem)(3.seconds)
+  val eventsSourceProvider = (query: Query) => ???
+
+  lazy val backend = new AkkaBackend {
+    override val actorSystem: ActorSystem = actorSys
+    def sourceProvider(query: Query): EventsSourceProvider = ???
+  }
+
   override def afterAll {
     TestKit.shutdownActorSystem(system)
   }
 
-  val aggregateManager = backend.actorOf {
-    aggregate[User](User.behavior)
-      .withAssignedId
-  }
+  lazy val aggregateManager =
+    backend.actorOf {
+      aggregate[User](User.behavior)
+    }
 
   behavior of "An AggregateManager"
 
@@ -39,7 +48,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     val userId = UserId.generate()
 
-    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "create event") {
       case (evt: UserCreated) :: _ =>
     }
@@ -51,7 +60,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
         user.age shouldBe 30
     }
 
-    aggregateManager ! CommandMsg(userId, ChangeName("Osvaldo"))
+    aggregateManager ! UntypedIdAndCommand(userId, ChangeName("Osvaldo"))
     expectMsgPF(hint = "update name") {
       case (evt: NameChanged) :: _ =>
     }
@@ -77,7 +86,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     val userId = UserId.generate()
 
-    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
@@ -91,12 +100,12 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
   it should "not accept a create command twice" in {
 
     val userId = UserId.generate()
-    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
 
-    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case Failure(exp: CommandException) =>
         exp.getMessage contains "CreateUser(John Doe,30) for aggregate UserId"
@@ -107,17 +116,17 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     // no generated id so we can check error message
     val userId = UserId.generate()
-    aggregateManager ! CommandMsg(userId, CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {
       case (evt: UserCreated) :: _ =>
     }
 
-    aggregateManager ! CommandMsg(userId, DeleteUser)
+    aggregateManager ! UntypedIdAndCommand(userId, DeleteUser)
     expectMsgPF(hint = "sending delete command") {
       case (evt: UserDeleted) :: _ => //ok
     }
 
-    aggregateManager ! CommandMsg(userId, ChangeName("Osvaldo"))
+    aggregateManager ! UntypedIdAndCommand(userId, ChangeName("Osvaldo"))
     expectMsgPF(hint = "update name") {
       case Failure(exp: IllegalArgumentException) =>
         exp.getMessage contains "User is already deleted!"
@@ -133,10 +142,10 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
       override def toString: String = "BadCommand"
     }
 
-    aggregateManager ! CommandMsg(userId, badCommand)
+    aggregateManager ! UntypedIdAndCommand(userId, badCommand)
     expectMsgPF(hint = "sending bad command") {
       case Failure(exp: IllegalArgumentException) =>
-        exp.getMessage shouldBe "Unknown message: CommandMsg(UserId(test),BadCommand)"
+        exp.getMessage shouldBe "Unknown message: UntypedIdAndCommand(UserId(test),BadCommand)"
     }
   }
 
@@ -145,7 +154,7 @@ class AggregateManagerTest(val actorSystem: ActorSystem) extends TestKit(actorSy
 
     case class BadUserId(value: String) extends AggregateId
 
-    aggregateManager ! CommandMsg(BadUserId("bad-id"), CreateUser("John Doe", 30))
+    aggregateManager ! UntypedIdAndCommand(BadUserId("bad-id"), CreateUser("John Doe", 30))
 
     expectMsgPF(hint = "creating user") {
       case Failure(exp: IllegalArgumentException) =>

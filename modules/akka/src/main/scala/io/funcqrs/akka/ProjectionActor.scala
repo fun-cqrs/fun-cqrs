@@ -8,8 +8,9 @@ import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
-import io.funcqrs.backend.akka.CustomOffsetPersistenceStrategy
+import io.funcqrs.config.CustomOffsetPersistenceStrategy
 import io.funcqrs.{ DomainEvent, Projection }
+
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
 import scala.language.postfixOps

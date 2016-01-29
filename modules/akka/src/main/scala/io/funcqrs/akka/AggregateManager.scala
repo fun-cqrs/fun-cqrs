@@ -14,6 +14,8 @@ object AggregateManager {
 
   case class Exists(id: AggregateId)
 
+  case class UntypedIdAndCommand(id: AggregateId, cmd: DomainCommand)
+
 }
 
 case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
@@ -35,8 +37,6 @@ trait AggregateManager extends Actor
 
   type Aggregate <: AggregateLike
 
-  val idStrategy: AggregateIdStrategy[Aggregate]
-
   case class PendingCommand(sender: ActorRef, targetProcessorId: Id, command: Command)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
@@ -45,36 +45,11 @@ trait AggregateManager extends Actor
   def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
   override def receive: PartialFunction[Any, Unit] = {
-    processCreation orElse
-      processUpdate orElse
-      defaultProcessCommand
-  }
-
-  def processCreation: Receive = {
-
-    def isValidMessage(any: Any): Boolean = {
-      // can `any` be convert to the CommandMsg?
-      if (idStrategy.beforeReceiveCreateCommand.isDefinedAt(any)) {
-        val cmdMessage = idStrategy.beforeReceiveCreateCommand(any)
-        cmdMessage match {
-          case IdAndCommand(id, cmd) => true
-          case _ => false
-        }
-      } else {
-        false
-      }
-    }
-
-    {
-      case creationCommand if isValidMessage(creationCommand) =>
-        val IdAndCommand(id, cmd) = idStrategy.beforeReceiveCreateCommand(creationCommand)
-        processAggregateCommand(id, cmd)
-    }
+    processCommand orElse defaultProcessCommand
   }
 
   // def processCreation: Receive
-
-  def processUpdate: Receive = {
+  def processCommand: Receive = {
     case IdAndCommand(id, cmd) => processAggregateCommand(id, cmd)
   }
 
@@ -191,7 +166,7 @@ trait AggregateManager extends Actor
 
 }
 
-class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], val idStrategy: AggregateIdStrategy[A])
+class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A])
     extends AggregateManager {
 
   type Aggregate = A
@@ -203,7 +178,7 @@ class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Beh
 
 object ConfigurableAggregateManager {
 
-  def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A], idStrategy: AggregateIdStrategy[A]) = {
-    Props(new ConfigurableAggregateManager(behaviorCons, idStrategy))
+  def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) = {
+    Props(new ConfigurableAggregateManager(behaviorCons))
   }
 }

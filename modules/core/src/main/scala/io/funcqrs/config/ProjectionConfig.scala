@@ -1,12 +1,12 @@
-package io.funcqrs.backend.akka
+package io.funcqrs.config
 
 import io.funcqrs.Projection
-import io.funcqrs.akka.EventsSourceProvider
+import io.funcqrs.backend.Query
 
 import scala.concurrent.Future
 
 case class ProjectionConfig(
-    sourceProvider: EventsSourceProvider,
+    query: Query,
     projection: Projection,
     name: String,
     offsetPersistenceStrategy: OffsetPersistenceStrategy = NoOffsetPersistenceStrategy

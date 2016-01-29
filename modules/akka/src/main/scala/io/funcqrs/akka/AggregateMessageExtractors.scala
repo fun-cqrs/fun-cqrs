@@ -1,4 +1,6 @@
-package io.funcqrs
+package io.funcqrs.akka
+
+import io.funcqrs.{ AggregateId, AggregateLike }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -7,7 +9,7 @@ trait AggregateMessageExtractors {
   type Aggregate <: AggregateLike
 
   object IdAndCommand {
-    def unapply(cmdMsg: CommandMsg): Option[(Aggregate#Id, Aggregate#Command)] = {
+    def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand): Option[(Aggregate#Id, Aggregate#Command)] = {
 
       val extracted =
         for {
