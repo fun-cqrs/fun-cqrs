@@ -48,13 +48,13 @@
 <h2 id="_introduction">Introduction</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><strong>Fun.CQRS</strong> is a Scala library for building DDD/CQRS application. It provides the basic blocks to build event driven aggregates backed by <strong>Akka</strong> for event sourcing.</p>
+<p><strong>Fun.CQRS</strong> is a Scala library for building CQRS/ES application. It provides the basic blocks to build event driven aggregates backed by <strong>Akka</strong> for Event Sourcing.</p>
 </div>
 <div class="paragraph">
-<p>In <strong>Fun.CQRS</strong>, Aggregates are immutable classes (case class) that live inside an Actor. When using <strong>Fun.CQRS</strong> you don&#8217;t have to deal much with <strong>Akka</strong> and it&#8217;s powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (commands and events). However you still need a minimal understanding of how <strong>Akka</strong> works and how to configure <strong>Akka Persistence</strong> to use your persistence plugin of choice.</p>
+<p>In <strong>Fun.CQRS</strong>, Aggregates are immutable classes (case class) that live inside an Actor. When using <strong>Fun.CQRS</strong> you don&#8217;t have to deal much with <strong>Akka</strong> and it&#8217;s powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (Commands and Events). However you still need a minimal understanding of how <strong>Akka</strong> works and how to configure <strong>Akka Persistence</strong> to use your persistence plugin of choice.</p>
 </div>
 <div class="paragraph">
-<p>That said, in <strong>Fun.CQRS</strong>, Aggregates are NOT Actors. The Actor System is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate states and generate read models via projection of the event</p>
+<p>That said, in <strong>Fun.CQRS</strong>, Aggregates are NOT Actors. The <strong>Actor System</strong>* is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate states and generate read models via  <strong>Events Projections</strong></p>
 </div>
 </div>
 </div>
@@ -62,7 +62,7 @@
 <h2 id="_usage_example">Usage Example</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>In the following section we will build a simple aggregate. As an example use case we build a <strong>Lottery</strong> application. This example is also available as a sample application in the project repository in <a href="https://github.com/strongtyped/fun-cqrs">GitHub</a>.</p>
+<p>In the following section we will build a simple aggregate. As an example use case we build a <strong>Lottery</strong> application. This example is also available as a running sample application in the project repository in <a href="https://github.com/strongtyped/fun-cqrs">GitHub</a>.</p>
 </div>
 <div class="paragraph">
 <p>A <strong>Lottery</strong> application has the following requirements:</p>
@@ -73,16 +73,16 @@
 <p>An user can create a new lottery game</p>
 </li>
 <li>
-<p>Participants can be added<br>
+<p>An user can add participants<br>
 <strong>condition</strong>: a participant can only be added once<br>
 <strong>condition</strong>: a participant can only be added if a winner is not yet selected<br></p>
 </li>
 <li>
-<p>A participant can be removed<br>
+<p>An user can remove participant<br>
 <strong>condition</strong>: if a winner is not yet selected<br></p>
 </li>
 <li>
-<p>An winner can be selected<br>
+<p>A user can run the lottery which will select a winner<br>
 <strong>condition</strong>: we can only select a winner if there is at least one participant<br>
 <strong>condition</strong>: we can only select a winner once, afterwards an error is produced when trying to select a new winner<br></p>
 </li>
@@ -91,7 +91,7 @@
 <div class="sect2">
 <h3 id="_type_safe_ids">Type-safe IDs</h3>
 <div class="paragraph">
-<p><strong>Fun.CQRS</strong> uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific Id type to be used by the system. As such, we avoid Id clashing. It also provides better logging as we can clear see in the logs from each aggregate it comes.</p>
+<p><strong>Fun.CQRS</strong> uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific Id type to be used by the system. As such, we avoid Id clashing. It also provides better logging as we can clear see in the logs from each aggregate it comes from.</p>
 </div>
 <div class="paragraph">
 <p>First we define a type representing the Aggregate Id. We define it by extending the trait <code>io.funcqrs.AggregateId</code>.</p>
@@ -175,30 +175,28 @@
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Each Lottery Event extends <code>ProtocolEvent</code> via sealed trait <code>LotteryEvent</code>.</td>
+<td>Each Lottery Event extends <code>ProtocolEvent</code> via sealed trait <code>LotteryEvent</code>.
+<code>LotteryEvent</code> is enriched (via <code>MetadataFacet</code>) with <code>LotteryMetadata</code>.
+The <code>LotteryMetadata</code> has some basic information about the event, for instance:</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>Each Event has a Metadata object. The Metadata has some basic information about the event, for instance:</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
 <td>The <code>AggregateId</code> for each it was generated;</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
 <td>The <code>CommandId</code> that originated the <code>Event</code>;</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
 <td>A unique <code>EventId</code></td>
 </tr>
 <tr>
-<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
 <td>The event date time</td>
 </tr>
 <tr>
-<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
 <td>One or more <code>Tags</code>  (we&#8217;ll see later why tagging is important).</td>
 </tr>
 </table>
@@ -283,7 +281,7 @@
 <div class="sect2">
 <h3 id="_aggregate_behavior">Aggregate Behavior</h3>
 <div class="paragraph">
-<p>Up to now, we have an <strong>Aggregate</strong> with a type-safe <strong>Id</strong> and its <strong>Protocol</strong> defining all possible <code>Commands</code> and <code>Evetns</code>. However, we need a way to bind each <code>Command</code> to the right operation in the aggregate, let it produces the right <code>Events</code> and react to the <code>Events</code> accordingly. That all respecting the invariants of the <code>Lottery</code> aggregate. Actually, we still need to define how the <code>Aggregate</code> should behave.</p>
+<p>Up to now, we have an <strong>Aggregate</strong> with a type-safe <strong>Id</strong> and its <strong>Protocol</strong> defining all possible <code>Commands</code> and <code>Evetns</code>. We still need a way to bind each <code>Command</code> to the right operation in the aggregate, let it produces the right <code>Events</code> and react to the <code>Events</code> accordingly. That all respecting the invariants of the <code>Lottery</code> aggregate. We need to define how the <strong>Aggregate</strong> must behave.</p>
 </div>
 <div class="paragraph">
 <p>The <code>Behavior</code> can be define by means of a declarative <code>DSL</code>. It is defined in terms of <code>Bindings</code>. A <code>Binding</code> establish the link between the handling of a <code>Commnad</code> (a Command Handler) and the action to be executed when the <code>Events</code> are applied (the Event Listener). The <code>DSL</code> enforces you to declare a event listener for each <code>Event</code> that is generated by a Command Handler.</p>
@@ -292,7 +290,7 @@
 <p>It&#8217;s also possible to define 'guard clauses' for <code>Commands</code>. In which case no <code>Events</code> will be produced and the <code>Command</code> gets reject with an error.</p>
 </div>
 <div class="paragraph">
-<p>We make a distinction between <code>Commands</code> and <code>Events</code> that must instantiate an aggregate (creational commands and events) and those that must be validated against an existent aggregate instance (update commands and events). This is done by defining the <code>Bindings</code> inside <code>whenCreating</code> and <code>whenUpdating</code> blocks.</p>
+<p>We make a distinction between <code>Commands</code> and <code>Events</code> that instantiate an <strong>Aggregate</strong> (creational <code>Commands</code> and <code>Events</code>) and those that must be validated against an existing <strong>Aggregate</strong> instance (update <code>Commands</code> and <code>Events</code>). This is done by defining the <code>Bindings</code> inside <code>whenCreating</code> and <code>whenUpdating</code> blocks.</p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -302,7 +300,7 @@
 </td>
 <td class="content">
 <div class="paragraph">
-<p>When updating, we need to have access to the current state of the aggregate. Therefore, <code>whenUpdating</code> blocks requires a function from Aggregate &#8658; Binding where Aggregate is the current state of the <code>Aggregate</code>.</p>
+<p>When updating, we need to have access to the current state of the  <strong>Aggregate</strong> . Therefore, <code>whenUpdating</code> blocks requires a function <em>Aggregate &#8658; Binding</em> where the function input is the current state of the <code>Aggregate</code>.</p>
 </div>
 </td>
 </tr>
@@ -443,7 +441,7 @@
 <p>(ref: <a href="https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala" target="_blank">Main.scala</a>)</p>
 </div>
 <div class="paragraph">
-<p>From the <strong>Akka Backend</strong> we get a <code>AggregateService</code> for <code>Lottery</code>. Much like in <strong>Akka</strong> where we can&#8217;t have access to the Actor itself, in Fun.CQRS we don&#8217;t have direct access to the aggregate. The <code>Lottery</code> aggregate will live inside an actor, but instead of working with its <code>ActorRef</code> we work with a fully typed <code>AggregateService</code>.</p>
+<p>From the <strong>Akka Backend</strong> we get a <code>AggregateService</code> for <code>Lottery</code>. Much like in <strong>Akka</strong> where we can&#8217;t have access to the Actor itself, in <strong>Fun.CQRS</strong> we don&#8217;t have direct access to the aggregate. The <code>Lottery</code> aggregate will live inside an actor, but instead of working with its <code>ActorRef</code> we work with a fully typed <code>AggregateService</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -585,7 +583,7 @@ language governing permissions and limitations under the License.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-01-26 00:50:38 CET
+Last updated 2016-01-28 08:16:31 CET
 </div>
 </div>
 </body>
