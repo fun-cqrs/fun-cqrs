@@ -18,21 +18,21 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion               =   "2.4.0"
+  val akkaVersion               =   "2.4.2-RC1"
   val akkaActor                 =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
   
   val akkaPersistence           =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
   val akkaSlf4j                 =   "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion
+  val akkaStreams               =   "com.typesafe.akka"           %%  "akka-stream"       % akkaVersion
   val akkaTestKit               =   "com.typesafe.akka"           %%  "akka-testkit"      % akkaVersion     % "test"
-  val akkaStreams               =   "com.typesafe.akka"           %%  "akka-stream-experimental"            % "1.0"
   val akkaPersistenceQuery      =   "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion
 
-  val akkaPersistenceInMemory   =   "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.1.5"     % "test"
+  val akkaPersistenceInMemory   =   "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.2.2"     % "test"
 
   val akkaDeps = Seq(
-    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaSlf4j),
+    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaStreams, akkaSlf4j),
     // experimental
-    libraryDependencies ++= Seq(akkaPersistenceQuery, akkaStreams),
+    libraryDependencies ++= Seq(akkaPersistenceQuery),
     // test scope
     libraryDependencies ++= Seq(akkaTestKit, akkaPersistenceInMemory)
   )
