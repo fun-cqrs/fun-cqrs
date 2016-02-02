@@ -1,7 +1,7 @@
 package lottery.domain.model
 
 import io.funcqrs._
-import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, Reset, Run }
+import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, RemoveAllParticipants, Run }
 import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.time.{ Seconds, Span }
@@ -101,7 +101,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
       val view = repo.find(lottery.aggregate.id).futureValue
       view.participants should have size 2
 
-      lottery.update(Reset)
+      lottery.update(RemoveAllParticipants)
 
       val updateView = repo.find(lottery.aggregate.id).futureValue
       updateView.participants should have size 0
@@ -125,7 +125,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
       intercept[IllegalArgumentException] {
 
-        lottery.update(Reset) // reseting is illegal if a winner is selected
+        lottery.update(RemoveAllParticipants) // reseting is illegal if a winner is selected
 
       }.getMessage shouldBe "Lottery has already a winner!"
 

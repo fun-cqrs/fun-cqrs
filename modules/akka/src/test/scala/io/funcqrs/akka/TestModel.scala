@@ -7,6 +7,9 @@ import io.funcqrs._
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.dsl.BindingDsl.api._
 
+import scala.concurrent.Future
+import scala.util.Try
+
 object TestModel {
 
   case class User(name: String, age: Int, id: UserId, deleted: Boolean = false) extends AggregateLike {
@@ -20,29 +23,38 @@ object TestModel {
     def behavior(id: UserId): Behavior[User] = {
       import UserProtocol._
 
-      describe[User]
-        .whenCreating {
-          reject {
+      whenCreating {
+
+        aggregate[User]
+          .reject {
             case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
           }
-        }
-        .whenCreating {
-          handler { cmd: CreateUser => UserCreated(cmd.name, cmd.age, metadata(id, cmd)) }
-            .listener { evt => User(evt.name, evt.age, id) }
-        }
-        .whenUpdating { user =>
-          reject {
+          .handler {
+            cmd: CreateUser => UserCreated(cmd.name, cmd.age, metadata(id, cmd))
+          }
+          .listener {
+            evt: UserCreated => User(evt.name, evt.age, id)
+          }
+
+      }.whenUpdating { user =>
+
+        aggregate[User]
+          .reject {
             case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
           }
-        }
-        .whenUpdating { user =>
-          handler { cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd)) }
-            .listener { evt => user.copy(name = evt.newName) }
-        }
-        .whenUpdating { user =>
-          handler { cmd: DeleteUser.type => UserDeleted(metadata(id, cmd)) }
-            .listener { evt => user.copy(deleted = true) }
-        }
+          .handler {
+            cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd))
+          }
+          .listener {
+            evt: NameChanged => user.copy(name = evt.newName)
+          }
+          .handler {
+            cmd: DeleteUser.type => UserDeleted(metadata(id, cmd))
+          }
+          .listener {
+            evt: UserDeleted => user.copy(deleted = true)
+          }
+      }
 
     }
   }

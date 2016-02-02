@@ -6,7 +6,7 @@ import io.funcqrs._
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.dsl.BindingDsl.api._
 
-import scala.util.{ Failure, Random, Success, Try }
+import scala.util.Random
 
 // tag::lottery-aggregate[]
 case class Lottery(
@@ -64,7 +64,7 @@ object LotteryProtocol extends ProtocolLike { // #<1>
   // Update Commands
   case class AddParticipant(name: String) extends LotteryCommand
   case class RemoveParticipant(name: String) extends LotteryCommand
-  case object Reset extends LotteryCommand
+  case object RemoveAllParticipants extends LotteryCommand
   case object Run extends LotteryCommand
 
   // Events ============================================================
@@ -107,81 +107,66 @@ object Lottery {
     }
 
     // start to describe Lottery Behavior
-    describe[Lottery]
+    whenCreating {
 
-      .whenCreating {
-        // creational command and event
-        handler {
+      // creational command and event
+      aggregate[Lottery]
+        .handler {
           cmd: CreateLottery => LotteryCreated(cmd.name, metadata(cmd))
-        } listener {
-          evt => Lottery(name = evt.name, id = lotteryId)
         }
-      }
+        .listener {
+          evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
+        }
 
-      // Some guard clauses. 
-      // Commands bellow won't generate events, but be reject with an exception
-      .whenUpdating { lottery =>
-        reject {
+    }.whenUpdating { lottery =>
+
+      aggregate[Lottery]
+
+        // Some guard clauses.
+        // Commands bellow won't generate events, but be reject with an exception
+        .reject {
           // no command can be accepted after having selected a winner
           case anyCommand if lottery.hasWinner =>
             new IllegalArgumentException("Lottery has already a winner!")
         }
-      }
-      .whenUpdating { lottery =>
-        reject {
+        .reject {
           // can't run if there is no participants
           case _: Run.type if lottery.hasNoParticipants =>
             new IllegalArgumentException("Lottery has no participants")
         }
-      }
-      .whenUpdating { lottery =>
-        reject {
+        .reject {
           // can't add participant twice
           case cmd: AddParticipant if lottery.hasParticipant(cmd.name) =>
             new IllegalArgumentException(s"Participant ${cmd.name} already added!")
         }
-      }
 
-      // Logic to update a lottery. Commands bellow will generate events
-      .whenUpdating { lottery =>
-        // Select a winner when run!
-        handler {
+        // Logic to update a lottery. Commands bellow will generate events
+        .handler {
           cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
-        } listener {
-          evt => lottery.copy(winner = Option(evt.winner))
         }
-
-      }
-      .whenUpdating { lottery =>
-        handler {
+        .listener {
+          evt: WinnerSelected => lottery.copy(winner = Option(evt.winner))
+        }
+        .handler {
           cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
-        } listener {
-          evt => lottery.addParticipant(evt.name)
         }
-
-      }
-      .whenUpdating { lottery =>
-        handler {
+        .listener {
+          evt: ParticipantAdded => lottery.addParticipant(evt.name)
+        }
+        .handler {
           cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
-        } listener {
-          evt => lottery.removeParticipant(evt.name)
         }
-
-      }
-      .whenUpdating { lottery =>
-        // Reset is a special case as we need to generate many events
-        handler.manyEvents {
+        .handler.manyEvents {
           // will produce a List[ParticipantRemoved]
-          cmd: Reset.type =>
-            lottery.participants.map { name =>
-              ParticipantRemoved(name, metadata(cmd))
-            }
-
-        } listener {
-          // MUST be a PartialFunciton when command handler generates a List of events
-          case evt: ParticipantRemoved => lottery.removeParticipant(evt.name)
+          cmd: RemoveAllParticipants.type =>
+            lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
         }
-      }
+        .listener {
+          evt: ParticipantRemoved => lottery.removeParticipant(evt.name)
+        }
+
+    }
+
   }
 }
 // end::lottery-behavior[]
