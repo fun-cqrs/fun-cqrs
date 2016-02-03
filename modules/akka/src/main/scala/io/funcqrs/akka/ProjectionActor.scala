@@ -11,9 +11,11 @@ import akka.util.Timeout
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
 import io.funcqrs.{ DomainEvent, Projection }
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 // TODO: document each parameter
 abstract class ProjectionActor(
@@ -27,7 +29,7 @@ abstract class ProjectionActor(
 
   var lastProcessedOffset: Option[Long] = None
 
-  def saveCurrentOffset(offset: Long): Unit
+  def saveCurrentOffset(offset: Long): Future[Unit]
 
   def recoveryCompleted(): Unit = {
     log.debug(s"ProjectionActor: starting projection... $projection")
@@ -40,38 +42,78 @@ abstract class ProjectionActor(
 
   def runningProjection(currentEvent: DomainEvent, offset: Long): Receive = {
 
-    // stash new events while busy with projection
-    case OnNextDomainEvent(_, _) => stash()
+    val receive: Receive = {
 
-    // ready with projection, notify parent and start consuming next events
-    case ProjectionActor.Done(lastEvent) =>
-      log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
-      context.parent ! lastEvent // send last processed event to parent
+      // stash new events while busy with projection
+      case OnNextDomainEvent(_, _) => stash()
 
-      // save offset of last processed event
-      // event will be processed twice if saveCurrentOffset fails
-      // therefore Projections should be idempotent or fail-safe
-      saveCurrentOffset(offset)
+      // ready with projection, notify parent and start consuming events
+      case ProjectionActor.Done(lastEvent) =>
+        log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
+        context.parent ! lastEvent // send last processed event to parent
 
-      unstashAll()
-      context become acceptingEvents
+        // first switch behavior
+        // when used in combination with PersistedOffsetAkka we'll switch twice
+        // when PersistedOffsetAkka is ready, we must become waitingOffsetPersistence back
+        // via unbecome call in PersistedOffsetAkka. Uff! Complicated!
+        context become waitingOffsetPersistence(lastEvent)
 
-    case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+        // save offset of last processed event
+        // event will be processed twice if saveCurrentOffset fails
+        // therefore Projections should be idempotent or fail-safe
+        saveCurrentOffset(offset).map { _ =>
+          ProjectionActor.OffsetPersisted(offset)
+        }.pipeTo(self)
 
+      case OnNext(any) =>
+        log.warning(s"Received something that is not a DomainEvent! $any - [${self.path.name}]")
+    }
+
+    receive orElse errorHandling("running projection")
   }
 
   def acceptingEvents: Receive = {
 
-    case OnNextDomainEvent(evt, offset) =>
-      log.debug(s"Received event $evt")
-      projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
-      context become runningProjection(evt, offset)
+    val receive: Receive = {
+      case OnNextDomainEvent(evt, offset) =>
+        log.debug(s"Received event $evt")
+        projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+        context become runningProjection(evt, offset)
 
-    case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+      case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+    }
+
+    receive orElse errorHandling("accepting events")
+  }
+
+  /**
+   * Used as error handling Receive when running projections or accepting new events.
+   *
+   * Will stop the actor whenever a failure kicks in. BackoffSupervisor must restart it
+   */
+  def errorHandling(phase: String): Receive = {
+    case OnError(e) => // receive an error from the stream
+      log.error(e, s"OnError while $phase ... [${self.path.name}]")
+      context.stop(self)
+
+    case Status.Failure(e) => // receive a general error, probably from the projection
+      log.error(e, s"Failure while $phase ... [${self.path.name}]")
+      context.stop(self)
+  }
+
+  def waitingOffsetPersistence(currentEvent: DomainEvent): Receive = {
+
+    case ProjectionActor.OffsetPersisted(offset) =>
+      unstashAll()
+      lastProcessedOffset = Option(offset)
+      context become acceptingEvents
 
     case Status.Failure(e) =>
-      log.error(e, "Failure while accepting events...")
-      throw e
+      // continue processing anyway,
+      // we can only hope that next time we'll be able to save the offset
+      context become acceptingEvents
+
+    case anyOther => stash()
   }
 
   object OnNextDomainEvent {
@@ -89,7 +131,7 @@ abstract class ProjectionActor(
 object ProjectionActor {
 
   case class Done(evt: DomainEvent)
-  case class DoneHandlingFailure(evt: DomainEvent, throwable: Throwable)
+  case class OffsetPersisted(offset: Long)
 
 }
 
@@ -159,16 +201,13 @@ object ProjectionActorWithOffsetManagedByAkkaPersistence {
 
 /** A ProjectionActor that saves the offset using a [[CustomOffsetPersistenceStrategy]] */
 class ProjectionActorWithCustomOffsetPersistence(
-  projection: Projection,
-  sourceProvider: EventsSourceProvider,
-  customOffsetPersistence: CustomOffsetPersistenceStrategy
-)
+    projection: Projection,
+    sourceProvider: EventsSourceProvider,
+    customOffsetPersistence: CustomOffsetPersistenceStrategy
+) extends ProjectionActor(projection, sourceProvider) with PersistedOffsetCustom {
 
-    extends ProjectionActor(projection, sourceProvider) with PersistedOffsetCustom {
-
-  def saveCurrentOffset(offset: Long): Unit = {
-    // TODO: change signature of OffsetPersistence.saveCurrentOffset to return Future[Unit]
-    Await.result(customOffsetPersistence.saveCurrentOffset(offset), 500.millis)
+  def saveCurrentOffset(offset: Long): Future[Unit] = {
+    customOffsetPersistence.saveCurrentOffset(offset)
   }
 
   /** Returns the current offset as persisted in DB */

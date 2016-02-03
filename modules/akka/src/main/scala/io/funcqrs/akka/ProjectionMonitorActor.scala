@@ -4,6 +4,7 @@ import java.util.UUID
 
 import akka.actor._
 import akka.event.{ ActorEventBus, LookupClassification }
+import akka.pattern.BackoffSupervisor
 import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
@@ -60,8 +61,21 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   private def createNewProjection(props: Props, name: String): Unit = {
     log.debug(s"initializing new projection action $name")
-    val projectionActor = context.actorOf(props, name)
-    sender() ! projectionActor // send projection actor back
+
+    val supervisorProps =
+      BackoffSupervisor.props(
+        childProps = props,
+        childName = s"${name}-supervised",
+        // wait at least 10 seconds to restart
+        minBackoff = 10.seconds, // TODO: move to config
+        // wait at most 5 minutes to restart
+        maxBackoff = 5.minutes, // TODO: move to config
+        randomFactor = 0.0 // TODO: move to config
+      )
+
+    val projectionSupervisor = context.actorOf(supervisorProps, name)
+
+    sender() ! projectionSupervisor // send projection actor back
   }
 
   private def receivedEventFromProjection(evt: DomainEvent): Unit = {

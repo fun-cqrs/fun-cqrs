@@ -3,20 +3,21 @@ package io.funcqrs.akka
 import akka.actor.Stash
 import akka.persistence._
 
-import scala.concurrent.Future
+import scala.concurrent.{ Promise, Future }
+import scala.util.control.NonFatal
 
 /** Defines how the projection offset should be persisted */
 trait OffsetPersistence {
   this: ProjectionActor =>
 
-  def saveCurrentOffset(offset: Long): Unit
+  def saveCurrentOffset(offset: Long): Future[Unit]
 }
 
 /** Does NOT persist the offset forcing a full stream read each time */
 trait OffsetNotPersisted extends OffsetPersistence {
   this: ProjectionActor =>
 
-  def saveCurrentOffset(offset: Long): Unit = ()
+  def saveCurrentOffset(offset: Long): Future[Unit] = Future.successful(())
 
   // nothing to recover, thus recoveryCompleted on preStart
   override def preStart(): Unit = recoveryCompleted()
@@ -26,7 +27,7 @@ trait OffsetNotPersisted extends OffsetPersistence {
 trait PersistedOffsetCustom extends OffsetPersistence {
   this: ProjectionActor =>
 
-  def saveCurrentOffset(offset: Long): Unit
+  def saveCurrentOffset(offset: Long): Future[Unit]
 
   /** Returns the current offset as persisted in DB */
   def readOffset: Future[Option[Long]]
@@ -37,6 +38,12 @@ trait PersistedOffsetCustom extends OffsetPersistence {
     readOffset.map { offset =>
       lastProcessedOffset = offset
       recoveryCompleted()
+    }.recover {
+      case NonFatal(e) =>
+        log.error(e, "Couldn't read offset")
+        // can't read offset?
+        // stop the actor - BackoffSupervisor must take care of this
+        context.stop(self)
     }
   }
 }
@@ -72,20 +79,25 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
     case unknown => log.debug(s"Unknown message on recovery: $unknown")
   }
 
-  def saveCurrentOffset(offset: Long): Unit = {
+  def saveCurrentOffset(offset: Long): Future[Unit] = {
     saveSnapshot(offset)
+    val snapshotPromise = Promise[Unit]()
     // switch behavior but preserve previous Receive function so we can properly unbecome
-    context.become(waitSnapshotConfirmation, discardOld = false)
+    context.become(waitSnapshotConfirmation(snapshotPromise), discardOld = false)
+    snapshotPromise.future
   }
 
-  def waitSnapshotConfirmation: Receive = {
+  def waitSnapshotConfirmation(promise: Promise[Unit]): Receive = {
+
     case SaveSnapshotSuccess(_) =>
       log.debug(s"[$persistenceId] snapshot saved")
+      promise.success(()) // snapshot saved! we can fulfil the Promise
       context.unbecome()
       unstashAll() // resume consuming DomainEvents
 
     case SaveSnapshotFailure(_, e) =>
       // can't do much in case of failure. Better to restart ProjectionActor
+      promise.failure(e) // probably not that useful
       throw e
 
     // stash any other msg

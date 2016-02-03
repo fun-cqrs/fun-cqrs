@@ -42,6 +42,7 @@ trait AggregateManager extends Actor
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
+  // TODO: move to config
   def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
 
   override def receive: PartialFunction[Any, Unit] = {

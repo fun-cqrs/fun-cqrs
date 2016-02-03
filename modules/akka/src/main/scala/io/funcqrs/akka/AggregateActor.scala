@@ -375,7 +375,7 @@ object AggregateActor {
    * Specifies how many events should be processed before new snapshot is taken.
    * TODO: make configurable
    */
-  val eventsPerSnapshot = 10
+  val eventsPerSnapshot = 100 // TODO: move to config
 
 }
 
