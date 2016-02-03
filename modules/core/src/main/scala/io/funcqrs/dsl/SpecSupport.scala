@@ -5,7 +5,7 @@ import io.funcqrs.{ AggregateLike, AggregateAliases }
 
 import scala.language.implicitConversions
 
-trait DescribeSupport {
+trait SpecSupport {
 
   /**
    * Declares a creational [[Binding]].
@@ -26,6 +26,7 @@ trait DescribeSupport {
 
     AggregateSpec[A](creationSpecUpdated, UpdateSpec())
   }
+
 }
 
 case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], updateSpec: UpdateSpec[A]) extends AggregateAliases {

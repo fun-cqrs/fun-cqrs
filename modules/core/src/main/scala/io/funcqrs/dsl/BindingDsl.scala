@@ -5,7 +5,7 @@ import scala.language.{ higherKinds, implicitConversions }
 object BindingDsl {
 
   val api = Api
-  object Api extends DescribeSupport with BindingSupport
+  object Api extends SpecSupport with BindingSupport
 
 }
 
