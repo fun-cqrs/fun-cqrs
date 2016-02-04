@@ -6,11 +6,13 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging          =  "com.typesafe.scala-logging" %%  "scala-logging"     % "3.1.0"
+  val scalaLogging          =  "com.typesafe.scala-logging" %% "scala-logging"      % "3.1.0"
   val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0-M10" % "test"
+  val rxScala               =  "io.reactivex"               %% "rxscala"            % "0.26.0"
+
 
   val mainDeps = Seq(
-    libraryDependencies ++= Seq(scalaLogging, scalaTest)
+    libraryDependencies ++= Seq(scalaLogging, scalaTest, rxScala)
   )
   //------------------------------------------------------------------------------------------------------------
 
@@ -18,7 +20,7 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion               =   "2.4.2-RC1"
+  val akkaVersion               =   "2.4.2-RC2"
   val akkaActor                 =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
   
   val akkaPersistence           =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion

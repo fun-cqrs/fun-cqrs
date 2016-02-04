@@ -1,39 +1,43 @@
 package lottery.domain.model
 
 import io.funcqrs._
+import io.funcqrs.test.backend.InMemoryBackend
+import lottery.app.LotteryBackendConfig
 import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, RemoveAllParticipants, Run }
-import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
+import lottery.domain.service.LotteryViewRepo
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
-import org.scalatest.time.{ Seconds, Span }
 import org.scalatest.{ FunSuite, Matchers, OptionValues }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class LotteryTest extends FunSuite with Matchers with Futures
-    with ScalaFutures with FunCqrsTestSupport with OptionValues with FailedFutures {
-
-  override implicit val patienceConfig = PatienceConfig(timeout = Span(5, Seconds))
-
-  val id = LotteryId("test-lottery")
-  val lotteryBehavior = Lottery.behavior(LotteryId("test-lottery"))
+    with FunCqrsTestSupport with OptionValues with ScalaFutures with FailedFutures {
 
   val repo = new LotteryViewRepo
-  val projection = new LotteryViewProjection(repo)
+
+  val id = LotteryId("test-lottery")
+
+  class LotteryInMemoryTest extends InMemoryTestSupport {
+
+    def configure(backend: InMemoryBackend): Unit = {
+      LotteryBackendConfig(backend, repo)
+    }
+
+    def lotteryRef(id: LotteryId) = aggregateRef[Lottery](id)
+  }
 
   test("Run a Lottery") {
 
-    new End2EndTestSupport(projection) {
-      val lottery =
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("Paul"))
-          .update(Run)
+    new LotteryInMemoryTest {
 
-      lottery.aggregate.hasWinner shouldBe true
-      lottery.aggregate.participants should have size 2
+      val lottery = lotteryRef(id)
 
-      val view = repo.find(lottery.aggregate.id).futureValue
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
+      lottery ? AddParticipant("Paul")
+      lottery ? Run
+
+      val view = repo.find(id).futureValue
       view.participants should have size 2
       view.winner shouldBe defined
     }
@@ -42,31 +46,32 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
   test("Run a Lottery twice") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
+
+      val lottery = lotteryRef(id)
+
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
+      lottery ? AddParticipant("Paul")
+      lottery ? Run
 
       intercept[IllegalArgumentException] {
-
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("Paul"))
-          .update(Run)
-          .update(Run)
-
+        lottery ? Run
       }.getMessage shouldBe "Lottery has already a winner!"
     }
+
   }
 
   test("Run a Lottery without participants") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
+
+      val lottery = lotteryRef(id)
+
+      lottery ? CreateLottery("TestLottery")
 
       intercept[IllegalArgumentException] {
-
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(Run)
-
+        lottery ? Run
       }.getMessage shouldBe "Lottery has no participants"
     }
 
@@ -74,90 +79,91 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
   test("Add twice the same participant") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
+
+      val lottery = lotteryRef(id)
+
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
 
       intercept[IllegalArgumentException] {
-
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("John"))
-
+        lottery ? AddParticipant("John")
       }.getMessage shouldBe "Participant John already added!"
-
     }
+
   }
 
   test("Reset lottery") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
 
-      val lottery =
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("Paul"))
+      val lottery = lotteryRef(id)
 
-      val view = repo.find(lottery.aggregate.id).futureValue
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
+      lottery ? AddParticipant("Paul")
+
+      val view = repo.find(id).futureValue
       view.participants should have size 2
 
-      lottery.update(RemoveAllParticipants)
+      lottery ? RemoveAllParticipants
 
-      val updateView = repo.find(lottery.aggregate.id).futureValue
-      updateView.participants should have size 0
+      val updatedView = repo.find(id).futureValue
+      updatedView.participants should have size 0
 
     }
+
   }
 
   test("Illegal to Reset a lottery that has a winner already") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
 
-      val lottery =
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("Paul"))
-          .update(Run)
+      val lottery = lotteryRef(id)
 
-      val view = repo.find(lottery.aggregate.id).futureValue
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
+      lottery ? AddParticipant("Paul")
+      lottery ? Run
+
+      val view = repo.find(id).futureValue
       view.participants should have size 2
+      view.winner shouldBe defined
 
       intercept[IllegalArgumentException] {
 
-        lottery.update(RemoveAllParticipants) // reseting is illegal if a winner is selected
+        lottery ? RemoveAllParticipants // reseting is illegal if a winner is selected
 
       }.getMessage shouldBe "Lottery has already a winner!"
 
-      val updateView = repo.find(lottery.aggregate.id).futureValue
+      val updateView = repo.find(id).futureValue
       updateView.participants should have size 2
 
     }
+
   }
 
   test("Illegal to add new participants to a lottery that has a winner already") {
 
-    new End2EndTestSupport(projection) {
+    new LotteryInMemoryTest {
 
-      val lottery =
-        lotteryBehavior
-          .newInstance(CreateLottery("TestLottery"))
-          .update(AddParticipant("John"))
-          .update(AddParticipant("Paul"))
-          .update(Run)
+      val lottery = lotteryRef(id)
 
-      val view = repo.find(lottery.aggregate.id).futureValue
+      lottery ? CreateLottery("TestLottery")
+      lottery ? AddParticipant("John")
+      lottery ? AddParticipant("Paul")
+      lottery ? Run
+
+      val view = repo.find(id).futureValue
       view.participants should have size 2
+      view.winner shouldBe defined
 
       intercept[IllegalArgumentException] {
 
-        lottery.update(AddParticipant("Ringo")) // reseting is illegal if a winner is selected
+        lottery ? AddParticipant("Ringo") // adding new participant is illegal if a winner is selected
 
       }.getMessage shouldBe "Lottery has already a winner!"
-
-      val updateView = repo.find(lottery.aggregate.id).futureValue
-      updateView.participants should have size 2
-
     }
+
   }
 }

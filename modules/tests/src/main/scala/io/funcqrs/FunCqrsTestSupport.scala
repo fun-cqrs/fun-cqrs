@@ -2,6 +2,7 @@ package io.funcqrs
 
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.interpreters.{ Monads, IdentityInterpreter, Identity }
+import io.funcqrs.test.backend.InMemoryBackend
 
 import scala.collection.immutable
 import scala.concurrent.duration._
@@ -9,7 +10,24 @@ import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.funcqrs.interpreters.Monads._
 
+import scala.reflect.ClassTag
+
 trait FunCqrsTestSupport {
+
+  trait InMemoryTestSupport {
+
+    private lazy val backend = {
+      val backend = new InMemoryBackend
+      configure(backend)
+      backend
+    }
+
+    def configure(backend: InMemoryBackend): Unit
+
+    def aggregateRef[A <: AggregateLike](id: A#Id)(implicit tag: ClassTag[A]): IdentityAggregateRef[A] = {
+      backend.aggregateRef[A](id)
+    }
+  }
 
   class End2EndTestSupport(projection: Projection, atMost: Duration = 3.seconds) extends WriteModelOps with ReadModelOps {
 
