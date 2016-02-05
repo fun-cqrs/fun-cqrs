@@ -14,21 +14,6 @@ import scala.reflect.ClassTag
 
 trait FunCqrsTestSupport {
 
-  trait InMemoryTestSupport {
-
-    private lazy val backend = {
-      val backend = new InMemoryBackend
-      configure(backend)
-      backend
-    }
-
-    def configure(backend: InMemoryBackend): Unit
-
-    def aggregateRef[A <: AggregateLike](id: A#Id)(implicit tag: ClassTag[A]): IdentityAggregateRef[A] = {
-      backend.aggregateRef[A](id)
-    }
-  }
-
   class End2EndTestSupport(projection: Projection, atMost: Duration = 3.seconds) extends WriteModelOps with ReadModelOps {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {

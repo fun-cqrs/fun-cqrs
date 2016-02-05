@@ -6,6 +6,9 @@ Small library for building CQRS application using Scala in combination with Akka
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
+## Under Development
+
+**Fun.CQRS**  is under development. We are experimenting with different APIs and techniques. Therefore, things may break when updating the version. Make sure you follow the changes and check the sample app before upgrading. The sample app will always reflect the current state of the API.
 
 ## Project artifact
 

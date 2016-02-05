@@ -22,6 +22,12 @@ case class AggregateActorRef[A <: AggregateLike](
   // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
   private val askableActorRef = akka.pattern.ask(aggregateManagerActor)
 
+  def !(cmd: Command)(implicit sender: ActorRef = Actor.noSender): Unit =
+    aggregateManagerActor ! cmd
+
+  def tell(cmd: Command, sender: ActorRef): Unit =
+    aggregateManagerActor.tell(cmd, sender)
+
   def ?(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
 
   def ask(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {

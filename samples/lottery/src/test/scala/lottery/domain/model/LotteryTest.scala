@@ -1,6 +1,6 @@
 package lottery.domain.model
 
-import io.funcqrs._
+import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
 import lottery.app.LotteryBackendConfig
 import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, RemoveAllParticipants, Run }
@@ -11,7 +11,7 @@ import org.scalatest.{ FunSuite, Matchers, OptionValues }
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class LotteryTest extends FunSuite with Matchers with Futures
-    with FunCqrsTestSupport with OptionValues with ScalaFutures with FailedFutures {
+    with OptionValues with ScalaFutures with FailedFutures {
 
   val repo = new LotteryViewRepo
 

@@ -1,7 +1,7 @@
 package io.funcqrs.test.backend
 
 import io.funcqrs._
-import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags }
+import io.funcqrs.backend.{ QuerySelectAll, Backend, QueryByTag, QueryByTags }
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.Monads._
@@ -28,7 +28,7 @@ class InMemoryBackend extends Backend[Identity] {
 
     aggregates.getOrElseUpdate(
       id,
-      {
+      { // build new aggregateRef if not existent
         val config = aggregateConfigs(tag).asInstanceOf[AggregateConfig[A]]
         val behavior = config.behavior(id)
         new InMemoryAggregateRef(behavior)
@@ -49,6 +49,7 @@ class InMemoryBackend extends Backend[Identity] {
       config.query match {
         case QueryByTag(tag) => evt.tags.contains(tag)
         case QueryByTags(tags) => tags.subsetOf(evt.tags)
+        case QuerySelectAll => true
       }
     }
 
@@ -87,6 +88,11 @@ class InMemoryBackend extends Backend[Identity] {
         .getOrElse { create(cmd) }
     }
 
+    def tell(cmd: Command): Unit = {
+      ask(cmd)
+      () // omit events
+    }
+
     private def update(aggregate: Aggregate, cmd: Command): interpreter.Events = {
       val (events, updatedAgg) = interpreter.applyCommand(cmd, aggregate)
       aggregateState = Option(updatedAgg)
@@ -104,5 +110,6 @@ class InMemoryBackend extends Backend[Identity] {
     def state(): Identity[A] = aggregateState.get
 
     def exists(): Identity[Boolean] = aggregateState.isDefined
+
   }
 }
