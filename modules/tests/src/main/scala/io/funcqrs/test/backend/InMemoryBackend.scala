@@ -24,12 +24,12 @@ class InMemoryBackend extends Backend[Identity] {
 
   private val stream: Stream[DomainEvent] = Stream()
 
-  def aggregateRef[A <: AggregateLike](id: A#Id)(implicit tag: ClassTag[A]): IdentityAggregateRef[A] = {
+  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): IdentityAggregateRef[A] = {
 
     aggregates.getOrElseUpdate(
       id,
       { // build new aggregateRef if not existent
-        val config = aggregateConfigs(tag).asInstanceOf[AggregateConfig[A]]
+        val config = aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[AggregateConfig[A]]
         val behavior = config.behavior(id)
         new InMemoryAggregateRef(behavior)
       }

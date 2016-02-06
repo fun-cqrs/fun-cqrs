@@ -8,6 +8,8 @@ import io.funcqrs.akka._
 import io.funcqrs.backend._
 import io.funcqrs.config._
 
+import io.funcqrs.ClassTagImplicits
+
 import scala.collection.concurrent
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -24,13 +26,13 @@ trait AkkaBackend extends Backend[Future] {
 
   def sourceProvider(query: Query): EventsSourceProvider
 
-  def aggregateRef[A <: AggregateLike](id: A#Id)(implicit tag: ClassTag[A]): AggregateActorRef[A] = {
-    val aggregateManager = aggregates(tag)
+  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateActorRef[A] = {
+    val aggregateManager = aggregates(ClassTagImplicits[A])
     new AggregateActorRef[A](id, aggregateManager, projectionMonitorActorRef)
   }
 
-  def configure[A <: AggregateLike](config: AggregateConfig[A])(implicit tag: ClassTag[A]): AkkaBackend = {
-    aggregates += (tag -> actorOf[A](config))
+  def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): AkkaBackend = {
+    aggregates += (ClassTagImplicits[A] -> actorOf[A](config))
     this
   }
 

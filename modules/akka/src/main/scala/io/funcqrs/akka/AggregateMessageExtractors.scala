@@ -1,20 +1,18 @@
 package io.funcqrs.akka
 
-import io.funcqrs.{ AggregateId, AggregateLike }
+import io.funcqrs.{ AggregateAliases, AggregateId, AggregateLike }
 
 import scala.util.{ Failure, Success, Try }
 
-trait AggregateMessageExtractors {
-
-  type Aggregate <: AggregateLike
+trait AggregateMessageExtractors extends AggregateAliases {
 
   object IdAndCommand {
-    def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand): Option[(Aggregate#Id, Aggregate#Command)] = {
+    def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand): Option[(Id, Command)] = {
 
       val extracted =
         for {
-          id <- Try(cmdMsg.id.asInstanceOf[Aggregate#Id])
-          cmd <- Try(cmdMsg.cmd.asInstanceOf[Aggregate#Command])
+          id <- Try(cmdMsg.id.asInstanceOf[Id])
+          cmd <- Try(cmdMsg.cmd.asInstanceOf[Command])
         } yield (id, cmd)
 
       extracted match {
@@ -26,9 +24,8 @@ trait AggregateMessageExtractors {
 
   object GoodId {
 
-    def unapply(aggregateId: AggregateId): Option[Aggregate#Id] = {
-      // FIXME: this is can't type check properly, need to find a solution
-      Try(aggregateId.asInstanceOf[Aggregate#Id]) match {
+    def unapply(aggregateId: Aggregate#Id): Option[Aggregate#Id] = {
+      Try(aggregateId) match {
         case Success(id) => Some(id)
         case _ => None
       }
@@ -38,9 +35,8 @@ trait AggregateMessageExtractors {
   object BadId {
 
     def unapply(aggregateId: AggregateId): Option[AggregateId] = {
-      // FIXME: this is can't type check properly, need to find a solution
-      Try(aggregateId.asInstanceOf[Aggregate#Id]) match {
-        case Success(_) => None
+      Try(aggregateId) match {
+        case Success(id) => None
         case _ => Some(aggregateId)
       }
     }

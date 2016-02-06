@@ -15,7 +15,7 @@ trait InMemoryTestSupport {
 
   def configure(backend: InMemoryBackend): Unit
 
-  def aggregateRef[A <: AggregateLike](id: A#Id)(implicit tag: ClassTag[A]): IdentityAggregateRef[A] = {
+  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): IdentityAggregateRef[A] = {
     backend.aggregateRef[A](id)
   }
 }

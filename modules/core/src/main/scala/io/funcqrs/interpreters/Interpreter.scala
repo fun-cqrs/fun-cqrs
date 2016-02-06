@@ -11,7 +11,7 @@ import scala.language.higherKinds
  *
  * Implementors must define which type F must be bound to.
  */
-trait Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
+abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends AggregateAliases {
 
   type Aggregate = A
 
@@ -25,7 +25,7 @@ trait Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
 
   def onEvent(aggregate: A, evt: Event): A = behavior.onEvent(aggregate, evt)
 
-  def applyCommand(cmd: Command)(implicit monadsOps: MonadOps[F]): F[(Events, A)] = {
+  def applyCommand(cmd: Command): F[(Events, A)] = {
     monad(handleCommand(cmd)).map { evts =>
       val agg = onEvent(evts.head)
       val finalAgg = evts.tail.foldLeft(agg) { case (currentAgg, evt) => onEvent(currentAgg, evt) }
@@ -33,7 +33,7 @@ trait Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
     }
   }
 
-  def applyCommand(cmd: Command, aggregate: Aggregate)(implicit monadsOps: MonadOps[F]): F[(Events, A)] = {
+  def applyCommand(cmd: Command, aggregate: Aggregate): F[(Events, A)] = {
     monad(handleCommand(aggregate, cmd)).map { evts =>
       val finalAgg = evts.foldLeft(aggregate) { case (acc, evt) => onEvent(acc, evt) }
       (evts, finalAgg)
