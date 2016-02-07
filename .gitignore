@@ -6,3 +6,4 @@ target
 journal/
 snapshots/
 *.log
+index.html
