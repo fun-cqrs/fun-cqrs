@@ -5,7 +5,7 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior.Behavior
-import io.funcqrs.dsl.BindingDsl.api._
+import io.funcqrs.dsl.BehaviorDsl.api._
 
 import scala.concurrent.Future
 import scala.util.Try

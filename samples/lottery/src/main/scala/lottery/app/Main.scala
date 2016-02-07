@@ -49,25 +49,25 @@ object Main extends App {
   implicit val timeout = Timeout(3.seconds)
 
   val id = LotteryId.generate()
-  val aggregateRef = backend.aggregateRef[Lottery](id)
+  val lotteryRef = backend.aggregateRef[Lottery](id) //#<1>
 
   val result =
     for {
       // create a lottery
-      createEvts <- aggregateRef ? CreateLottery("Demo") // #<1>
+      createEvts <- lotteryRef ? CreateLottery("Demo") // #<2>
 
-      // add participants #<2>
-      johnEvts <- aggregateRef ? AddParticipant("John")
-      paulEvts <- aggregateRef ? AddParticipant("Paul")
-      ringoEvts <- aggregateRef ? AddParticipant("Ringo")
-      georgeEvts <- aggregateRef ? AddParticipant("George")
+      // add participants #<3>
+      johnEvts <- lotteryRef ? AddParticipant("John")
+      paulEvts <- lotteryRef ? AddParticipant("Paul")
+      ringoEvts <- lotteryRef ? AddParticipant("Ringo")
+      georgeEvts <- lotteryRef ? AddParticipant("George")
 
       // run the lottery
-      runEvts <- aggregateRef ? Run // #<3>
+      runEvts <- lotteryRef ? Run // #<4>
 
     } yield {
       // concatenate all events together
-      createEvts ++ johnEvts ++ paulEvts ++ ringoEvts ++ georgeEvts ++ runEvts // #<4>
+      createEvts ++ johnEvts ++ paulEvts ++ ringoEvts ++ georgeEvts ++ runEvts // #<5>
     }
   // end::lottery-run[]
 
