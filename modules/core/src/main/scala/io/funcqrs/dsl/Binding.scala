@@ -14,6 +14,7 @@ trait Binding[A <: AggregateLike] extends AggregateAliases {
   type Aggregate = A
 
   def cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event]
+  def rejectCmdInvokers: CommandToInvoker[A#Command, A#Event]
   def eventListeners: EventToAggregate[A#Event, A]
 
   def reject(cmdHandler: PartialFunction[Command, Throwable]): Binding[Aggregate]

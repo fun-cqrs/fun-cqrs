@@ -21,6 +21,7 @@ trait SpecSupport {
       CreationSpec(
         // full bindings must be prepended to spec PF
         cmdHandlerInvokerPF = binding.cmdHandlerInvokers,
+        rejectCmdHandlerInvokerPF = binding.rejectCmdInvokers,
         eventListenerPF = binding.eventListeners
       )
 
@@ -51,6 +52,10 @@ case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], upda
       case (agg, cmd) if aggFunc(agg).cmdHandlerInvokers.isDefinedAt(cmd) => aggFunc(agg).cmdHandlerInvokers(cmd)
     }
 
+    val rejectCmdInvokerPF: UpdatesCommandToEvents = {
+      case (agg, cmd) if aggFunc(agg).rejectCmdInvokers.isDefinedAt(cmd) => aggFunc(agg).rejectCmdInvokers(cmd)
+    }
+
     val eventListenerPF: UpdatesEventToAggregate = {
       case (agg, evt) if aggFunc(agg).eventListeners.isDefinedAt(evt) => aggFunc(agg).eventListeners(evt)
     }
@@ -58,6 +63,7 @@ case class AggregateSpec[A <: AggregateLike](creationSpec: CreationSpec[A], upda
     val updateSpecUpdated =
       updateSpec.copy(
         cmdHandlerInvokerPF = updateSpec.cmdHandlerInvokerPF orElse cmdInvokerPF,
+        rejectCmdHandlerInvokerPF = updateSpec.rejectCmdHandlerInvokerPF orElse rejectCmdInvokerPF,
         eventListenerPF = updateSpec.eventListenerPF orElse eventListenerPF
       )
 
@@ -71,14 +77,18 @@ object AggregateSpec {
   implicit def build[A <: AggregateLike](spec: AggregateSpec[A]): Behavior[A] = {
     new Behavior[A] {
 
-      def commandHandlerWhenCreating: PartialFunction[Command, CommandHandlerInvoker[Command, Event]] =
-        spec.creationSpec.cmdHandlerInvokerPF
+      def commandHandlerWhenCreating: PartialFunction[Command, CommandHandlerInvoker[Command, Event]] = {
+        // reject PF comes always first as it works as 'guard clause'
+        spec.creationSpec.rejectCmdHandlerInvokerPF orElse spec.creationSpec.cmdHandlerInvokerPF
+      }
 
       def eventListenerWhenCreating: PartialFunction[Event, Aggregate] =
         spec.creationSpec.eventListenerPF
 
-      def commandHandlerWhenUpdating: PartialFunction[(Aggregate, Command), CommandHandlerInvoker[Command, Event]] =
-        spec.updateSpec.cmdHandlerInvokerPF
+      def commandHandlerWhenUpdating: PartialFunction[(Aggregate, Command), CommandHandlerInvoker[Command, Event]] = {
+        // reject PF comes always first as it works as 'guard clause'
+        spec.updateSpec.rejectCmdHandlerInvokerPF orElse spec.updateSpec.cmdHandlerInvokerPF
+      }
 
       def eventListenerWhenUpdating: PartialFunction[(Aggregate, Event), Aggregate] =
         spec.updateSpec.eventListenerPF
@@ -88,10 +98,12 @@ object AggregateSpec {
 
 case class CreationSpec[A <: AggregateLike](
   cmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+  rejectCmdHandlerInvokerPF: PartialFunction[A#Command, CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
   eventListenerPF: PartialFunction[A#Event, A] = PartialFunction.empty
 )
 
 case class UpdateSpec[A <: AggregateLike](
   cmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
+  rejectCmdHandlerInvokerPF: PartialFunction[(A, A#Command), CommandHandlerInvoker[A#Command, A#Event]] = PartialFunction.empty,
   eventListenerPF: PartialFunction[(A, A#Event), A] = PartialFunction.empty
 )

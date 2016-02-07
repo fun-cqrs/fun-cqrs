@@ -16,6 +16,7 @@ trait BindingSupport {
 
   case class DefaultBinding[A <: AggregateLike](
       cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
+      rejectCmdInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
       eventListeners: EventToAggregate[A#Event, A] = PartialFunction.empty
   ) extends Binding[A] {
 
@@ -32,7 +33,7 @@ trait BindingSupport {
       }
 
       this.copy(
-        cmdHandlerInvokers = invokerPF orElse cmdHandlerInvokers
+        rejectCmdInvokers = rejectCmdInvokers orElse invokerPF
       )
     }
 
