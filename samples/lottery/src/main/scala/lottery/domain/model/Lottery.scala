@@ -107,10 +107,10 @@ object Lottery {
     }
 
     // start to describe Lottery Behavior
-    whenCreating {
+    whenCreating { // #<1>
 
       // creational command and event
-      aggregate[Lottery]
+      aggregate[Lottery] // 
         .handler {
           cmd: CreateLottery => LotteryCreated(cmd.name, metadata(cmd))
         }
@@ -118,13 +118,13 @@ object Lottery {
           evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
         }
 
-    }.whenUpdating { lottery =>
+    }.whenUpdating { lottery => // #<2>
 
       aggregate[Lottery]
 
         // Some guard clauses.
         // Commands bellow won't generate events, but be reject with an exception
-        .reject {
+        .reject { // #<3>
           // no command can be accepted after having selected a winner
           case anyCommand if lottery.hasWinner =>
             new IllegalArgumentException("Lottery has already a winner!")
@@ -141,22 +141,28 @@ object Lottery {
         }
 
         // Logic to update a lottery. Commands bellow will generate events
-        .handler {
+
+        // running a lottery
+        .handler { // #<4>
           cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
         }
         .listener {
           evt: WinnerSelected => lottery.copy(winner = Option(evt.winner))
         }
+
+        // adding participant
         .handler {
           cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
         }
         .listener {
           evt: ParticipantAdded => lottery.addParticipant(evt.name)
         }
+        
+        // removing participants (single or all) produce ParticipantRemoved events
         .handler {
           cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
         }
-        .handler.manyEvents {
+        .handler.manyEvents { // #<5>
           // will produce a List[ParticipantRemoved]
           cmd: RemoveAllParticipants.type =>
             lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }

@@ -24,6 +24,7 @@
 <li><a href="#_coding_the_aggregate">Coding the Aggregate</a></li>
 <li><a href="#_aggregate_behavior">Aggregate Behavior</a></li>
 <li><a href="#_configuring_the_aggregate_to_live_inside_akka">Configuring the Aggregate to live inside Akka</a></li>
+<li><a href="#_using_the_aggregate">Using the Aggregate</a></li>
 </ul>
 </li>
 <li><a href="#_projections">Projections</a></li>
@@ -332,10 +333,10 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
     <span class="tok-o">}</span>
 
     <span class="tok-c1">// start to describe Lottery Behavior</span>
-    <span class="tok-n">whenCreating</span> <span class="tok-o">{</span>
+    <span class="tok-n">whenCreating</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="1"></i><b>(1)</b>
 
       <span class="tok-c1">// creational command and event</span>
-      <span class="tok-n">aggregate</span><span class="tok-o">[</span><span class="tok-kt">Lottery</span><span class="tok-o">]</span>
+      <span class="tok-n">aggregate</span><span class="tok-o">[</span><span class="tok-kt">Lottery</span><span class="tok-o">]</span> <span class="tok-c1">//</span>
         <span class="tok-o">.</span><span class="tok-n">handler</span> <span class="tok-o">{</span>
           <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">CreateLottery</span> <span class="tok-o">=&gt;</span> <span class="tok-nc">LotteryCreated</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">.</span><span class="tok-n">name</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">))</span>
         <span class="tok-o">}</span>
@@ -343,13 +344,13 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
           <span class="tok-n">evt</span><span class="tok-k">:</span> <span class="tok-kt">LotteryCreated</span> <span class="tok-o">=&gt;</span> <span class="tok-nc">Lottery</span><span class="tok-o">(</span><span class="tok-n">name</span> <span class="tok-k">=</span> <span class="tok-n">evt</span><span class="tok-o">.</span><span class="tok-n">name</span><span class="tok-o">,</span> <span class="tok-n">id</span> <span class="tok-k">=</span> <span class="tok-n">lotteryId</span><span class="tok-o">)</span>
         <span class="tok-o">}</span>
 
-    <span class="tok-o">}.</span><span class="tok-n">whenUpdating</span> <span class="tok-o">{</span> <span class="tok-n">lottery</span> <span class="tok-k">=&gt;</span>
+    <span class="tok-o">}.</span><span class="tok-n">whenUpdating</span> <span class="tok-o">{</span> <span class="tok-n">lottery</span> <span class="tok-k">=&gt;</span> <span class="tok-c1">// </span><i class="conum" data-value="2"></i><b>(2)</b>
 
       <span class="tok-n">aggregate</span><span class="tok-o">[</span><span class="tok-kt">Lottery</span><span class="tok-o">]</span>
 
         <span class="tok-c1">// Some guard clauses.</span>
         <span class="tok-c1">// Commands bellow won&#39;t generate events, but be reject with an exception</span>
-        <span class="tok-o">.</span><span class="tok-n">reject</span> <span class="tok-o">{</span>
+        <span class="tok-o">.</span><span class="tok-n">reject</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="3"></i><b>(3)</b>
           <span class="tok-c1">// no command can be accepted after having selected a winner</span>
           <span class="tok-k">case</span> <span class="tok-n">anyCommand</span> <span class="tok-k">if</span> <span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">hasWinner</span> <span class="tok-k">=&gt;</span>
             <span class="tok-k">new</span> <span class="tok-nc">IllegalArgumentException</span><span class="tok-o">(</span><span class="tok-s">&quot;Lottery has already a winner!&quot;</span><span class="tok-o">)</span>
@@ -366,22 +367,28 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
         <span class="tok-o">}</span>
 
         <span class="tok-c1">// Logic to update a lottery. Commands bellow will generate events</span>
-        <span class="tok-o">.</span><span class="tok-n">handler</span> <span class="tok-o">{</span>
+
+        <span class="tok-c1">// running a lottery</span>
+        <span class="tok-o">.</span><span class="tok-n">handler</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="4"></i><b>(4)</b>
           <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">Run.</span><span class="tok-k">type</span> <span class="tok-o">=&gt;</span> <span class="tok-nc">WinnerSelected</span><span class="tok-o">(</span><span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">selectParticipant</span><span class="tok-o">(),</span> <span class="tok-n">metadata</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">))</span>
         <span class="tok-o">}</span>
         <span class="tok-o">.</span><span class="tok-n">listener</span> <span class="tok-o">{</span>
           <span class="tok-n">evt</span><span class="tok-k">:</span> <span class="tok-kt">WinnerSelected</span> <span class="tok-o">=&gt;</span> <span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">copy</span><span class="tok-o">(</span><span class="tok-n">winner</span> <span class="tok-k">=</span> <span class="tok-nc">Option</span><span class="tok-o">(</span><span class="tok-n">evt</span><span class="tok-o">.</span><span class="tok-n">winner</span><span class="tok-o">))</span>
         <span class="tok-o">}</span>
+
+        <span class="tok-c1">// adding participant</span>
         <span class="tok-o">.</span><span class="tok-n">handler</span> <span class="tok-o">{</span>
           <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">AddParticipant</span> <span class="tok-o">=&gt;</span> <span class="tok-nc">ParticipantAdded</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">.</span><span class="tok-n">name</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">))</span>
         <span class="tok-o">}</span>
         <span class="tok-o">.</span><span class="tok-n">listener</span> <span class="tok-o">{</span>
           <span class="tok-n">evt</span><span class="tok-k">:</span> <span class="tok-kt">ParticipantAdded</span> <span class="tok-o">=&gt;</span> <span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">addParticipant</span><span class="tok-o">(</span><span class="tok-n">evt</span><span class="tok-o">.</span><span class="tok-n">name</span><span class="tok-o">)</span>
         <span class="tok-o">}</span>
+
+        <span class="tok-c1">// removing participants (single or all) produce ParticipantRemoved events</span>
         <span class="tok-o">.</span><span class="tok-n">handler</span> <span class="tok-o">{</span>
           <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">RemoveParticipant</span> <span class="tok-o">=&gt;</span> <span class="tok-nc">ParticipantRemoved</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">.</span><span class="tok-n">name</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">))</span>
         <span class="tok-o">}</span>
-        <span class="tok-o">.</span><span class="tok-n">handler</span><span class="tok-o">.</span><span class="tok-n">manyEvents</span> <span class="tok-o">{</span>
+        <span class="tok-o">.</span><span class="tok-n">handler</span><span class="tok-o">.</span><span class="tok-n">manyEvents</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="5"></i><b>(5)</b>
           <span class="tok-c1">// will produce a List[ParticipantRemoved]</span>
           <span class="tok-n">cmd</span><span class="tok-k">:</span> <span class="tok-kt">RemoveAllParticipants.</span><span class="tok-k">type</span> <span class="tok-o">=&gt;</span>
             <span class="tok-n">lottery</span><span class="tok-o">.</span><span class="tok-n">participants</span><span class="tok-o">.</span><span class="tok-n">map</span> <span class="tok-o">{</span> <span class="tok-n">name</span> <span class="tok-k">=&gt;</span> <span class="tok-nc">ParticipantRemoved</span><span class="tok-o">(</span><span class="tok-n">name</span><span class="tok-o">,</span> <span class="tok-n">metadata</span><span class="tok-o">(</span><span class="tok-n">cmd</span><span class="tok-o">))</span> <span class="tok-o">}</span>
@@ -399,6 +406,30 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 <div class="paragraph">
 <p>(ref: <a href="https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala" target="_blank">Lottery.scala</a>)</p>
 </div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>whenCreating</code> block defines <strong>Command Handlers</strong> and <strong>Event Listeners</strong> responsible for initialising a <code>Lottery</code> aggregate. You can defined as many as you want, but typically there is only one <strong>handler</strong> and one <strong>listener</strong>.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td><code>whenUpdating</code> block defines <strong>Command Handlers</strong> and <strong>Event Listeners</strong> responsible for updating an existent Aggregate instance. Note that the current lottery state is passed as input parameter to the function.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td><code>reject</code> handlers are <strong>command handlers</strong> that reject a <code>Command</code> if a given condition is fulfilled. Note that <code>reject</code> handlers are defined using <code>PartialFunctions</code> and typically they include a 'guard' per case.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Different <strong>Command Handlers</strong> and <strong>Event Listeners</strong> may be defined.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>In some situations, an <code>Command</code> may produce more than one <code>Event</code>. In that case, we must call <code>handler.manyEvent</code> because function will return a <code>List[Event]</code></td>
+</tr>
+</table>
+</div>
 </div>
 <div class="sect2">
 <h3 id="_configuring_the_aggregate_to_live_inside_akka">Configuring the Aggregate to live inside Akka</h3>
@@ -413,8 +444,12 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 <span class="tok-k">import</span> <span class="tok-nn">io.funcqrs.backend.akka.AggregateService</span>
 
 
-  <span class="tok-k">val</span> <span class="tok-n">backend</span> <span class="tok-k">=</span> <span class="tok-k">new</span> <span class="tok-nc">AkkaBackend</span> <span class="tok-o">{</span>
-    <span class="tok-k">def</span> <span class="tok-n">sourceProvider</span><span class="tok-o">(</span><span class="tok-n">query</span><span class="tok-k">:</span> <span class="tok-kt">Query</span><span class="tok-o">)</span><span class="tok-k">:</span> <span class="tok-kt">EventsSourceProvider</span> <span class="tok-o">=</span> <span class="tok-o">{</span>
+  <span class="tok-k">val</span> <span class="tok-n">backend</span> <span class="tok-k">=</span> <span class="tok-k">new</span> <span class="tok-nc">AkkaBackend</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="1"></i><b>(1)</b>
+
+    <span class="tok-c1">// override this val in order to use another ActorSystem</span>
+    <span class="tok-c1">// override val actorSystem: ActorSystem = ??? </span><i class="conum" data-value="2"></i><b>(2)</b>
+
+    <span class="tok-k">def</span> <span class="tok-n">sourceProvider</span><span class="tok-o">(</span><span class="tok-n">query</span><span class="tok-k">:</span> <span class="tok-kt">Query</span><span class="tok-o">)</span><span class="tok-k">:</span> <span class="tok-kt">EventsSourceProvider</span> <span class="tok-o">=</span> <span class="tok-o">{</span> <span class="tok-c1">// </span><i class="conum" data-value="3"></i><b>(3)</b>
       <span class="tok-n">query</span> <span class="tok-k">match</span> <span class="tok-o">{</span>
         <span class="tok-k">case</span> <span class="tok-nc">QueryByTag</span><span class="tok-o">(</span><span class="tok-n">tag</span><span class="tok-o">)</span> <span class="tok-k">=&gt;</span> <span class="tok-k">new</span> <span class="tok-nc">LevelDbTaggedEventsSource</span><span class="tok-o">(</span><span class="tok-n">tag</span><span class="tok-o">)</span>
       <span class="tok-o">}</span>
@@ -424,18 +459,39 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
   <span class="tok-k">val</span> <span class="tok-n">lotteryViewRepo</span> <span class="tok-k">=</span> <span class="tok-k">new</span> <span class="tok-nc">LotteryViewRepo</span>
 
   <span class="tok-n">backend</span>
-    <span class="tok-c1">// ---------------------------------------------</span>
-    <span class="tok-c1">// aggregate config - write model</span>
-    <span class="tok-o">.</span><span class="tok-n">configure</span> <span class="tok-o">{</span>
-      <span class="tok-n">aggregate</span><span class="tok-o">[</span><span class="tok-kt">Lottery</span><span class="tok-o">](</span><span class="tok-nc">Lottery</span><span class="tok-o">.</span><span class="tok-n">behavior</span><span class="tok-o">)</span>
+    <span class="tok-o">.</span><span class="tok-n">configure</span> <span class="tok-o">{</span> <span class="tok-c1">// aggregate config - write model</span>
+      <span class="tok-n">aggregate</span><span class="tok-o">[</span><span class="tok-kt">Lottery</span><span class="tok-o">](</span><span class="tok-nc">Lottery</span><span class="tok-o">.</span><span class="tok-n">behavior</span><span class="tok-o">)</span> <span class="tok-c1">// </span><i class="conum" data-value="4"></i><b>(4)</b>
     <span class="tok-o">}</span></code></pre>
 </div>
 </div>
 <div class="paragraph">
 <p>(ref: <a href="https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala" target="_blank">Main.scala</a>)</p>
 </div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>We create an <code>AkkaBackend</code> in-place.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>The <code>AkkaBackend</code> will start its own <code>ActorSystem</code>, but of course you can use own <code>ActorSystem</code> by overriding <code>AkkaBackend.actorSystem</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>The <code>AkkaBackend</code> requires a <code>EventsSourceProvider</code> that will be used to query the event store. This is needed for the projections. We&#8217;ll come back to that on the <strong>Projection</strong> section.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>We declare that <code>Lottery</code> is an Aggregate and pass the behavior method defined in its companion object. The full syntax is actually <code>aggregate[Lottery](id &#8658; Loggery.behavior(id))</code></td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_using_the_aggregate">Using the Aggregate</h3>
 <div class="paragraph">
-<p>From the <strong>Akka Backend</strong> we get a <code>AggregateRef</code> for <code>Lottery</code>. Much like in <strong>Akka</strong> where we can&#8217;t have access to the Actor itself, in <strong>Fun.CQRS</strong> we don&#8217;t have direct access to the aggregate. The <code>Lottery</code> aggregate will live inside an actor, but instead of working with its <code>ActorRef</code> we work with a fully typed <code>AggregateRef</code>.</p>
+<p>Once the <code>Lottery</code> aggregate is configured, we request an <code>AggregateRef</code> for a <code>Lottery</code>. Much like in <strong>Akka</strong> where we can&#8217;t have access to the Actor itself, in <strong>Fun.CQRS</strong> we don&#8217;t have direct access to the aggregate. The <code>Lottery</code> aggregate will live inside an actor, but instead of working with its <code>ActorRef</code> we work with a fully typed <code>AggregateRef</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -471,7 +527,7 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 <p>(ref: <a href="https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala" target="_blank">Main.scala</a>)</p>
 </div>
 <div class="paragraph">
-<p>The <code>lotteryRef</code> can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a <code>Future</code>. In the event of a successful command, we get back a <code>Future</code> with the list of generated events. Otherwise a failed <code>Future</code> holding the exception.</p>
+<p>The <code>lotteryRef</code> can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a <code>Future</code>. In the event of a successful command, we get back a <code>Future</code> with the list of generated events. Otherwise a failed <code>Future</code> with an exception.</p>
 </div>
 <div class="colist arabic">
 <table>
@@ -505,7 +561,7 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 </td>
 <td class="content">
 <div class="paragraph">
-<p><code>AggregateRef</code> is <strong>NOT</strong> an <code>ActorRef</code>. However, it does mimic the <code>ActorRef</code> API with methods like '?' (ask) and '!' (tell), because 'tell' and 'ask' are very idiomatic methods for sending <code>Commands</code>.</p>
+<p><code>AggregateRef</code> is <strong>NOT</strong> an <code>ActorRef</code>. However, it does mimic the <code>ActorRef</code> API with methods like '?' (ask) and '!' (tell). This is simply because 'tell' and 'ask' are very idiomatic methods for sending <code>Commands</code>.</p>
 </div>
 <div class="paragraph">
 <p>Behind the scenes the <code>Commands</code> will be forwarded to the right <code>Actor</code> (when using the <code>AkkaBackend</code>) holding the Aggregate instance for the passed Id.</p>
@@ -604,7 +660,7 @@ language governing permissions and limitations under the License.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-08 00:50:05 CET
+Last updated 2016-02-09 00:34:41 CET
 </div>
 </div>
 </body>

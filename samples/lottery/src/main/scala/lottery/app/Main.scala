@@ -1,5 +1,6 @@
 package lottery.app
 
+import akka.actor.ActorSystem
 import akka.util.Timeout
 import io.funcqrs.akka.EventsSourceProvider
 import io.funcqrs.akka.backend.AkkaBackend
@@ -17,8 +18,12 @@ object Main extends App {
 
   // tag::lottery-actor[]
 
-  val backend = new AkkaBackend {
-    def sourceProvider(query: Query): EventsSourceProvider = {
+  val backend = new AkkaBackend { // #<1>
+
+    // override this val in order to use another ActorSystem
+    // override val actorSystem: ActorSystem = ??? #<2>
+
+    def sourceProvider(query: Query): EventsSourceProvider = { // #<3>
       query match {
         case QueryByTag(tag) => new LevelDbTaggedEventsSource(tag)
       }
@@ -28,16 +33,11 @@ object Main extends App {
   val lotteryViewRepo = new LotteryViewRepo
 
   backend
-    // ---------------------------------------------
-    // aggregate config - write model
-    .configure {
-      aggregate[Lottery](Lottery.behavior)
+    .configure { // aggregate config - write model
+      aggregate[Lottery](Lottery.behavior) // #<4>
     }
     // end::lottery-actor[]
-
-    // ---------------------------------------------
-    // projection config - read model
-    .configure {
+    .configure { // projection config - read model
       projection(
         query = QueryByTag(Lottery.tag),
         projection = new LotteryViewProjection(lotteryViewRepo),

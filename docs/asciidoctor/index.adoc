@@ -132,6 +132,11 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
+<1> `whenCreating` block defines **Command Handlers** and **Event Listeners** responsible for initialising a `Lottery` aggregate. You can defined as many as you want, but typically there is only one **handler** and one **listener**.
+<2> `whenUpdating` block defines **Command Handlers** and **Event Listeners** responsible for updating an existent Aggregate instance. Note that the current lottery state is passed as input parameter to the function.
+<3> `reject` handlers are **command handlers** that reject a `Command` if a given condition is fulfilled. Note that `reject` handlers are defined using `PartialFunctions` and typically they include a 'guard' per case.
+<4> Different **Command Handlers** and **Event Listeners** may be defined.
+<5> In some situations, an `Command` may produce more than one `Event`. In that case, we must call `handler.manyEvent` because function will return a `List[Event]`
 
 ### Configuring the Aggregate to live inside Akka
 
@@ -148,9 +153,16 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
 
+<1> We create an `AkkaBackend` in-place.
+<2> The `AkkaBackend` will start its own `ActorSystem`, but of course you can use own `ActorSystem` by overriding `AkkaBackend.actorSystem`
+<3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **Projection** section.
+<4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object. The full syntax is actually `aggregate[Lottery](id => Loggery.behavior(id))`
 
-From the **Akka Backend** we get a `AggregateRef` for `Lottery`. Much like in **Akka** where we can't have access to the Actor itself, in **Fun.CQRS** we don't have direct access to the aggregate. The `Lottery` aggregate will live inside an actor, but instead of working with its `ActorRef` we work with a fully typed `AggregateRef`.
 
+
+### Using the Aggregate
+
+Once the `Lottery` aggregate is configured, we request an `AggregateRef` for a `Lottery`. Much like in **Akka** where we can't have access to the Actor itself, in **Fun.CQRS** we don't have direct access to the aggregate. The `Lottery` aggregate will live inside an actor, but instead of working with its `ActorRef` we work with a fully typed `AggregateRef`.
 
 [source,scala]
 ----
@@ -161,7 +173,7 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
 
-The `lotteryRef` can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a `Future`. In the event of a successful command, we get back a `Future` with the list of generated events. Otherwise a failed `Future` holding the exception.
+The `lotteryRef` can be used to send commands to the aggregate. Since we are using a Akka backend, all calls return a `Future`. In the event of a successful command, we get back a `Future` with the list of generated events. Otherwise a failed `Future` with an exception.
 
 <1> We request a `AggregateRef` for a `Lottery` using a unique ID.
 <2> We send a create command to the `Lottery` aggregate via the `lotteryRef`
@@ -171,7 +183,7 @@ The `lotteryRef` can be used to send commands to the aggregate. Since we are usi
 
 [TIP]
 ====
-`AggregateRef` is **NOT** an `ActorRef`. However, it does mimic the `ActorRef` API with methods like '?' (ask) and '!' (tell), because 'tell' and 'ask' are very idiomatic methods for sending `Commands`.
+`AggregateRef` is **NOT** an `ActorRef`. However, it does mimic the `ActorRef` API with methods like '?' (ask) and '!' (tell). This is simply because 'tell' and 'ask' are very idiomatic methods for sending `Commands`.
 
 Behind the scenes the `Commands` will be forwarded to the right `Actor` (when using the `AkkaBackend`) holding the Aggregate instance for the passed Id.
 
