@@ -7,7 +7,6 @@
 :source-highlighter: pygments
 :pygments-style: manni
 :pygments-linenums-mode: inline
-:author: Renato Cavalcanti - Strong[Typed]
 
 ## Introduction
 
