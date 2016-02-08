@@ -28,7 +28,7 @@ libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.3.0-SNAPSHOT"
 ## Documentation
 
 Documentation is in the process of being written.  
-A preview is available [here](http://fun-cqrs.github.io/).
+A preview is available [here](http://htmlpreview.github.io/?https://github.com/strongtyped/fun-cqrs/blob/develop/docs/asciidoctor/index.html).
 
 For the moment the best way to learn how to use Fun.CQRS is to check the lottery sample under fun-cqrs/samples/lottery.
 
