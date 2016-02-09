@@ -3,7 +3,7 @@ package lottery.domain.model
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
 import lottery.app.LotteryBackendConfig
-import lottery.domain.model.LotteryProtocol.{ AddParticipant, CreateLottery, RemoveAllParticipants, Run }
+import lottery.domain.model.LotteryProtocol._
 import lottery.domain.service.LotteryViewRepo
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FunSuite, Matchers, OptionValues }
@@ -32,11 +32,19 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
       val lottery = lotteryRef(id)
 
+      // send all commands
       lottery ? CreateLottery("TestLottery")
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
       lottery ? Run
 
+      // assert that expected events were produced
+      expectEventType[LotteryCreated]
+      expectEvent { case ParticipantAdded("John", _) => () }
+      expectEvent { case ParticipantAdded("Paul", _) => () }
+      expectEventType[WinnerSelected]
+
+      // check the view projection
       val view = repo.find(id).futureValue
       view.participants should have size 2
       view.winner shouldBe defined

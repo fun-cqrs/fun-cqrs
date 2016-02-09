@@ -24,7 +24,7 @@ class InMemoryBackend extends Backend[Identity] {
 
   private val stream: Stream[DomainEvent] = Stream()
 
-  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): IdentityAggregateRef[A] = {
+  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): InMemoryAggregateRef[A] = {
 
     aggregates.getOrElseUpdate(
       id,
@@ -36,8 +36,8 @@ class InMemoryBackend extends Backend[Identity] {
     ).asInstanceOf[InMemoryAggregateRef[A]]
   }
 
-  def configure[A <: AggregateLike](config: AggregateConfig[A])(implicit tag: ClassTag[A]): Backend[Identity] = {
-    aggregateConfigs += (tag -> config)
+  def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): Backend[Identity] = {
+    aggregateConfigs += (ClassTagImplicits[A] -> config)
     this
   }
 

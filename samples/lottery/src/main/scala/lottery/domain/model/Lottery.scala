@@ -157,7 +157,7 @@ object Lottery {
         .listener {
           evt: ParticipantAdded => lottery.addParticipant(evt.name)
         }
-        
+
         // removing participants (single or all) produce ParticipantRemoved events
         .handler {
           cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
