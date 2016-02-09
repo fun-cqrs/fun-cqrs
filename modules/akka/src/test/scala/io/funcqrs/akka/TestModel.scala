@@ -6,6 +6,8 @@ import java.util.UUID
 import io.funcqrs._
 import io.funcqrs.behavior.Behavior
 import io.funcqrs.dsl.BindingDsl.api._
+import io.funcqrs.dsl.{ AggregateSpec, Spec }
+import AggregateSpec._
 
 import scala.concurrent.Future
 import scala.util.Try
@@ -23,37 +25,37 @@ object TestModel {
     def behavior(id: UserId): Behavior[User] = {
       import UserProtocol._
 
-      whenCreating {
+      case object spec extends Spec[User]
 
-        aggregate[User]
-          .reject {
-            case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
-          }
-          .handler {
-            cmd: CreateUser => UserCreated(cmd.name, cmd.age, metadata(id, cmd))
-          }
-          .listener {
-            evt: UserCreated => User(evt.name, evt.age, id)
-          }
-
-      }.whenUpdating { user =>
-
-        aggregate[User]
-          .reject {
-            case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
-          }
-          .handler {
-            cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd))
-          }
-          .listener {
-            evt: NameChanged => user.copy(name = evt.newName)
-          }
-          .handler {
-            cmd: DeleteUser.type => UserDeleted(metadata(id, cmd))
-          }
-          .listener {
-            evt: UserDeleted => user.copy(deleted = true)
-          }
+      aggregateSpec[User] when {
+        case None =>
+          aggregate[User]
+            .reject {
+              case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
+            }
+            .handler {
+              cmd: CreateUser => UserCreated(cmd.name, cmd.age, metadata(id, cmd))
+            }
+            .listener {
+              evt: UserCreated => User(evt.name, evt.age, id)
+            }
+        case Some(user) =>
+          aggregate[User]
+            .reject {
+              case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
+            }
+            .handler {
+              cmd: ChangeName => NameChanged(cmd.newName, metadata(id, cmd))
+            }
+            .listener {
+              evt: NameChanged => user.copy(name = evt.newName)
+            }
+            .handler {
+              cmd: DeleteUser.type => UserDeleted(metadata(id, cmd))
+            }
+            .listener {
+              evt: UserDeleted => user.copy(deleted = true)
+            }
       }
 
     }

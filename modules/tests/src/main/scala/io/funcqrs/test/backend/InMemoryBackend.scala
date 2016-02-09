@@ -82,27 +82,17 @@ class InMemoryBackend extends Backend[Identity] {
 
     val interpreter = IdentityInterpreter(behavior)
 
-    def ask(cmd: Command): Identity[Events] = {
-      aggregateState
-        .map { agg => update(agg, cmd) }
-        .getOrElse { create(cmd) }
-    }
+    def ask(cmd: Command): Identity[Events] =
+      handle(aggregateState, cmd)
 
     def tell(cmd: Command): Unit = {
       ask(cmd)
       () // omit events
     }
 
-    private def update(aggregate: Aggregate, cmd: Command): interpreter.Events = {
-      val (events, updatedAgg) = interpreter.applyCommand(cmd, aggregate)
-      aggregateState = Option(updatedAgg)
-      publishEvents(events)
-      events
-    }
-
-    private def create(cmd: Command): interpreter.Events = {
-      val (events, aggregate) = interpreter.applyCommand(cmd)
-      aggregateState = Option(aggregate)
+    private def handle(optionalAggregate: Option[Aggregate], cmd: Command): interpreter.Events = {
+      val (events, updatedAgg) = interpreter.applyCommand(cmd, optionalAggregate)
+      aggregateState = updatedAgg
       publishEvents(events)
       events
     }

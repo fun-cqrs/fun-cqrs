@@ -15,23 +15,15 @@ import scala.language.higherKinds
  */
 class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
 
-  def handleCommand(cmd: Command): Future[Events] = {
+  def handleCommand(optionalAggregate: Option[A], cmd: Command): Future[Events] = {
 
-    behavior.handleCommand(cmd) match {
+    behavior.handleCommand(optionalAggregate, cmd) match {
       case IdCommandHandlerInvoker(handler) => Future.successful(handler(cmd))
       case TryCommandHandlerInvoker(handler) => Future.fromTry(handler(cmd))
       case FutureCommandHandlerInvoker(handler) => handler(cmd)
     }
   }
 
-  def handleCommand(aggregate: A, cmd: Command): Future[Events] = {
-
-    behavior.handleCommand(aggregate, cmd) match {
-      case IdCommandHandlerInvoker(handler) => Future.successful(handler(cmd))
-      case TryCommandHandlerInvoker(handler) => Future.fromTry(handler(cmd))
-      case FutureCommandHandlerInvoker(handler) => handler(cmd)
-    }
-  }
 }
 
 object AsyncInterpreter {

@@ -8,28 +8,15 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
 
   type Aggregate = A
 
-  def commandHandlerWhenCreating: PartialFunction[Command, CommandHandlerInvoker[Command, Event]]
-  def eventListenerWhenCreating: PartialFunction[Event, Aggregate]
-  def commandHandlerWhenUpdating: PartialFunction[(Aggregate, Command), CommandHandlerInvoker[Command, Event]]
-  def eventListenerWhenUpdating: PartialFunction[(Aggregate, Event), Aggregate]
+  def commandHandler: PartialFunction[(Option[Aggregate], Command), CommandHandlerInvoker[Command, Event]]
+  def eventListener: PartialFunction[(Option[Aggregate], Event), Aggregate]
 
-  def handleCommand(cmd: Command): CommandHandlerInvoker[Command, Event] = {
-
-    if (commandHandlerWhenCreating.isDefinedAt(cmd))
-      commandHandlerWhenCreating(cmd)
+  def handleCommand(optionalAggregate: Option[Aggregate], cmd: Command): CommandHandlerInvoker[Command, Event] = {
+    if (commandHandler.isDefinedAt((optionalAggregate, cmd)))
+      commandHandler((optionalAggregate, cmd))
     else
-      // return fallback invoker if not defined
-      fallbackInvoker(s"Invalid command $cmd")
-  }
-
-  def handleCommand(aggregate: Aggregate, cmd: Command): CommandHandlerInvoker[Command, Event] = {
-
-    if (commandHandlerWhenUpdating.isDefinedAt(aggregate, cmd))
-      commandHandlerWhenUpdating(aggregate, cmd)
-    else
-      // return fallback invoker if not defined
-      fallbackInvoker(s"Invalid command $cmd for aggregate ${aggregate.id}")
-
+      // return fallback invoker if not define
+      fallbackInvoker(s"Invalid command $cmd for optional aggregate ${optionalAggregate.map(_.id)}")
   }
 
   /**
@@ -43,28 +30,16 @@ trait Behavior[A <: AggregateLike] extends AggregateAliases {
     TryCommandHandlerInvoker(cmdHandler)
   }
 
-  def onEvent(evt: Event): A = {
-    eventListenerWhenCreating(evt)
+  def onEvent(optionalAggregate: Option[Aggregate], evt: Event): Aggregate = {
+    eventListener((optionalAggregate, evt))
   }
 
-  def onEvent(aggregate: A, evt: Event): A = {
-    eventListenerWhenUpdating(aggregate, evt)
+  def canHandleEvent(event: Event, optionalAggregate: Option[Aggregate]): Boolean = {
+    eventListener.isDefinedAt((optionalAggregate, event))
   }
 
-  def canHandleEvent(event: Event): Boolean = {
-    eventListenerWhenCreating.isDefinedAt(event)
-  }
-
-  def canHandleEvents(events: Events): Boolean = {
-    events forall canHandleEvent
-  }
-
-  def canHandleEvent(event: Event, aggregate: Aggregate): Boolean = {
-    eventListenerWhenUpdating.isDefinedAt(aggregate, event)
-  }
-
-  def canHandleEvents(events: Events, aggregate: Aggregate): Boolean = {
-    events.forall { evt => canHandleEvent(evt, aggregate) }
+  def canHandleEvents(events: Events, optionalAggregate: Option[Aggregate]): Boolean = {
+    events.forall { evt => canHandleEvent(evt, optionalAggregate) }
   }
 
 }

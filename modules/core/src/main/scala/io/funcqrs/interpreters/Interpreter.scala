@@ -17,26 +17,17 @@ trait Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
 
   def behavior: Behavior[A]
 
-  def handleCommand(cmd: Command): F[Events]
+  def handleCommand(optionalAggregate: Option[Aggregate], cmd: Command): F[Events]
 
-  def handleCommand(aggregate: Aggregate, cmd: Command): F[Events]
+  def onEvent(optionalAggregate: Option[Aggregate], evt: Event): A = behavior.onEvent(optionalAggregate, evt)
 
-  def onEvent(evt: Event): A = behavior.onEvent(evt)
-
-  def onEvent(aggregate: A, evt: Event): A = behavior.onEvent(aggregate, evt)
-
-  def applyCommand(cmd: Command)(implicit monadsOps: MonadOps[F]): F[(Events, A)] = {
-    monad(handleCommand(cmd)).map { evts =>
-      val agg = onEvent(evts.head)
-      val finalAgg = evts.tail.foldLeft(agg) { case (currentAgg, evt) => onEvent(currentAgg, evt) }
-      (evts, finalAgg)
-    }
-  }
-
-  def applyCommand(cmd: Command, aggregate: Aggregate)(implicit monadsOps: MonadOps[F]): F[(Events, A)] = {
-    monad(handleCommand(aggregate, cmd)).map { evts =>
-      val finalAgg = evts.foldLeft(aggregate) { case (acc, evt) => onEvent(acc, evt) }
-      (evts, finalAgg)
+  def applyCommand(cmd: Command, optionalAggregate: Option[Aggregate])(implicit monadsOps: MonadOps[F]): F[(Events, Option[A])] = {
+    monad(handleCommand(optionalAggregate, cmd)).map { evts: Events =>
+      val optionalAgg = evts.foldLeft(optionalAggregate) {
+        case (optionalAggregate, evt) =>
+          Some(onEvent(optionalAggregate, evt))
+      }
+      (evts, optionalAgg)
     }
   }
 
