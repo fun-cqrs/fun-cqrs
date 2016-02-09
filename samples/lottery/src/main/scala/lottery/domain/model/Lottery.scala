@@ -4,9 +4,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 import io.funcqrs._
 import io.funcqrs.behavior.Behavior
-import io.funcqrs.dsl.BindingDsl.api._
-import io.funcqrs.dsl.{ Binding, AggregateSpec, Spec }
-import AggregateSpec._
+import io.funcqrs.dsl.BehaviorDsl.api._
 
 import scala.util.Random
 
@@ -18,8 +16,7 @@ case class Lottery(
     id: LotteryId
 ) extends AggregateLike {
 
-  type Id = LotteryId
-  // #<1>
+  type Id = LotteryId // #<1>
   type Protocol = LotteryProtocol.type // #<2>
 
   def addParticipant(name: String): Lottery = {
@@ -60,14 +57,10 @@ object LotteryId {
 }
 
 // tag::lottery-protocol[]
-object LotteryProtocol extends ProtocolLike {
-
-  // #<1>
+object LotteryProtocol extends ProtocolLike { // #<1>
 
   // Commands ============================================================
-  sealed trait LotteryCommand extends ProtocolCommand
-
-  // #<2>
+  sealed trait LotteryCommand extends ProtocolCommand // #<2>
 
   // Creation Command
   case class CreateLottery(name: String) extends LotteryCommand
@@ -82,9 +75,7 @@ object LotteryProtocol extends ProtocolLike {
   case object Run extends LotteryCommand
 
   // Events ============================================================
-  sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata]
-
-  // #<3>
+  sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata] // #<3>
 
   case class LotteryMetadata( // #<4>
       aggregateId: LotteryId, // #<5>
@@ -128,18 +119,23 @@ object Lottery {
       LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
     }
 
-    aggregateSpec[Lottery] when {
-      case None =>
-        aggregate[Lottery]
+    behaviorOf[Lottery] when {
+
+      case Uninitialized => // #<1>
+
+        bind[Lottery]
           .handler {
             cmd: CreateLottery => LotteryCreated(cmd.name, metadata(cmd))
-          }
-          .listener {
+          } listener {
             evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
           }
-      case Some(lottery) =>
-        aggregate[Lottery]
-          .reject {
+
+      case Initialized(lottery) => // #<2>
+
+        bind[Lottery]
+          // Some guard clauses.
+          // Commands bellow won't generate events, but be reject with an exception
+          .reject { // #<3>
             // no command can be accepted after having selected a winner
             case anyCommand if lottery.hasWinner =>
               new IllegalArgumentException("Lottery has already a winner!")
@@ -155,22 +151,30 @@ object Lottery {
               new IllegalArgumentException(s"Participant ${cmd.name} already added!")
           }
 
-          .handler {
+          // Logic to update a lottery. Commands bellow will generate events
+
+          // running a lottery
+          .handler { // #<4>
             cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
           }
           .listener {
             evt: WinnerSelected => lottery.copy(winner = Option(evt.winner))
           }
+
+
+          // adding participant
           .handler {
             cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
           }
           .listener {
             evt: ParticipantAdded => lottery.addParticipant(evt.name)
           }
+
+          // removing participants (single or all) produce ParticipantRemoved events
           .handler {
             cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
           }
-          .handler.manyEvents {
+          .handler.manyEvents { // #<5>
             // will produce a List[ParticipantRemoved]
             cmd: RemoveAllParticipants.type =>
               lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }

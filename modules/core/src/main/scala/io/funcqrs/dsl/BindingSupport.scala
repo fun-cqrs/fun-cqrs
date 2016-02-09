@@ -2,6 +2,7 @@ package io.funcqrs.dsl
 
 import io.funcqrs._
 import io.funcqrs.behavior.{ FutureCommandHandlerInvoker, TryCommandHandlerInvoker, IdCommandHandlerInvoker, CommandHandlerInvoker }
+
 import io.funcqrs.interpreters._
 
 import scala.collection.immutable
@@ -12,10 +13,12 @@ import scala.util.{ Failure, Try }
 
 trait BindingSupport {
 
+  def bind[A <: AggregateLike]: Binding[A] = DefaultBinding[A]()
   def aggregate[A <: AggregateLike]: Binding[A] = DefaultBinding[A]()
 
   case class DefaultBinding[A <: AggregateLike](
       cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
+      rejectCmdInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
       eventListeners: EventToAggregate[A#Event, A] = PartialFunction.empty
   ) extends Binding[A] {
 
@@ -32,7 +35,7 @@ trait BindingSupport {
       }
 
       this.copy(
-        cmdHandlerInvokers = invokerPF orElse cmdHandlerInvokers
+        rejectCmdInvokers = rejectCmdInvokers orElse invokerPF
       )
     }
 
@@ -137,4 +140,5 @@ trait BindingSupport {
       else None
     }
   }
+
 }

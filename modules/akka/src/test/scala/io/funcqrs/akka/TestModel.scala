@@ -5,8 +5,7 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior.Behavior
-import io.funcqrs.dsl.BindingDsl.api._
-import io.funcqrs.dsl.{ AggregateSpec, Spec }
+import io.funcqrs.dsl.BehaviorDsl.api._
 import AggregateSpec._
 
 import scala.concurrent.Future
@@ -25,10 +24,9 @@ object TestModel {
     def behavior(id: UserId): Behavior[User] = {
       import UserProtocol._
 
-      case object spec extends Spec[User]
+      behaviorOf[User] when {
 
-      aggregateSpec[User] when {
-        case None =>
+        case Uninitialized =>
           aggregate[User]
             .reject {
               case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
@@ -39,7 +37,8 @@ object TestModel {
             .listener {
               evt: UserCreated => User(evt.name, evt.age, id)
             }
-        case Some(user) =>
+
+        case Initialized(user) =>
           aggregate[User]
             .reject {
               case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
