@@ -9,5 +9,5 @@ class LotteryViewRepo extends InMemoryRepository {
   type Model = LotteryView
 
   /** Extract id van Model */
-  protected def $id(model: LotteryView): LotteryId = model.id
+  protected def $id(view: LotteryView): LotteryId = view.id
 }

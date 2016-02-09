@@ -136,9 +136,9 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 <2> `whenUpdating` block defines **Command Handlers** and **Event Listeners** responsible for updating an existent Aggregate instance. Note that the current lottery state is passed as input parameter to the function.
 <3> `reject` handlers are **command handlers** that reject a `Command` if a given condition is fulfilled. Note that `reject` handlers are defined using `PartialFunctions` and typically they include a 'guard' per case.
 <4> Different **Command Handlers** and **Event Listeners** may be defined.
-<5> In some situations, an `Command` may produce more than one `Event`. In that case, we must call `handler.manyEvent` because function will return a `List[Event]`
+<5> In some situations, an `Command` may produce more than one `Event`. In that case, we must call `handler.manyEvents` instead an pass a function that returns a `List[Event]`
 
-### Configuring the Aggregate to live inside Akka
+### Configuring the Aggregate
 
 In this last step we configure the **Akka Backend** with our **Lottery** aggregate. the configuration is quite straight forward.
 
@@ -155,8 +155,8 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 
 <1> We create an `AkkaBackend` in-place.
 <2> The `AkkaBackend` will start its own `ActorSystem`, but of course you can use own `ActorSystem` by overriding `AkkaBackend.actorSystem`
-<3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **Projection** section.
-<4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object. The full syntax is actually `aggregate[Lottery](id => Loggery.behavior(id))`
+<3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **link:index.html#_projections[Projections]** section.
+<4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object.
 
 
 
@@ -191,7 +191,14 @@ When using other backends, the `AggregateRef` may point to other kind of objects
 ====
 
 ## Projections
-TODO - check Lottery sample for the time being
+So far we have seen how we define and work with Aggregates (the write model). In this section we show how to define **Projections** to generate the read model.
+
+A **Projection** is nothing more than an event store query and a event listener to react to each `Event` produced by the query. That said, **Projections** are not only useful for generating read models (aka Views). We can also use **projections** for **Sagas** for instance where `Events` coming from one Aggregate are produces `Commands` on another Aggregate.
+
+### AkkaBackend Projections
+
+
+
 
 ## Akka Configuration
 TODO - check Lottery sample for the time being

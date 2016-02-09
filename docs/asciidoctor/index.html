@@ -23,11 +23,15 @@
 <li><a href="#_lottery_protocol">Lottery Protocol</a></li>
 <li><a href="#_coding_the_aggregate">Coding the Aggregate</a></li>
 <li><a href="#_aggregate_behavior">Aggregate Behavior</a></li>
-<li><a href="#_configuring_the_aggregate_to_live_inside_akka">Configuring the Aggregate to live inside Akka</a></li>
+<li><a href="#_configuring_the_aggregate">Configuring the Aggregate</a></li>
 <li><a href="#_using_the_aggregate">Using the Aggregate</a></li>
 </ul>
 </li>
-<li><a href="#_projections">Projections</a></li>
+<li><a href="#_projections">Projections</a>
+<ul class="sectlevel2">
+<li><a href="#_akkabackend_projections">AkkaBackend Projections</a></li>
+</ul>
+</li>
 <li><a href="#_akka_configuration">Akka Configuration</a></li>
 <li><a href="#_testing">Testing</a></li>
 <li><a href="#_project_information">Project Information</a>
@@ -426,13 +430,13 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 </tr>
 <tr>
 <td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>In some situations, an <code>Command</code> may produce more than one <code>Event</code>. In that case, we must call <code>handler.manyEvent</code> because function will return a <code>List[Event]</code></td>
+<td>In some situations, an <code>Command</code> may produce more than one <code>Event</code>. In that case, we must call <code>handler.manyEvents</code> instead an pass a function that returns a <code>List[Event]</code></td>
 </tr>
 </table>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_configuring_the_aggregate_to_live_inside_akka">Configuring the Aggregate to live inside Akka</h3>
+<h3 id="_configuring_the_aggregate">Configuring the Aggregate</h3>
 <div class="paragraph">
 <p>In this last step we configure the <strong>Akka Backend</strong> with our <strong>Lottery</strong> aggregate. the configuration is quite straight forward.</p>
 </div>
@@ -479,11 +483,11 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>The <code>AkkaBackend</code> requires a <code>EventsSourceProvider</code> that will be used to query the event store. This is needed for the projections. We&#8217;ll come back to that on the <strong>Projection</strong> section.</td>
+<td>The <code>AkkaBackend</code> requires a <code>EventsSourceProvider</code> that will be used to query the event store. This is needed for the projections. We&#8217;ll come back to that on the <strong><a href="index.html#_projections">Projections</a></strong> section.</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>We declare that <code>Lottery</code> is an Aggregate and pass the behavior method defined in its companion object. The full syntax is actually <code>aggregate[Lottery](id &#8658; Loggery.behavior(id))</code></td>
+<td>We declare that <code>Lottery</code> is an Aggregate and pass the behavior method defined in its companion object.</td>
 </tr>
 </table>
 </div>
@@ -580,7 +584,14 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 <h2 id="_projections">Projections</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>TODO - check Lottery sample for the time being</p>
+<p>So far we have seen how we define and work with Aggregates (the write model). In this section we show how to define <strong>Projections</strong> to generate the read model.</p>
+</div>
+<div class="paragraph">
+<p>A <strong>Projection</strong> is nothing more than an event store query and a event listener to react to each <code>Event</code> produced by the query. That said, <strong>Projections</strong> are not only useful for generating read models (aka Views). We can also use <strong>projections</strong> for <strong>Sagas</strong> for instance where <code>Events</code> coming from one Aggregate are produces <code>Commands</code> on another Aggregate.</p>
+</div>
+<div class="sect2">
+<h3 id="_akkabackend_projections">AkkaBackend Projections</h3>
+
 </div>
 </div>
 </div>
@@ -660,7 +671,7 @@ language governing permissions and limitations under the License.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-09 00:34:41 CET
+Last updated 2016-02-09 08:23:24 CET
 </div>
 </div>
 </body>
