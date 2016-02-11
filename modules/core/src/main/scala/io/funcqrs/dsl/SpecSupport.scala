@@ -5,7 +5,6 @@ import io.funcqrs.{ AggregateLike, AggregateAliases }
 
 import scala.language.implicitConversions
 
-
 trait SpecSupport extends AggregateAliases {
 
   def behaviorOf[A <: AggregateLike] = AggregateSpec(new Spec[A])
@@ -39,7 +38,6 @@ trait SpecSupport extends AggregateAliases {
 
       type UpdatesCommandToEvents = PartialFunction[(Option[Aggregate], Command), CommandHandlerInvoker[A#Command, A#Event]]
       type UpdatesEventToAggregate = PartialFunction[(Option[Aggregate], Event), Aggregate]
-
 
       val func = (optAggregate: Option[Aggregate]) => {
         aggFunc(AggregateState(optAggregate))

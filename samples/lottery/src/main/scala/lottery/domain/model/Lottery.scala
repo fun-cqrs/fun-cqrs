@@ -161,7 +161,6 @@ object Lottery {
             evt: WinnerSelected => lottery.copy(winner = Option(evt.winner))
           }
 
-
           // adding participant
           .handler {
             cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
