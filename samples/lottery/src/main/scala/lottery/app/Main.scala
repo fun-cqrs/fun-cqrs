@@ -3,7 +3,7 @@ package lottery.app
 import akka.actor.ActorSystem
 import akka.util.Timeout
 import io.funcqrs.akka.EventsSourceProvider
-import io.funcqrs.akka.backend.AkkaBackend
+import io.funcqrs.akka.backend.{ AggregateActorRef, AkkaBackend }
 import io.funcqrs.backend.{ Query, QueryByTag }
 import io.funcqrs.config.api._
 import lottery.domain.model.{ Lottery, LotteryId }
@@ -49,6 +49,7 @@ object Main extends App {
   implicit val timeout = Timeout(3.seconds)
 
   val id = LotteryId.generate()
+
   val lotteryRef = backend.aggregateRef[Lottery](id) //#<1>
 
   val result =

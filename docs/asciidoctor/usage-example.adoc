@@ -1,0 +1,35 @@
+
+## Usage Example
+
+In the following section we will build a simple aggregate. As an example use case we build a **Lottery** application. This example is also available as a running sample application in the project repository in https://github.com/strongtyped/fun-cqrs[GitHub].
+
+A **Lottery** application has the following requirements:
+
+- An user can create a new lottery game
+
+- An user can add participants +
+  **condition**: a participant can only be added once +
+  **condition**: a participant can only be added if a winner is not yet selected +
+
+- An user can remove a participant +
+	**condition**: if a winner is not yet selected +
+
+- An user can remove all participants +
+	**condition**: if a winner is not yet selected +
+
+- A user can run the lottery which will select a winner +
+ 	**condition**: we can only select a winner if there is at least one participant +
+ 	**condition**: we can only select a winner once, afterwards an error is produced when trying to select a new winner +
+
+### Type-safe IDs
+
+**Fun.CQRS** uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific ID type to be used by the system. As such, we avoid ID clashing and it provides better logging as we can clearly see in the logs from each aggregate it comes from.
+
+First we define a type representing the Aggregate ID. We define it by extending the trait `io.funcqrs.AggregateId`.
+
+[source,scala]
+----
+import io.funcqrs.AggregateId
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-id]
+----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])

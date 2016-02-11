@@ -38,66 +38,45 @@ class AggregateActor[A <: AggregateLike](
   private var eventsSinceLastSnapshot = 0
 
   // always compose with defaultReceive
-  override def receiveCommand: Receive = initializing orElse defaultReceive
+  override def receiveCommand: Receive = uninitialized
+
+  private def receiving(optionalAggregate: => Option[Aggregate], state: State): Receive = {
+
+    val receive: Receive = {
+
+      case cmd: Command =>
+        log.debug(s"Received cmd: $cmd")
+        val eventualEvents = interpreter.handleCommand(optionalAggregate, cmd)
+        val origSender = sender()
+
+        eventualEvents map {
+          events => Successful(events, origSender)
+        } recover {
+          case NonFatal(cause: DomainException) =>
+            FailedCommand(cause, origSender, state)
+          case NonFatal(cause) =>
+            log.error(cause, s"Error while processing command: $cmd")
+            FailedCommand(cause, origSender, state)
+        } pipeTo self
+
+        changeState(Busy)
+
+    }
+
+    // always compose with defaultReceive
+    receive orElse defaultReceive
+
+  }
 
   /**
    * PartialFunction to handle commands when the Actor is in the [[Uninitialized]] state
    */
-  protected def initializing: Receive = {
-
-    val initialReceive: Receive = {
-
-      case cmd: Command =>
-        log.debug(s"Received creation cmd: $cmd")
-        val eventualEvents = interpreter.handleCommand(cmd)
-        val origSender = sender()
-
-        eventualEvents map {
-          events => SuccessfulCreation(events, origSender)
-        } recover {
-          case NonFatal(cause: DomainException) =>
-            FailedCommand(cause, origSender, Uninitialized)
-          case NonFatal(cause) =>
-            log.error(cause, s"Error while processing creational command: $cmd")
-            FailedCommand(cause, origSender, Uninitialized)
-        } pipeTo self
-
-        changeState(Busy)
-
-    }
-
-    // always compose with defaultReceive
-    initialReceive orElse defaultReceive
-  }
+  protected def uninitialized: Receive = receiving(None, Uninitialized)
 
   /**
    * PartialFunction to handle commands when the Actor is in the [[Available]] state
    */
-  protected def available: Receive = {
-
-    val availableReceive: Receive = {
-
-      case cmd: Command =>
-        log.debug(s"Received cmd: $cmd")
-        val eventualEvents = interpreter.handleCommand(aggregateOpt.get, cmd)
-        val origSender = sender()
-
-        eventualEvents.map {
-          events => SuccessfulUpdate(events, origSender)
-        } recover {
-          case NonFatal(cause: DomainException) =>
-            FailedCommand(cause, origSender, Available)
-          case NonFatal(cause) =>
-            log.error(cause, s"Error while processing update command: $cmd")
-            FailedCommand(cause, origSender, Available)
-        } pipeTo self
-
-        changeState(Busy)
-    }
-
-    // always compose with defaultReceive
-    availableReceive orElse defaultReceive
-  }
+  protected def available: Receive = receiving(aggregateOpt, Available)
 
   def onCommandFailure(failedCmd: FailedCommand): Unit = {
     failedCmd.origSender ! Status.Failure(failedCmd.cause)
@@ -107,8 +86,7 @@ class AggregateActor[A <: AggregateLike](
   private def busy: Receive = {
 
     case StateRequest(requester) => sendState(requester)
-    case SuccessfulCreation(events, origSender) => onSuccessfulCreation(events, origSender)
-    case SuccessfulUpdate(events, origSender) => onSuccessfulUpdate(events, origSender)
+    case Successful(events, origSender) => onSuccessful(events, origSender)
     case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
     case anyOther =>
@@ -127,6 +105,7 @@ class AggregateActor[A <: AggregateLike](
    * It will:
    * - apply the event on the aggregate effectively changing its state
    * - check if a snapshot needs to be saved.
+   *
    * @param evt DomainEvent that has been persisted
    */
   protected def afterEventPersisted(evt: Event): Unit = {
@@ -147,6 +126,7 @@ class AggregateActor[A <: AggregateLike](
 
   /**
    * send a message containing the aggregate's state back to the requester
+   *
    * @param replyTo actor to send message to
    */
   protected def sendState(replyTo: ActorRef): Unit = {
@@ -172,10 +152,10 @@ class AggregateActor[A <: AggregateLike](
     (aggregateOpt, event) match {
 
       // apply CreateEvent if not yet initialized
-      case (None, evt: Event) => Some(behavior.onEvent(evt))
+      case (None, evt: Event) => Some(behavior.onEvent(None, evt))
 
       // Update events are applied on current state
-      case (Some(aggregate), evt: Event) => Some(behavior.onEvent(aggregate, evt))
+      case (Some(aggregate), evt: Event) => Some(behavior.onEvent(Some(aggregate), evt))
 
       // Covers:
       // (Some, CreateEvent) and (None, UpdateEvent)
@@ -225,6 +205,7 @@ class AggregateActor[A <: AggregateLike](
 
   /**
    * restore the lifecycle and state of the aggregate from a snapshot
+   *
    * @param metadata snapshot metadata
    * @param state the state of the aggregate
    * @param data the data of the aggregate
@@ -240,7 +221,7 @@ class AggregateActor[A <: AggregateLike](
     this.state match {
       case Uninitialized =>
         log.debug(s"Initializing")
-        context become initializing
+        context become uninitialized
         unstashAll() // actually not need, but we never know :-)
 
       case Available =>
@@ -254,52 +235,12 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  /**
-   * When a Creation Command completes we must:
-   * - persist the event
-   * - apply the event, ie: create the aggregate
-   * - notify the original sender
-   */
-  private def onSuccessfulCreation(events: Events, origSender: ActorRef): Unit = {
+  private def onSuccessful(events: Events, origSender: ActorRef): Unit = {
+
+    //val aggregate = aggregateOpt.get
 
     // extra check! persist it only if a listener is defined for each event
-    if (behavior.canHandleEvents(events)) {
-
-      // forall on an empty Seq always returns 'true' !!!!
-      // and akka-persistence throw exception if an empty list of events are sent!
-      if (events.nonEmpty) {
-        persistAll(events) { evt =>
-          afterEventPersisted(evt)
-        }
-      }
-
-      origSender ! events
-
-    } else {
-
-      // collect events with listener
-      val badEventsNames = events.collect {
-        case e if !behavior.canHandleEvent(e) => e.getClass.getSimpleName
-      }
-      origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
-    }
-
-    changeState(Available)
-
-  }
-
-  /**
-   * When a Update Command completes we must:
-   * - persist the events
-   * - apply the events to the current aggregate state
-   * - notify the original sender
-   */
-  private def onSuccessfulUpdate(events: Events, origSender: ActorRef): Unit = {
-
-    val aggregate = aggregateOpt.get
-
-    // extra check! persist it only if a listener is defined for each event
-    if (behavior.canHandleEvents(events, aggregate)) {
+    if (behavior.canHandleEvents(events, aggregateOpt)) {
 
       // forall on an empty Seq always returns 'true' !!!!
       // and akka-persistence throw exception if an empty list of events are sent!
@@ -314,7 +255,7 @@ class AggregateActor[A <: AggregateLike](
 
       // collect events with listener
       val badEventsNames = events.collect {
-        case e if !behavior.canHandleEvent(e, aggregate) => e.getClass.getSimpleName
+        case e if !behavior.canHandleEvent(e, aggregateOpt) => e.getClass.getSimpleName
       }
       origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
     }
@@ -341,9 +282,11 @@ class AggregateActor[A <: AggregateLike](
   /**
    * Internal representation of a completed update command.
    */
-  private case class SuccessfulCreation(events: Events, origSender: ActorRef)
+  //  private case class SuccessfulCreation(events: Events, origSender: ActorRef)
+  //
+  //  private case class SuccessfulUpdate(events: Events, origSender: ActorRef)
 
-  private case class SuccessfulUpdate(events: Events, origSender: ActorRef)
+  private case class Successful(events: Events, origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef, state: State)
 

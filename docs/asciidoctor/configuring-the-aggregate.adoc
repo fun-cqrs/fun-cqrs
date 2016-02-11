@@ -1,0 +1,20 @@
+
+### Configuring the Aggregate
+
+In this last step we configure the **Akka Backend** with our **Lottery** aggregate. the configuration is quite straight forward.
+
+[source,scala]
+----
+import io.funcqrs.backend.akka.api._
+import akka.actor.ActorSystem
+import lottery.domain.model.Lottery
+import io.funcqrs.backend.akka.AggregateService
+
+include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lottery-actor]
+----
+(ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
+
+<1> We create an `AkkaBackend` in-place.
+<2> The `AkkaBackend` will start its own `ActorSystem`, but of course you can use your own `ActorSystem` by overriding `AkkaBackend.actorSystem`
+<3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **link:index.html#_projections[Projections]** section.
+<4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object.

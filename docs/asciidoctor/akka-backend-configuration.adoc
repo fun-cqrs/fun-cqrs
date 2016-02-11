@@ -1,0 +1,3 @@
+
+## Akka Backend Configuration
+TODO - check Lottery sample for the time being

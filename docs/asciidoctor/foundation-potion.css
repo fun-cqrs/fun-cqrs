@@ -675,3 +675,19 @@ b.conum * { color: inherit !important; }
 
 .sidebarblock { background: none; border: none; -webkit-box-shadow: 0 0 5px rgba(177, 0, 93, 0.5); box-shadow: 0 0 5px rgba(177, 0, 93, 0.5); }
 .sidebarblock > .content > .title { color: #181818; }
+
+
+.colist > table {
+	border-spacing: 0px 9px;
+  border-collapse: separate;
+}
+
+.colist > table > tbody > tr > td {
+	vertical-align: top;
+}
+
+.colist > table > tbody > tr > td > .conum {
+	margin-top: 6px;
+}
+
+

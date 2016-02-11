@@ -14,12 +14,14 @@ import scala.reflect.ClassTag
 
 trait FunCqrsTestSupport {
 
+  // @todo (lucd) not sure about deleting this one
+
   class End2EndTestSupport(projection: Projection, atMost: Duration = 3.seconds) extends WriteModelOps with ReadModelOps {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
 
       def newInstance(cmd: behavior.Command): Identity[RichTestAggregate[behavior.Aggregate]] = {
-        val (evts, aggregate) = sendCreateCommandInternal(behavior)(cmd)
+        val (evts, aggregate) = sendCommandsInternal(behavior)(immutable.Seq(), None, cmd)
 
         // TODO: we block for the moment, can be removed if projection returns F[_] instead of Future
         val projectionResult = sendToProjectionInternal(projection, evts)
@@ -30,13 +32,13 @@ trait FunCqrsTestSupport {
 
     }
 
-    case class RichTestAggregate[A <: AggregateLike](aggregate: A, behavior: Behavior[A]) extends WriteModelOps with ReadModelOps {
+    case class RichTestAggregate[A <: AggregateLike](optionalAggregate: Option[A], behavior: Behavior[A]) extends WriteModelOps with ReadModelOps {
 
-      def id: A#Id = aggregate.id
+      def id: A#Id = optionalAggregate.get.id
 
       def update(cmds: behavior.Command*): Identity[RichTestAggregate[A]] = {
 
-        val (evts, updatedAgg) = sendUpdateCommandsInternal(behavior)(immutable.Seq(), aggregate, cmds: _*)
+        val (evts, updatedAgg) = sendCommandsInternal(behavior)(immutable.Seq(), optionalAggregate, cmds: _*)
 
         // TODO: we block for the moment, can be removed if projection returns F[_] instead of Future
         val projectionResult = sendToProjectionInternal(projection, evts)
@@ -68,16 +70,16 @@ trait FunCqrsTestSupport {
 
     implicit class BehaviorOps[A <: AggregateLike](val behavior: Behavior[A]) {
 
-      def newInstance(cmd: behavior.Command): Identity[(behavior.Events, behavior.Aggregate)] = {
-        sendCreateCommandInternal(behavior)(cmd)
+      def newInstance(cmd: behavior.Command): Identity[(behavior.Events, Option[behavior.Aggregate])] = {
+        sendCommandsInternal(behavior)(immutable.Seq(), None, cmd)
       }
 
-      def sendCommands(cmd: behavior.Command, cmds: behavior.Command*): Identity[(behavior.Events, behavior.Aggregate)] = {
-        sendCommandsInternal(behavior)(cmd, cmds: _*)
+      def sendCommands(events: behavior.Events, cmd: behavior.Command, cmds: behavior.Command*): Identity[(behavior.Events, Option[behavior.Aggregate])] = {
+        sendCommandsInternal(behavior)(events, None, cmd :: cmds.toList: _*)
       }
 
-      def sendUpdateCommands(aggregate: behavior.Aggregate, cmds: behavior.Command*): Identity[(behavior.Events, behavior.Aggregate)] = {
-        sendUpdateCommandsInternal(behavior)(immutable.Seq(), aggregate, cmds: _*)
+      def sendUpdateCommands(events: behavior.Events, optionalAggregate: Option[behavior.Aggregate], cmds: behavior.Command*): Identity[(behavior.Events, Option[behavior.Aggregate])] = {
+        sendCommandsInternal(behavior)(events, optionalAggregate, cmds: _*)
       }
     }
   }
@@ -93,53 +95,30 @@ trait FunCqrsTestSupport {
 
   trait WriteModelOps {
 
-    protected def sendCreateCommandInternal[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command): Identity[(behavior.Events, behavior.Aggregate)] = {
-      val evts = IdentityInterpreter(behavior).handleCommand(cmd)
-
-      val agg = behavior.onEvent(evts.head)
-
-      val updatedAgg =
-        evts.tail.foldLeft(agg) {
-          case (currentAgg, evt) =>
-            behavior.onEvent(currentAgg, evt)
-        }
-
-      (evts, updatedAgg)
-    }
-    protected def sendCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(cmd: behavior.Command, cmds: behavior.Command*): Identity[(behavior.Events, behavior.Aggregate)] = {
-
-      val (evtsCreation, agg) = sendCreateCommandInternal(behavior)(cmd)
-
-      sendUpdateCommandsInternal(behavior)(evtsCreation, agg, cmds: _*)
-
-    }
-
-    protected def sendUpdateCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(
+    protected def sendCommandsInternal[A <: AggregateLike](behavior: Behavior[A])(
       events: behavior.Events,
-      aggregate: behavior.Aggregate,
+      optionalAggregate: Option[behavior.Aggregate],
       cmds: behavior.Command*
-    ): Identity[(behavior.Events, behavior.Aggregate)] = {
+    ): Identity[(behavior.Events, Option[behavior.Aggregate])] = {
 
       val interpreter = IdentityInterpreter(behavior)
 
       cmds.toList match {
         case head :: Nil =>
-          monad(interpreter.applyCommand(head, aggregate)).map {
-            case (evts, agg) =>
+          monad(interpreter.applyCommand(head, optionalAggregate)).map {
+            case (evts, aggOpt) =>
               // concat previous events with events from last command
-              val allEvents = events ++ evts
-              (allEvents, agg)
+              (events ++ evts, aggOpt)
           }
         case head :: tail =>
-          monad(interpreter.applyCommand(head, aggregate)).flatMap {
-            case (evts, agg) =>
-              // concat previous events with events from last command
-              val allEvents = events ++ evts
-              sendUpdateCommandsInternal(behavior)(allEvents, agg, tail: _*)
+          monad(interpreter.applyCommand(head, optionalAggregate)).flatMap {
+            case (evts, aggOpt) =>
+              sendCommandsInternal(behavior)(events ++ evts, aggOpt, tail: _*)
           }
-        case Nil => (events, aggregate)
+        case Nil => (events, optionalAggregate)
       }
     }
+
   }
 
 }

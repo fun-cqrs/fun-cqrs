@@ -2,6 +2,7 @@ package io.funcqrs.dsl
 
 import io.funcqrs._
 import io.funcqrs.behavior.{ FutureCommandHandlerInvoker, TryCommandHandlerInvoker, IdCommandHandlerInvoker, CommandHandlerInvoker }
+
 import io.funcqrs.interpreters._
 
 import scala.collection.immutable
@@ -12,6 +13,7 @@ import scala.util.{ Failure, Try }
 
 trait BindingSupport {
 
+  def bind[A <: AggregateLike]: Binding[A] = DefaultBinding[A]()
   def aggregate[A <: AggregateLike]: Binding[A] = DefaultBinding[A]()
 
   case class DefaultBinding[A <: AggregateLike](
@@ -138,4 +140,5 @@ trait BindingSupport {
       else None
     }
   }
+
 }

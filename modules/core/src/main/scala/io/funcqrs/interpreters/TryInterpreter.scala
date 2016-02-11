@@ -22,9 +22,9 @@ import scala.util.Try
  */
 class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Try] {
 
-  def handleCommand(cmd: Command): Try[Events] = {
+  def handleCommand(optionalAggregate: Option[A], cmd: Command): Try[Events] = {
 
-    behavior.handleCommand(cmd) match {
+    behavior.handleCommand(optionalAggregate, cmd) match {
       case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
       case TryCommandHandlerInvoker(handler) => handler(cmd)
       case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
@@ -32,15 +32,6 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
 
   }
 
-  def handleCommand(aggregate: A, cmd: Command): Try[Events] = {
-
-    behavior.handleCommand(aggregate, cmd) match {
-      case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
-      case TryCommandHandlerInvoker(handler) => handler(cmd)
-      case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
-    }
-
-  }
 }
 
 object TryInterpreter {

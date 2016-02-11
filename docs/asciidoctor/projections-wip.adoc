@@ -1,0 +1,7 @@
+
+## Projections
+So far we have seen how we define and work with Aggregates (the write model). In this section we show how to define **Projections** to generate the read model.
+
+A **Projection** is nothing more than an event store query and a event listener to react to each `Event` produced by the query. That said, **Projections** are not only useful for generating read models (aka Views). We can also use **projections** for **Sagas** for instance where `Events` coming from one Aggregate are produces `Commands` on another Aggregate.
+
+### AkkaBackend Projections
