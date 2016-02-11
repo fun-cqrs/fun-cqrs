@@ -21,7 +21,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
 
   def onEvent(optionalAggregate: Option[Aggregate], evt: Event): A = behavior.onEvent(optionalAggregate, evt)
 
-  def applyCommand(cmd: Command, optionalAggregate: Option[Aggregate])(implicit monadsOps: MonadOps[F]): F[(Events, Option[A])] = {
+  def applyCommand(cmd: Command, optionalAggregate: Option[Aggregate]): F[(Events, Option[A])] = {
     monad(handleCommand(optionalAggregate, cmd)).map { evts: Events =>
       val optionalAgg = evts.foldLeft(optionalAggregate) {
         case (optAggregate, evt) =>
