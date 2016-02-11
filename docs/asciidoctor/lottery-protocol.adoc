@@ -1,0 +1,30 @@
+
+
+### Lottery Protocol
+
+Next we define a Protocol for a Lottery.
+
+A `Protocol` is the set of `Commands` and `Events` for a given Aggregate. An Aggregate can only receive `Commands` from its `Protocol`. Its command handlers can only emit `Events` that belong to this same `Protocol`. And finally, event listeners that will instantiate or update an `Aggregate` can only react to `Events` define by the `Protocol`.
+
+Therefore, an Aggregate's Protocol defines the totallity of operations and effects of a given Aggregate.
+
+The code below demonstrates how to define a protocol.
+
+[source,scala]
+----
+import io.funcqrs._
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-protocol]
+----
+(ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
+
+<1> A Protocol is defined as a Scala object (not a class) and it extends the trait `io.funcqrs.ProtocolLike`. +
+`ProtocolLike` trait brings two new traits in scope: `ProtocolCommand` and `ProtocolEvent`.
+<2> Each Lottery Command extends `ProtocolCommand` via sealed trait `LotteryCommnad`.
+<3> Each Lottery Event extends `ProtocolEvent` via sealed trait `LotteryEvent`. +
+`LotteryEvent` is enriched (via `MetadataFacet`) with `LotteryMetadata`.
+The `LotteryMetadata` has some basic information about the event, for instance:
+<4> The `AggregateId` for each it was generated.
+<5> The `CommandId` that originated the `Event`.
+<6> A unique `EventId`.
+<7> The event date time.
+<8> One or more `Tags`  (we'll see later why tagging is important).

@@ -27,12 +27,8 @@
 <li><a href="#_using_the_aggregate">Using the Aggregate</a></li>
 </ul>
 </li>
-<li><a href="#_projections">Projections</a>
-<ul class="sectlevel2">
-<li><a href="#_akkabackend_projections">AkkaBackend Projections</a></li>
-</ul>
-</li>
-<li><a href="#_akka_configuration">Akka Configuration</a></li>
+<li><a href="#_projections">Projections</a></li>
+<li><a href="#_akka_backend_configuration">Akka Backend Configuration</a></li>
 <li><a href="#_testing">Testing</a></li>
 <li><a href="#_project_information">Project Information</a>
 <ul class="sectlevel2">
@@ -99,7 +95,7 @@
 <div class="sect2">
 <h3 id="_type_safe_ids">Type-safe IDs</h3>
 <div class="paragraph">
-<p><strong>Fun.CQRS</strong> uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific ID type to be used by the system. As such, we avoid ID clashing. It also provides better logging as we can clear see in the logs from each aggregate it comes from.</p>
+<p><strong>Fun.CQRS</strong> uses type-safe IDs for aggregates. The ID itself must be of type String, but it must be wrapped in a aggregate specific ID type to be used by the system. As such, we avoid ID clashing and it provides better logging as we can clearly see in the logs from each aggregate it comes from.</p>
 </div>
 <div class="paragraph">
 <p>First we define a type representing the Aggregate ID. We define it by extending the trait <code>io.funcqrs.AggregateId</code>.</p>
@@ -183,7 +179,7 @@
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>A Protocol is defined as a Scala object (not a class) and it extends the trait <code>ProtocolLike</code>.
+<td>A Protocol is defined as a Scala object (not a class) and it extends the trait <code>io.funcqrs.ProtocolLike</code>.<br>
 <code>ProtocolLike</code> trait brings two new traits in scope: <code>ProtocolCommand</code> and <code>ProtocolEvent</code>.</td>
 </tr>
 <tr>
@@ -192,7 +188,7 @@
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Each Lottery Event extends <code>ProtocolEvent</code> via sealed trait <code>LotteryEvent</code>.
+<td>Each Lottery Event extends <code>ProtocolEvent</code> via sealed trait <code>LotteryEvent</code>.<br>
 <code>LotteryEvent</code> is enriched (via <code>MetadataFacet</code>) with <code>LotteryMetadata</code>.
 The <code>LotteryMetadata</code> has some basic information about the event, for instance:</td>
 </tr>
@@ -582,19 +578,12 @@ The <code>LotteryMetadata</code> has some basic information about the event, for
 <h2 id="_projections">Projections</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>So far we have seen how we define and work with Aggregates (the write model). In this section we show how to define <strong>Projections</strong> to generate the read model.</p>
-</div>
-<div class="paragraph">
-<p>A <strong>Projection</strong> is nothing more than an event store query and a event listener to react to each <code>Event</code> produced by the query. That said, <strong>Projections</strong> are not only useful for generating read models (aka Views). We can also use <strong>projections</strong> for <strong>Sagas</strong> for instance where <code>Events</code> coming from one Aggregate are produces <code>Commands</code> on another Aggregate.</p>
-</div>
-<div class="sect2">
-<h3 id="_akkabackend_projections">AkkaBackend Projections</h3>
-
+<p>TODO - check Lottery sample for the time being</p>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_akka_configuration">Akka Configuration</h2>
+<h2 id="_akka_backend_configuration">Akka Backend Configuration</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>TODO - check Lottery sample for the time being</p>
@@ -669,7 +658,7 @@ language governing permissions and limitations under the License.</p>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2016-02-10 23:24:53 CET
+Last updated 2016-02-11 09:55:42 CET
 </div>
 </div>
 </body>
