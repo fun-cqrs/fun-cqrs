@@ -2,6 +2,7 @@ package io.funcqrs.akka
 
 import akka.actor.Stash
 import akka.persistence._
+import io.funcqrs.akka.PersistedOffsetAkka.LastProcessedEventOffset
 
 import scala.concurrent.{ Promise, Future }
 import scala.util.control.NonFatal
@@ -49,12 +50,12 @@ trait PersistedOffsetCustom extends OffsetPersistence {
 }
 
 /**
- * Persist Offset as snapshot in akka-persistence
+ * Persist Last Processed Event Offset as Projection Event in akka-persistence
  *
  * This implementation is a quick win for those that simply want to persist the offset without caring about
  * the persistence layer.
  *
- * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
+ * However, the drawback is that most (if not all) akka-persistence plugins will
  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
  */
 trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with Stash {
@@ -69,38 +70,48 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with St
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      log.debug(s"[$persistenceId] snapshot offer - lastProcessedOffset $offset")
+      log.debug(s"[$persistenceId] snapshot offer - last processed event offset $offset")
       lastProcessedOffset = Some(offset)
 
+    case LastProcessedEventOffset(offset) =>
+      log.debug(s"[$persistenceId] - last processed event offset $offset")
+      lastProcessedOffset = Option(offset)
+
     case _: RecoveryCompleted =>
-      log.debug(s"[$persistenceId] recovery completed - lastProcessedOffset $lastProcessedOffset")
+      log.debug(s"[$persistenceId] recovery completed - last processed event offset $lastProcessedOffset")
       recoveryCompleted()
 
     case unknown => log.debug(s"Unknown message on recovery: $unknown")
+
   }
 
   def saveCurrentOffset(offset: Long): Future[Unit] = {
-    saveSnapshot(offset)
-    val snapshotPromise = Promise[Unit]()
-    // switch behavior but preserve previous Receive function so we can properly unbecome
-    context.become(waitSnapshotConfirmation(snapshotPromise), discardOld = false)
-    snapshotPromise.future
+
+    // we need to conform with OffsetPersistence API and return a Future[Unit]
+    // Seems odd, but thet ProjectionActor that may get this trait mixed in
+    // is not aware (and should not be aware) that this trait makes him a PersistentActor
+    val saveOffsetPromise = Promise[Unit]()
+
+    persist(LastProcessedEventOffset(offset)) { evt =>
+
+      log.debug(s"Projection: $persistenceId - saving domain event offset $offset")
+      val seqNrToDelete = lastSequenceNr - 1
+
+      // delete old message if any, no need to wait
+      if (seqNrToDelete > 0) {
+        log.debug(s"Projection: $persistenceId - deleting previous projection event: $seqNrToDelete")
+        deleteMessages(seqNrToDelete)
+      }
+
+      lastProcessedOffset = Option(offset)
+      saveOffsetPromise.success(())
+    }
+
+    saveOffsetPromise.future
   }
 
-  def waitSnapshotConfirmation(promise: Promise[Unit]): Receive = {
+}
 
-    case SaveSnapshotSuccess(_) =>
-      log.debug(s"[$persistenceId] snapshot saved")
-      promise.success(()) // snapshot saved! we can fulfil the Promise
-      context.unbecome()
-      unstashAll() // resume consuming DomainEvents
-
-    case SaveSnapshotFailure(_, e) =>
-      // can't do much in case of failure. Better to restart ProjectionActor
-      promise.failure(e) // probably not that useful
-      throw e
-
-    // stash any other msg
-    case _ => stash()
-  }
+object PersistedOffsetAkka {
+  case class LastProcessedEventOffset(offset: Long)
 }

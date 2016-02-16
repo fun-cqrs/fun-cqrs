@@ -9,13 +9,18 @@
 :pygments-linenums-mode: inline
 
 include::introduction.adoc[]
+
 include::usage-example.adoc[]
-include::lottery-protocol.adoc[]
-include::coding-the-aggregate.adoc[]
-include::aggregate-behavior.adoc[]
-include::configuring-the-aggregate.adoc[]
-include::using-the-aggregate.adoc[]
+	include::lottery-protocol.adoc[]
+	include::coding-the-aggregate.adoc[]
+	include::aggregate-behavior.adoc[]
+	include::configuring-the-aggregate.adoc[]
+	include::using-the-aggregate.adoc[]
+
 include::projections.adoc[]
+
 include::akka-backend-configuration.adoc[]
+
 include::testing.adoc[]
+
 include::project-info.adoc[]

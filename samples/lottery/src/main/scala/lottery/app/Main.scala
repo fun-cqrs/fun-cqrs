@@ -42,7 +42,7 @@ object Main extends App {
         query = QueryByTag(Lottery.tag),
         projection = new LotteryViewProjection(lotteryViewRepo),
         name = "LotteryViewProjection"
-      )
+      ).withBackendOffsetPersistence()
     }
 
   // tag::lottery-run[]
