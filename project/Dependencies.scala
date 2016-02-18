@@ -20,7 +20,7 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion               =   "2.4.2-RC2"
+  val akkaVersion               =   "2.4.2"
   val akkaActor                 =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
   
   val akkaPersistence           =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
