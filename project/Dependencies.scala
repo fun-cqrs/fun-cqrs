@@ -19,7 +19,7 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion           =   "2.4.0"
+  val akkaVersion           =   "2.4.2"
   val akkaActor             =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
   val akkaPersistence       =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
   val akkaSlf4j             =   "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion
@@ -28,7 +28,7 @@ object Dependencies {
   val levelDb               =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"
   val levelDbJNI            =   "org.fusesource.leveldbjni"   %   "leveldbjni-all"    % "1.8"
 
-  val akkaStreams           =   "com.typesafe.akka"           %%  "akka-stream-experimental"            % "1.0"
+  val akkaStreams           =   "com.typesafe.akka"           %%  "akka-stream"       % akkaVersion
   val akkaPersistenceQuery  =   "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion
 
   val akkaDeps = Seq(

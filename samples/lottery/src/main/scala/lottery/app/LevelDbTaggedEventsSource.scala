@@ -1,5 +1,6 @@
 package lottery.app
 
+import akka.NotUsed
 import akka.actor.Actor
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
 import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
@@ -11,6 +12,7 @@ trait LevelDbTaggedEventsSource extends EventsSourceProvider {
   this: Actor =>
 
   /** The [[Tag]] to query events. Only events tagged with this [[Tag]] will be returned.
+ *
     * @return
     */
   def tag: Tag
@@ -20,7 +22,7 @@ trait LevelDbTaggedEventsSource extends EventsSourceProvider {
     * @param offset - initial offset to start read from
     * @return
     */
-  def source(offset: Long): Source[EventEnvelope, Unit] = {
+  def source(offset: Long): Source[EventEnvelope, NotUsed] = {
 
     val readJournal =
       PersistenceQuery(context.system)
