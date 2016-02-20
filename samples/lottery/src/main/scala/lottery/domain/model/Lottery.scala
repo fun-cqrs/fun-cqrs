@@ -155,7 +155,7 @@ object Lottery {
           // Commands bellow will generate events #<4>
 
           // running a lottery 
-          .handler { 
+          .handler {
             cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
           }
           .listener {

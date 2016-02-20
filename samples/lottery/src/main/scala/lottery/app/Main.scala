@@ -35,16 +35,16 @@ object Main extends App {
       aggregate[Lottery](Lottery.behavior) // #<4>
     }
   // end::lottery-actor[]
-  
+
   // tag::lottery-projection[]
   val lotteryViewRepo = new LotteryViewRepo
   backend.configure { // projection config - read model
-      projection(
-        query = QueryByTag(Lottery.tag), // #<1>
-        projection = new LotteryViewProjection(lotteryViewRepo), // #<2>
-        name = "LotteryViewProjection" // #<3>
-      ).withBackendOffsetPersistence() // #<4>
-    }
+    projection(
+      query = QueryByTag(Lottery.tag), // #<1>
+      projection = new LotteryViewProjection(lotteryViewRepo), // #<2>
+      name = "LotteryViewProjection" // #<3>
+    ).withBackendOffsetPersistence() // #<4>
+  }
   // end::lottery-projection[]
 
   // tag::lottery-run[]

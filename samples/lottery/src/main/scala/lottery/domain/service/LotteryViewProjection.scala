@@ -13,11 +13,11 @@ import scala.concurrent.Future
 class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
 
   def handleEvent: HandleEvent = {
-    
-    case e: LotteryCreated => 
+
+    case e: LotteryCreated =>
       repo.save(LotteryView(name = e.name, id = e.metadata.aggregateId))
-    
-    case e: LotteryUpdateEvent => update(e)
+
+    case e: LotteryUpdateEvent =>
       repo.updateById(e.metadata.aggregateId) { lot =>
         updateFunc(lot, e)
       }.map(_ => ())
@@ -25,14 +25,14 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
 
   private def updateFunc(view: LotteryView, evt: LotteryUpdateEvent): LotteryView = {
     evt match {
-      
-      case e: ParticipantAdded => 
+
+      case e: ParticipantAdded =>
         view.copy(participants = view.participants :+ newParticipant(e))
-      
-      case e: WinnerSelected => 
+
+      case e: WinnerSelected =>
         view.copy(winner = Some(e.winner), runDate = Some(e.date))
-      
-      case e: ParticipantRemoved => 
+
+      case e: ParticipantRemoved =>
         view.copy(participants = view.participants.filter(_.name != e.name))
     }
   }
