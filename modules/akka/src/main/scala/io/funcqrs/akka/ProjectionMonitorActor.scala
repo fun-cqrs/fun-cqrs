@@ -4,18 +4,18 @@ import java.util.UUID
 
 import akka.actor._
 import akka.event.{ ActorEventBus, LookupClassification }
+import akka.pattern.BackoffSupervisor
 import io.funcqrs.CommandId
-import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
-import io.funcqrs.akka.ProjectionMonitorActor._
 import io.funcqrs.DomainEvent
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
-/** Parent actor for all ProjectionActors
-  */
+/**
+ * Parent actor for all ProjectionActors
+ */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
@@ -44,25 +44,38 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   def receive = {
     // start new projections child on demand
-    case CreateProjection(props, name)                   => createNewProjection(props, name)
+    case CreateProjection(props, name) => createNewProjection(props, name)
 
     // receive status from child projection
     // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent                                => receivedEventFromProjection(evt)
+    case evt: DomainEvent => receivedEventFromProjection(evt)
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
 
     // child EventsMonitor is ready, can be removed
-    case RemoveMe(eventsMonitor)                         => removeEventMonitor(eventsMonitor)
+    case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
 
-    case anyOther                                        => log.warning(s"Unknown message: $anyOther")
+    case anyOther => log.warning(s"Unknown message: $anyOther")
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {
     log.debug(s"initializing new projection action $name")
-    val projectionActor = context.actorOf(props, name)
-    sender() ! projectionActor // send projection actor back
+
+    val supervisorProps =
+      BackoffSupervisor.props(
+        childProps = props,
+        childName = s"${name}-supervised",
+        // wait at least 10 seconds to restart
+        minBackoff = 10.seconds, // TODO: move to config
+        // wait at most 5 minutes to restart
+        maxBackoff = 5.minutes, // TODO: move to config
+        randomFactor = 0.0 // TODO: move to config
+      )
+
+    val projectionSupervisor = context.actorOf(supervisorProps, name)
+
+    sender() ! projectionSupervisor // send projection actor back
   }
 
   private def receivedEventFromProjection(evt: DomainEvent): Unit = {
