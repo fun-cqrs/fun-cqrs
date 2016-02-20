@@ -16,8 +16,7 @@ import scala.util.{ Failure, Success }
 
 object Main extends App {
 
-  // tag::lottery-actor[]
-
+  // tag::akka-backend[]
   val backend = new AkkaBackend { // #<1>
 
     // override this val in order to use another ActorSystem
@@ -29,21 +28,24 @@ object Main extends App {
       }
     }
   }
-
-  val lotteryViewRepo = new LotteryViewRepo
-
+  // end::akka-backend[]
+  // tag::lottery-actor[]
   backend
     .configure { // aggregate config - write model
       aggregate[Lottery](Lottery.behavior) // #<4>
     }
-    // end::lottery-actor[]
-    .configure { // projection config - read model
+  // end::lottery-actor[]
+  
+  // tag::lottery-projection[]
+  val lotteryViewRepo = new LotteryViewRepo
+  backend.configure { // projection config - read model
       projection(
-        query = QueryByTag(Lottery.tag),
-        projection = new LotteryViewProjection(lotteryViewRepo),
-        name = "LotteryViewProjection"
-      ).withBackendOffsetPersistence()
+        query = QueryByTag(Lottery.tag), // #<1>
+        projection = new LotteryViewProjection(lotteryViewRepo), // #<2>
+        name = "LotteryViewProjection" // #<3>
+      ).withBackendOffsetPersistence() // #<4>
     }
+  // end::lottery-projection[]
 
   // tag::lottery-run[]
   implicit val timeout = Timeout(3.seconds)

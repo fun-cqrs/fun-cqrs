@@ -493,6 +493,10 @@ p.tableblock { font-size: 1em; }
 
 td > div.verse { white-space: pre; }
 
+.sect2 + .sect2 {
+    border-top: 1px solid #cccccc;
+}
+
 ol { margin-left: 1.75em; }
 
 ul li ol { margin-left: 1.5em; }

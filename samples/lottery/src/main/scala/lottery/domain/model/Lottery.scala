@@ -134,7 +134,7 @@ object Lottery {
 
         bind[Lottery]
           // Some guard clauses.
-          // Commands bellow won't generate events, but be reject with an exception
+          // Commands bellow won't generate events, but will be rejected with an exception
           .reject { // #<3>
             // no command can be accepted after having selected a winner
             case anyCommand if lottery.hasWinner =>
@@ -151,10 +151,11 @@ object Lottery {
               new IllegalArgumentException(s"Participant ${cmd.name} already added!")
           }
 
-          // Logic to update a lottery. Commands bellow will generate events
+          // Logic to update a lottery. 
+          // Commands bellow will generate events #<4>
 
-          // running a lottery
-          .handler { // #<4>
+          // running a lottery 
+          .handler { 
             cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
           }
           .listener {

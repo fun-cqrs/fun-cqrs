@@ -2,6 +2,7 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 
+//tag::lottery-view[]
 case class LotteryView(
     name: String,
     participants: List[LotteryView.Participant] = List(),
@@ -27,3 +28,4 @@ case class LotteryView(
 object LotteryView {
   case class Participant(name: String, date: OffsetDateTime)
 }
+//end::lottery-view[]
