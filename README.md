@@ -1,36 +1,39 @@
 # Fun.CQRS
 
-Small library for building CQRS application using Scala in combination with Akka.
+
+**Fun.CQRS** is a Scala library for building CQRS/ES application. It provides the basic blocks to build event driven aggregates with **Event Sourcing**.
+
+**Fun.CQRS** provides a out-of-the-box `AkkaBackend` and a `InMemoryBackend` for testing. However, it's designed as such that other backend implementations are possible. For instance, an alternative Akka backend based on https://github.com/RBMHTechnology/eventuate[Eventuate, window="_blank"], a Slick backend or RxScala backend could be implementated and plugged in easily.
+
+When using the `AkkaBackend`, Aggregates are immutable classes (case class) that live inside an `Actor`. You don't have to deal much with Akka and it's powerful abstractions, instead you concentrate in modeling your aggregate behavior and its protocol (`Commands` and `Events`). However you still need a minimal understanding of how Akka works and how to configure Akka Persistence to use your persistence plugin of choice.
+
+That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate state and generate read models through  **Event Projections**
+
 
 [![Build Status](https://travis-ci.org/strongtyped/fun-cqrs.svg?branch=develop)](https://travis-ci.org/strongtyped/fun-cqrs)
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
-
-## Under Development
-
-**Fun.CQRS**  is under development. We are experimenting with different APIs and techniques. Therefore, things may break when updating the version. Make sure you follow the changes and check the sample app before upgrading. The sample app will always reflect the current state of the API.
 
 ## Project artifact
 
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.3.0-SNAPSHOT"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.3.0"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
-The core module does NOT include the Akka backend.
+The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.3.0-SNAPSHOT"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.3.0"
 ```
 
 ## Documentation
 
-Documentation is in the process of being written.  
-A preview is available [here](http://www.funcqrs.io).
+The documentation is published [here](http://www.funcqrs.io).
 
-For the moment the best way to learn how to use Fun.CQRS is to check the lottery sample under fun-cqrs/samples/lottery.
+There is also a sample application  under fun-cqrs/samples/lottery.
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
 
