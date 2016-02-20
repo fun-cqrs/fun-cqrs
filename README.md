@@ -1,6 +1,8 @@
 # Fun.CQRS
 
 
+[![Build Status](https://travis-ci.org/strongtyped/fun-cqrs.svg?branch=develop)](https://travis-ci.org/strongtyped/fun-cqrs) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+
 **Fun.CQRS** is a Scala library for building CQRS/ES application. It provides the basic blocks to build event driven aggregates with **Event Sourcing**.
 
 **Fun.CQRS** provides a out-of-the-box `AkkaBackend` and a `InMemoryBackend` for testing. However, it's designed as such that other backend implementations are possible. For instance, an alternative Akka backend based on [Eventuate](https://github.com/RBMHTechnology/eventuate), a Slick backend or RxScala backend could be implementated and plugged in easily.
@@ -9,10 +11,6 @@ When using the `AkkaBackend`, Aggregates are immutable classes (case class) that
 
 That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate state and generate read models through  **Event Projections**
 
-
-[![Build Status](https://travis-ci.org/strongtyped/fun-cqrs.svg?branch=develop)](https://travis-ci.org/strongtyped/fun-cqrs)
-
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 ## Project artifact
 
