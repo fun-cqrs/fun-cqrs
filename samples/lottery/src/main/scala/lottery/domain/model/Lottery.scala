@@ -2,9 +2,9 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 import java.util.UUID
+
 import io.funcqrs._
-import io.funcqrs.behavior.Behavior
-import io.funcqrs.dsl.BehaviorDsl.api._
+import io.funcqrs.behavior._
 
 import scala.util.Random
 
@@ -35,10 +35,77 @@ case class Lottery(
   def hasWinner = winner.isDefined
 
   def hasNoParticipants = participants.isEmpty
+  def hasParticipants = participants.nonEmpty
 
   def hasParticipant(name: String) = participants.contains(name)
 
   def isNewParticipant(name: String) = !hasParticipant(name)
+
+  import LotteryProtocol._
+
+  def metadata(cmd: LotteryCommand) = {
+    Lottery.metadata(id, cmd)
+  }
+
+  def rejectRunningWithoutParticipants =
+    action[Lottery]
+      .reject {
+        // can't run if there is no participants
+        case _: Run.type if this.hasNoParticipants =>
+          new IllegalArgumentException("Lottery has no participants")
+      }
+
+  def rejectDoubleBooking =
+    action[Lottery]
+      .reject {
+        // can't add participant twice
+        case cmd: AddParticipant if this.hasParticipant(cmd.name) =>
+          new IllegalArgumentException(s"Participant ${cmd.name} already added!")
+      }
+
+  // adding participant
+  def acceptSubscriptions =
+    actions[Lottery]
+      .handleCommand {
+        cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
+      }
+      .handleEvent {
+        evt: ParticipantAdded => this.addParticipant(evt.name)
+      }
+
+  // running a lottery
+  def runTheLottery =
+    actions[Lottery]
+      .handleCommand {
+        cmd: Run.type => WinnerSelected(selectParticipant(), metadata(cmd))
+      }
+      .handleEvent {
+        evt: WinnerSelected => this.copy(winner = Option(evt.winner))
+      }
+
+  def removingParticipants =
+    actions[Lottery]
+      // removing participants (single or all) produce ParticipantRemoved events
+      .handleCommand {
+        cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
+      }
+      .handleCommand.manyEvents {
+        // will produce a List[ParticipantRemoved]
+        cmd: RemoveAllParticipants.type =>
+          this.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
+      }
+      .handleEvent {
+        evt: ParticipantRemoved => this.removeParticipant(evt.name)
+      }
+
+  def rejectAllCommands = {
+    action[Lottery]
+      .reject {
+        // no command can be accepted after having selected a winner
+        case anyCommand if this.hasWinner =>
+          new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is ${winner.get}")
+      }
+  }
 }
 
 // end::lottery-aggregate[]
@@ -49,7 +116,7 @@ case class LotteryId(value: String) extends AggregateId
 // end::lottery-id[]
 
 object LotteryId {
-  /** build a LotterId from a String */
+  /** build a LotteryId from a String */
   def fromString(aggregateId: String): LotteryId = LotteryId(aggregateId)
 
   /** generate a random LotteryId */
@@ -112,78 +179,37 @@ object Lottery {
   // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
 
+  def metadata(lotteryId: LotteryId, cmd: LotteryCommand) = {
+    LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
+  }
+
+  def createLottery(lotteryId: LotteryId) =
+    actions[Lottery]
+      .handleCommand {
+        cmd: CreateLottery => LotteryCreated(cmd.name, metadata(lotteryId, cmd))
+      }
+      .handleEvent {
+        evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
+      }
+
   def behavior(lotteryId: LotteryId): Behavior[Lottery] = {
 
-    // convenient method for building LotteryMetatadata
-    def metadata(cmd: LotteryCommand) = {
-      LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
-    }
+    case Uninitialized(id) => createLottery(id)
 
-    behaviorOf[Lottery] when {
+    case Initialized(lottery) if lottery.hasWinner => lottery.rejectAllCommands
 
-      case Uninitialized => // #<1>
+    case Initialized(lottery) if lottery.hasNoParticipants =>
+      lottery.rejectRunningWithoutParticipants ++
+        lottery.acceptSubscriptions
 
-        bind[Lottery]
-          .handler {
-            cmd: CreateLottery => LotteryCreated(cmd.name, metadata(cmd))
-          } listener {
-            evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
-          }
-
-      case Initialized(lottery) => // #<2>
-
-        bind[Lottery]
-          // Some guard clauses.
-          // Commands bellow won't generate events, but will be rejected with an exception
-          .reject { // #<3>
-            // no command can be accepted after having selected a winner
-            case anyCommand if lottery.hasWinner =>
-              new IllegalArgumentException("Lottery has already a winner!")
-          }
-          .reject {
-            // can't run if there is no participants
-            case _: Run.type if lottery.hasNoParticipants =>
-              new IllegalArgumentException("Lottery has no participants")
-          }
-          .reject {
-            // can't add participant twice
-            case cmd: AddParticipant if lottery.hasParticipant(cmd.name) =>
-              new IllegalArgumentException(s"Participant ${cmd.name} already added!")
-          }
-
-          // Logic to update a lottery. 
-          // Commands bellow will generate events #<4>
-
-          // running a lottery 
-          .handler {
-            cmd: Run.type => WinnerSelected(lottery.selectParticipant(), metadata(cmd))
-          }
-          .listener {
-            evt: WinnerSelected => lottery.copy(winner = Option(evt.winner))
-          }
-
-          // adding participant
-          .handler {
-            cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
-          }
-          .listener {
-            evt: ParticipantAdded => lottery.addParticipant(evt.name)
-          }
-
-          // removing participants (single or all) produce ParticipantRemoved events
-          .handler {
-            cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
-          }
-          .handler.manyEvents { // #<5>
-            // will produce a List[ParticipantRemoved]
-            cmd: RemoveAllParticipants.type =>
-              lottery.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
-          }
-          .listener {
-            evt: ParticipantRemoved => lottery.removeParticipant(evt.name)
-          }
-    }
+    case Initialized(lottery) if lottery.hasParticipants =>
+      lottery.rejectDoubleBooking ++
+        lottery.acceptSubscriptions ++
+        lottery.removingParticipants ++
+        lottery.runTheLottery
   }
 }
+
+class LotteryHasAlreadyAWinner(msg: String) extends RuntimeException(msg)
 
 // end::lottery-behavior[]

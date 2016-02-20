@@ -1,7 +1,7 @@
 package io.funcqrs.interpreters
 
 import io.funcqrs.AggregateLike
-import io.funcqrs.behavior.{ Behavior, FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
+import io.funcqrs.behavior._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, _ }
@@ -22,14 +22,12 @@ import scala.util.Try
  */
 class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Try] {
 
-  def handleCommand(optionalAggregate: Option[A], cmd: Command): Try[Events] = {
-
-    behavior.handleCommand(optionalAggregate, cmd) match {
+  def handleCommand(state: State[A], cmd: Command): Try[Events] = {
+    behavior(state).onCommand(cmd) match {
       case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
       case TryCommandHandlerInvoker(handler) => handler(cmd)
       case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
     }
-
   }
 
 }

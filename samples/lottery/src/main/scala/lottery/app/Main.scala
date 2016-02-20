@@ -1,17 +1,17 @@
 package lottery.app
 
-import akka.actor.ActorSystem
 import akka.util.Timeout
 import io.funcqrs.akka.EventsSourceProvider
-import io.funcqrs.akka.backend.{ AggregateActorRef, AkkaBackend }
+import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.{ Query, QueryByTag }
 import io.funcqrs.config.api._
-import lottery.domain.model.{ Lottery, LotteryId }
 import lottery.domain.model.LotteryProtocol._
+import lottery.domain.model.{ Lottery, LotteryId }
 import lottery.domain.service.{ LevelDbTaggedEventsSource, LotteryViewProjection, LotteryViewRepo }
+
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
+import scala.concurrent.{ Await, Future }
 import scala.util.{ Failure, Success }
 
 object Main extends App {
