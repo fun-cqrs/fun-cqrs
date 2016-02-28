@@ -124,6 +124,7 @@ The next step is to code the  aggregate itself.
 ----
 import io.funcqrs.AggregateLike
 include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-aggregate]
+}
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
@@ -143,16 +144,32 @@ For this example we will keep it as a mere data container of the aggregate state
 
 ### Aggregate Behavior
 
-Up to now, we have an Aggregate with a type-safe **Id** and its **Protocol** defining all possible `Commands` and `Events`, but we still need to bind each `Command` to the right operation in the aggregate, let it produces the right `Events` and react to the `Events` accordingly. That all respecting the invariants of the `Lottery` aggregate.
+Up to now, we have an Aggregate with a type-safe **Id** and its **Protocol** defining all possible `Commands` and `Events`, but we still need to define how each `Command` will be handled, how the `Events` will be generated and how it will react to each `Events`. That all respecting the invariants of the `Lottery` aggregate.
 
-The `Behavior` can be defined by means of a declarative **DSL**. It is defined in terms of `Bindings`. A `Binding` describe the different **Command Handlers** and **Event Listerners**.
+We need to define the Lottery's **Behavior**. +
+A `Behavior` itself is just a `PartialFunction` from `State[A] => Actions[A]` where A is the aggregate type (the Lottery in this example), `State` is whether `Unitialized` or `Initialized` and `Actions` is the set of **Command Handlers** and **Event Handlers** that are applicable for a given `State`.
 
 There are two kinds of **Command Handlers**. Handlers that produce `Events` and handlers that reject commands, also know as 'guard clauses'.
 
-We also make a distinction between `Commands` and `Events` that instantiate an Aggregate (creational `Commands` and `Events`) and those that must be validated against an existing Aggregate instance (update `Commands` and `Events`). This is done by defining the `Bindings` for both situations. We have `Bindings` for when the aggregate is `Uninitialized` and for when it's already `Initialized`.
-
 
 The code below demonstrate how we can build a `Behavior` with the help of the **Behavior DSL**.
+
+But before we start we will revisit the `Lottery` aggregate and add some methods returning `Actions` that we can compose and use when defining the final `Behavior`.
+
+We define some **Command Handlers** that reject a command based on the `Command` data or/and aggregate state.
+[source,scala]
+----
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-aggregate-guards]
+----
+
+Followed by some `Actions` defining **Command Handlers** and **Event Handlers** covering the remaing operations of a `Lottery`.
+[source,scala]
+----
+include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[tags=lottery-aggregate-actions]
+----
+
+The `Behavior` can now be defined as a `PartialFunction` from different `States`: `Unitialized` and many variations of `Initialized` to `Actions`.
+
 
 [source,scala]
 ----
@@ -162,12 +179,10 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
-<1> `Uninitialized` case defines **Command Handlers** and **Event Listeners** responsible for initialising a `Lottery` aggregate. You can defined as many as you want, but typically there is only one **handler** and one **listener**.
-<2> `Initialized` case defines **Command Handlers** and **Event Listeners** responsible for updating an existent Aggregate instance. Note that the current lottery state is made available in scope by pattern machting on `Initialized(lottery)`.
-<3> `reject` handlers are **command handlers** that reject a `Command` if a given condition is fulfilled. Note that `reject` handlers are defined using `PartialFunctions` and typically they include a 'guard' per case.
-<4> Different **Command Handlers** and **Event Listeners** may be defined.
-<5> In some situations, an `Command` may produce more than one `Event`. In that case, we must call `handler.manyEvents` instead an pass a function that returns a `List[Event]`
-
+<1> The creation case is a special one. It plays the rol of Aggregate Factory and therfore cannot be defined in the `Lottery` itself.
+<2> To make sure we won't run a `Lottery` twice, the next case to match must check if the `Lottery` has already a winner. If that's the case we reject all subsequent commands. The `Lottery` reached its 'end-of-life' can cannot evolve its state anymore.
+<3> While the `Lottery` has no partipants, it can only accept subscriptions and reject the `Run` command. Therefore this state is the composition of `canNotRunWithoutParticipants` and `acceptParticipants` Actions.
+<4> As soon the `Lottery` has at least one participant it can accept new participatns (`acceptParticipants`), reject double booking (`rejectDoubleBooking`), remove participants (`removingParticipants`) and finally we can select a winner by running it (`runTheLottery`).
 
 ### Configuring the Aggregate
 
@@ -212,7 +227,7 @@ The `lotteryRef` can be used to send commands to the aggregate. Since we are usi
 
 <1> We request a `AggregateRef` for a `Lottery` using a unique ID.
 <2> We send a create command to the `Lottery` aggregate via the `lotteryRef`
-<3> We send four AddParticipant commands for four well-known musicians.
+<3> We send four `AddParticipant` commands for four well-known musicians.
 <4> Finally we run the **Lottery**
 <5> The result is a `Future` holding all `Events` concatenated in a single `Seq` of `Events`.
 
@@ -220,7 +235,7 @@ The `lotteryRef` can be used to send commands to the aggregate. Since we are usi
 ====
 `AggregateRef` is **NOT** an `ActorRef`. However, it does mimic the `ActorRef` API with methods like '?' (ask) and '!' (tell). This is simply because 'tell' and 'ask' are very idiomatic methods for sending `Commands`.
 
-Behind the scenes the `Commands` will be forwarded to the right `Actor` (when using the `AkkaBackend`) holding the Aggregate instance for the passed Id.
+Behind the scenes `Commands` will be forwarded to the right `Actor` (when using the `AkkaBackend`) holding the Aggregate instance for the passed Id.
 
 When using other backends, the `AggregateRef` may point to other kind of objects, for instance a service or a in-memory data structure.
 ====

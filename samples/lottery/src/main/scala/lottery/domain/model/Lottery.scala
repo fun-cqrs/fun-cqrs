@@ -40,22 +40,32 @@ case class Lottery(
   def hasParticipant(name: String) = participants.contains(name)
 
   def isNewParticipant(name: String) = !hasParticipant(name)
-
+  // end::lottery-aggregate[]
+  
   import LotteryProtocol._
 
-  def metadata(cmd: LotteryCommand) = {
+  // convenient method to instantiate LotteryMetadata objects
+  def metadata(cmd: LotteryCommand): LotteryMetadata = {
     Lottery.metadata(id, cmd)
   }
 
-  def rejectRunningWithoutParticipants =
+
+  // tag::lottery-aggregate-guards[]
+  /** Action: reject Run command if has no participants 
+    * Only applicable when list of participants is empty
+    */
+  def canNotRunWithoutParticipants =
     action[Lottery]
-      .reject {
+      .reject { 
         // can't run if there is no participants
         case _: Run.type if this.hasNoParticipants =>
           new IllegalArgumentException("Lottery has no participants")
       }
 
-  def rejectDoubleBooking =
+  /** Action: reject double booking. Can't add the same participant twice 
+    * Only applicable after adding at least one participant
+    */
+  def rejectDoubleBooking = 
     action[Lottery]
       .reject {
         // can't add participant twice
@@ -63,8 +73,24 @@ case class Lottery(
           new IllegalArgumentException(s"Participant ${cmd.name} already added!")
       }
 
-  // adding participant
-  def acceptSubscriptions =
+  /** Action: reject all
+    * Applicable when a winner is selected. No new commands should be accepts. 
+    */    
+  def rejectAllCommands = 
+    action[Lottery]
+      .reject {
+        // no command can be accepted after having selected a winner
+        case anyCommand if this.hasWinner =>
+          new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is ${winner.get}")
+      }
+  
+  // end::lottery-aggregate-guards[]
+
+  // tag::lottery-aggregate-actions[]
+  /** Action: add a participant 
+    * Applicable as long as we don't have a winner
+    */
+  def acceptParticipants =
     actions[Lottery]
       .handleCommand {
         cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
@@ -73,7 +99,9 @@ case class Lottery(
         evt: ParticipantAdded => this.addParticipant(evt.name)
       }
 
-  // running a lottery
+  /** Action: run the lottery
+    * Only applicable if it has at least one participant
+    */
   def runTheLottery =
     actions[Lottery]
       .handleCommand {
@@ -83,6 +111,9 @@ case class Lottery(
         evt: WinnerSelected => this.copy(winner = Option(evt.winner))
       }
 
+  /** Action: remove partipants (single or all) 
+    * Only applicable if Lottery has participants
+    */
   def removingParticipants =
     actions[Lottery]
       // removing participants (single or all) produce ParticipantRemoved events
@@ -97,15 +128,8 @@ case class Lottery(
       .handleEvent {
         evt: ParticipantRemoved => this.removeParticipant(evt.name)
       }
-
-  def rejectAllCommands = {
-    action[Lottery]
-      .reject {
-        // no command can be accepted after having selected a winner
-        case anyCommand if this.hasWinner =>
-          new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is ${winner.get}")
-      }
-  }
+  // end::lottery-aggregate-actions[]
+  
 }
 
 // end::lottery-aggregate[]
@@ -183,7 +207,7 @@ object Lottery {
     LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
   }
 
-  def createLottery(lotteryId: LotteryId) =
+  def createLottery(lotteryId: LotteryId) = // <1>
     actions[Lottery]
       .handleCommand {
         cmd: CreateLottery => LotteryCreated(cmd.name, metadata(lotteryId, cmd))
@@ -194,22 +218,21 @@ object Lottery {
 
   def behavior(lotteryId: LotteryId): Behavior[Lottery] = {
 
-    case Uninitialized(id) => createLottery(id)
+    case Uninitialized(id) => createLottery(id) // <1>
 
-    case Initialized(lottery) if lottery.hasWinner => lottery.rejectAllCommands
+    case Initialized(lottery) if lottery.hasWinner => lottery.rejectAllCommands //<2> 
 
-    case Initialized(lottery) if lottery.hasNoParticipants =>
-      lottery.rejectRunningWithoutParticipants ++
-        lottery.acceptSubscriptions
+    case Initialized(lottery) if lottery.hasNoParticipants => // <3>
+      lottery.canNotRunWithoutParticipants ++
+        lottery.acceptParticipants
 
-    case Initialized(lottery) if lottery.hasParticipants =>
+    case Initialized(lottery) if lottery.hasParticipants => // <4>
       lottery.rejectDoubleBooking ++
-        lottery.acceptSubscriptions ++
+        lottery.acceptParticipants ++
         lottery.removingParticipants ++
         lottery.runTheLottery
   }
 }
+// end::lottery-behavior[]
 
 class LotteryHasAlreadyAWinner(msg: String) extends RuntimeException(msg)
-
-// end::lottery-behavior[]
