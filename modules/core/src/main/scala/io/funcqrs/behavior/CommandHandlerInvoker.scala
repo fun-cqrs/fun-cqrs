@@ -11,32 +11,36 @@ import scala.util.Try
 /**
  * A CommandHandlerInvoker holds a PartialFunction from DomainCommand to F[immutable.Seq[DomainEvent]].
  * F being the higher-kind wrapping the result of handling the command.
+ *
+ * Invokers are delayed execution of `Command Handlers` and abstract over the
+ * Functor that will be returned when handling the command. Fun.CQRS provides three CommandHandlerInvoker implementations:
+ * IdCommandHandlerInvoker (returns the Identity Functor), TryCommandHandlerInvoker and FutureCommandHandlerInvoker.
  */
 trait CommandHandlerInvoker[-C <: DomainCommand, E <: DomainEvent] {
 
   type F[_]
 
-  def handler: C => F[immutable.Seq[E]]
+  def commandHandler: C => F[immutable.Seq[E]]
 
-  def apply(cmd: C): F[immutable.Seq[E]] = handler(cmd)
+  def apply(cmd: C): F[immutable.Seq[E]] = commandHandler(cmd)
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Identity]] */
-case class IdCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](handler: C => Identity[immutable.Seq[E]])
+case class IdCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](commandHandler: C => Identity[immutable.Seq[E]])
     extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Identity[_]
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Try]] */
-case class TryCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](handler: C => Try[immutable.Seq[E]])
+case class TryCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](commandHandler: C => Try[immutable.Seq[E]])
     extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Try[_]
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Future]] */
-case class FutureCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](handler: C => Future[immutable.Seq[E]])
+case class FutureCommandHandlerInvoker[C <: DomainCommand, E <: DomainEvent](commandHandler: C => Future[immutable.Seq[E]])
     extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Future[_]

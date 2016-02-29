@@ -63,9 +63,9 @@ class LotteryTest extends FunSuite with Matchers with Futures
       lottery ? AddParticipant("Paul")
       lottery ? Run
 
-      intercept[IllegalArgumentException] {
+      intercept[LotteryHasAlreadyAWinner] {
         lottery ? Run
-      }.getMessage shouldBe "Lottery has already a winner!"
+      }
     }
 
   }
@@ -138,11 +138,11 @@ class LotteryTest extends FunSuite with Matchers with Futures
       view.participants should have size 2
       view.winner shouldBe defined
 
-      intercept[IllegalArgumentException] {
+      intercept[LotteryHasAlreadyAWinner] {
 
         lottery ? RemoveAllParticipants // reseting is illegal if a winner is selected
 
-      }.getMessage shouldBe "Lottery has already a winner!"
+      }
 
       val updateView = repo.find(id).futureValue
       updateView.participants should have size 2
@@ -166,11 +166,11 @@ class LotteryTest extends FunSuite with Matchers with Futures
       view.participants should have size 2
       view.winner shouldBe defined
 
-      intercept[IllegalArgumentException] {
+      intercept[LotteryHasAlreadyAWinner] {
 
         lottery ? AddParticipant("Ringo") // adding new participant is illegal if a winner is selected
 
-      }.getMessage shouldBe "Lottery has already a winner!"
+      }
     }
 
   }

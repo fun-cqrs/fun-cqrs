@@ -2,7 +2,7 @@ package io.funcqrs.test.backend
 
 import io.funcqrs._
 import io.funcqrs.backend.{ QuerySelectAll, Backend, QueryByTag, QueryByTags }
-import io.funcqrs.behavior.Behavior
+import io.funcqrs.behavior.{ Behavior, State, Uninitialized, Initialized }
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.Monads._
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
@@ -31,7 +31,7 @@ class InMemoryBackend extends Backend[Identity] {
       { // build new aggregateRef if not existent
         val config = aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[AggregateConfig[A]]
         val behavior = config.behavior(id)
-        new InMemoryAggregateRef(behavior)
+        new InMemoryAggregateRef(id, behavior)
       }
     ).asInstanceOf[InMemoryAggregateRef[A]]
   }
@@ -76,9 +76,9 @@ class InMemoryBackend extends Backend[Identity] {
     eventStream.onNext(evt)
   }
 
-  class InMemoryAggregateRef[A <: AggregateLike](behavior: Behavior[A]) extends IdentityAggregateRef[A] {
+  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] {
 
-    private var aggregateState: Option[A] = None
+    private var aggregateState: State[A] = Uninitialized(id)
 
     val interpreter = IdentityInterpreter(behavior)
 
@@ -90,16 +90,20 @@ class InMemoryBackend extends Backend[Identity] {
       () // omit events
     }
 
-    private def handle(optionalAggregate: Option[Aggregate], cmd: Command): interpreter.Events = {
-      val (events, updatedAgg) = interpreter.applyCommand(cmd, optionalAggregate)
+    private def handle(state: State[Aggregate], cmd: Command): interpreter.Events = {
+      val (events, updatedAgg) = interpreter.applyCommand(cmd, state)
       aggregateState = updatedAgg
       publishEvents(events)
       events
     }
 
-    def state(): Identity[A] = aggregateState.get
+    def state(): Identity[A] =
+      aggregateState match {
+        case Initialized(aggregate) => aggregate
+        case Uninitialized(_) => sys.error("Aggregate is not initialized")
+      }
 
-    def exists(): Identity[Boolean] = aggregateState.isDefined
+    def exists(): Identity[Boolean] = aggregateState.isInitialized
 
   }
 }
