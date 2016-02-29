@@ -41,7 +41,7 @@ case class Lottery(
 
   def isNewParticipant(name: String) = !hasParticipant(name)
   // end::lottery-aggregate[]
-  
+
   import LotteryProtocol._
 
   // convenient method to instantiate LotteryMetadata objects
@@ -49,47 +49,50 @@ case class Lottery(
     Lottery.metadata(id, cmd)
   }
 
-
   // tag::lottery-aggregate-guards[]
-  /** Action: reject Run command if has no participants 
-    * Only applicable when list of participants is empty
-    */
+  /**
+   * Action: reject Run command if has no participants
+   * Only applicable when list of participants is empty
+   */
   def canNotRunWithoutParticipants =
     action[Lottery]
-      .reject { 
+      .rejectCommand {
         // can't run if there is no participants
         case _: Run.type if this.hasNoParticipants =>
           new IllegalArgumentException("Lottery has no participants")
       }
 
-  /** Action: reject double booking. Can't add the same participant twice 
-    * Only applicable after adding at least one participant
-    */
-  def rejectDoubleBooking = 
+  /**
+   * Action: reject double booking. Can't add the same participant twice
+   * Only applicable after adding at least one participant
+   */
+  def rejectDoubleBooking =
     action[Lottery]
-      .reject {
+      .rejectCommand {
         // can't add participant twice
         case cmd: AddParticipant if this.hasParticipant(cmd.name) =>
           new IllegalArgumentException(s"Participant ${cmd.name} already added!")
       }
 
-  /** Action: reject all
-    * Applicable when a winner is selected. No new commands should be accepts. 
-    */    
-  def rejectAllCommands = 
+  /**
+   * Action: reject all
+   * Applicable when a winner is selected. No new commands should be accepts.
+   */
+  def rejectAllCommands =
     action[Lottery]
-      .reject {
+      .rejectCommand {
         // no command can be accepted after having selected a winner
         case anyCommand if this.hasWinner =>
           new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is ${winner.get}")
       }
-  
+
   // end::lottery-aggregate-guards[]
 
   // tag::lottery-aggregate-actions[]
-  /** Action: add a participant 
-    * Applicable as long as we don't have a winner
-    */
+  /**
+   * Action: add a participant
+   * Applicable as long as we don't have a winner
+   */
   def acceptParticipants =
     actions[Lottery]
       .handleCommand {
@@ -99,9 +102,10 @@ case class Lottery(
         evt: ParticipantAdded => this.addParticipant(evt.name)
       }
 
-  /** Action: run the lottery
-    * Only applicable if it has at least one participant
-    */
+  /**
+   * Action: run the lottery
+   * Only applicable if it has at least one participant
+   */
   def runTheLottery =
     actions[Lottery]
       .handleCommand {
@@ -111,9 +115,10 @@ case class Lottery(
         evt: WinnerSelected => this.copy(winner = Option(evt.winner))
       }
 
-  /** Action: remove partipants (single or all) 
-    * Only applicable if Lottery has participants
-    */
+  /**
+   * Action: remove partipants (single or all)
+   * Only applicable if Lottery has participants
+   */
   def removingParticipants =
     actions[Lottery]
       // removing participants (single or all) produce ParticipantRemoved events
@@ -129,7 +134,7 @@ case class Lottery(
         evt: ParticipantRemoved => this.removeParticipant(evt.name)
       }
   // end::lottery-aggregate-actions[]
-  
+
 }
 
 // end::lottery-aggregate[]

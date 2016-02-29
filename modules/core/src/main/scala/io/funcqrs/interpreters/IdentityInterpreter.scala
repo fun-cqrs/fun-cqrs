@@ -3,7 +3,7 @@ package io.funcqrs.interpreters
 import io.funcqrs.AggregateLike
 import io.funcqrs.behavior._
 
-import scala.concurrent.Await
+import scala.concurrent.{ Future, Await }
 import scala.concurrent.duration.{ Duration, _ }
 
 /**
@@ -21,16 +21,19 @@ import scala.concurrent.duration.{ Duration, _ }
  */
 class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
 
-  def handleCommand(state: State[A], cmd: Command): Identity[Events] = {
+  def onCommand(state: State[A], cmd: Command): Identity[Events] = {
 
-    behavior(state).onCommand(cmd) match {
-      case IdCommandHandlerInvoker(handler) => handler(cmd)
-      case TryCommandHandlerInvoker(handler) => handler(cmd).get
-      case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
-    }
+    val currentActions = behavior(state)
+    val events =
+      currentActions.onCommand(cmd) match {
+        case IdCommandHandlerInvoker(handler) => handler(cmd)
+        case TryCommandHandlerInvoker(handler) => handler(cmd).get
+        case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
+      }
 
+    if (currentActions.canHandleEvents(events)) events
+    else throw eventHandlerNotDefined(state, events)
   }
-
 }
 
 object IdentityInterpreter {

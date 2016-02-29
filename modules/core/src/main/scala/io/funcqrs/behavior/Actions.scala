@@ -23,6 +23,13 @@ case class Actions[A <: AggregateLike](
    */
   private val allHandlers = rejectCmdInvokers orElse cmdHandlerInvokers
 
+  /**
+   * Returns a [[CommandHandlerInvoker]] for the passed [[Command]]. Invokers are delayed execution
+   * of `Command Handlers` and abstract over the Functor that will be returned when handling the command.
+   *
+   * Internally, this method calls the declared `Command Handlers`.
+   *
+   */
   def onCommand(cmd: Command): CommandHandlerInvoker[Command, Event] = {
     if (allHandlers.isDefinedAt(cmd))
       allHandlers(cmd)
@@ -31,14 +38,30 @@ case class Actions[A <: AggregateLike](
       fallbackInvoker(s"Invalid command $cmd")
   }
 
+  /**
+   * Applies the passed [[Event]] producing a new instance of [[Aggregate]].
+   * Internally, this method calls the declared `Event Handlers`.
+   */
   def onEvent(evt: Event): Aggregate = {
     eventHandlers(evt)
   }
 
+  /**
+   * Check if the passed [[Event]] can be handled by this Actions instance
+   *
+   * INTERNAL API
+   * This method is used to prevent that Events that can't be handle are stored.
+   */
   def canHandleEvent(event: Event): Boolean = {
     eventHandlers.isDefinedAt(event)
   }
 
+  /**
+   * Check if the passed [[Event]]s can be handled by this Actions instance
+   *
+   * INTERNAL API
+   * This method is used to prevent that Events that can't be handle are stored.
+   */
   def canHandleEvents(events: Events): Boolean = {
     events.forall { evt => canHandleEvent(evt) }
   }
@@ -47,13 +70,16 @@ case class Actions[A <: AggregateLike](
    * Build a TryCommandHandlerInvoker that will always return an Failure
    * Used internally to handle unknown commands
    */
-  protected def fallbackInvoker(msg: String): CommandHandlerInvoker[Command, Event] = {
+  def fallbackInvoker(msg: String): CommandHandlerInvoker[Command, Event] = {
     val cmdHandler: PartialFunction[Command, Try[Events]] = {
       case cmd => Failure(new CommandException(msg))
     }
     TryCommandHandlerInvoker(cmdHandler)
   }
 
+  /**
+   * Concatenate `this` Actions with `that` Actions
+   */
   def ++(that: Actions[A]) = {
     this.copy(
       cmdHandlerInvokers = this.cmdHandlerInvokers orElse that.cmdHandlerInvokers,
@@ -63,8 +89,14 @@ case class Actions[A <: AggregateLike](
   }
 
   /**
-   * Declares a guard clause that reject commands that fulfill a given condition
-   * @param cmdHandler - a PartialFunction from Command to Throwable.
+   * Declares a guard clause that reject commands that fulfill a given condition.
+   *
+   * A guard clause is a `Command Handler` as it handles a incoming command,
+   * but instead of producing [[Event]], it returns a [[Throwable]] to signalize an error condition.
+   *
+   * Guard clauses command handlers have predecence over handlers producting [[Event]]s.
+   *
+   * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
    * @return - return a [[Actions]].
    */
   def reject(cmdHandler: PartialFunction[A#Command, Throwable]): Actions[Aggregate] = {
@@ -73,23 +105,28 @@ case class Actions[A <: AggregateLike](
       case cmd if cmdHandler.isDefinedAt(cmd) =>
         TryCommandHandlerInvoker(cmd => Failure(cmdHandler(cmd)))
     }
+
     this.copy(
       rejectCmdInvokers = rejectCmdInvokers orElse invokerPF
     )
   }
 
+  /** Alias for reject */
   def rejectCommand(cmdHandler: PartialFunction[Command, Throwable]): Actions[Aggregate] = reject(cmdHandler)
 
+  /** Declares a `Command Handler` that produces one single [[Event]] */
   def handleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): Actions[Aggregate] = {
     // wrap single event in immutable.Seq
     val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
     handleCommand.manyEvents(handlerWithSeq)
   }
 
+  /**  */
   def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
 
   case class IdentityManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Identity] {
 
+    /** Declares a `Command Handler` that produces a Seq[[Event]] */
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): Actions[Aggregate] = {
 
       object CmdExtractor extends ClassTagExtractor[C]

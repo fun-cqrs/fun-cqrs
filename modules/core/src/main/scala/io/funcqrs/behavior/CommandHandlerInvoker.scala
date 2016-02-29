@@ -11,6 +11,10 @@ import scala.util.Try
 /**
  * A CommandHandlerInvoker holds a PartialFunction from DomainCommand to F[immutable.Seq[DomainEvent]].
  * F being the higher-kind wrapping the result of handling the command.
+ *
+ * Invokers are delayed execution of `Command Handlers` and abstract over the
+ * Functor that will be returned when handling the command. Fun.CQRS provides three CommandHandlerInvoker implementations:
+ * IdCommandHandlerInvoker (returns the Identity Functor), TryCommandHandlerInvoker and FutureCommandHandlerInvoker.
  */
 trait CommandHandlerInvoker[-C <: DomainCommand, E <: DomainEvent] {
 

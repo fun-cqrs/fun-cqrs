@@ -147,7 +147,7 @@ For this example we will keep it as a mere data container of the aggregate state
 Up to now, we have an Aggregate with a type-safe **Id** and its **Protocol** defining all possible `Commands` and `Events`, but we still need to define how each `Command` will be handled, how the `Events` will be generated and how it will react to each `Events`. That all respecting the invariants of the `Lottery` aggregate.
 
 We need to define the Lottery's **Behavior**. +
-A `Behavior` itself is just a `PartialFunction` from `State[A] => Actions[A]` where A is the aggregate type (the Lottery in this example), `State` is whether `Unitialized` or `Initialized` and `Actions` is the set of **Command Handlers** and **Event Handlers** that are applicable for a given `State`.
+A `Behavior` itself is just a `PartialFunction` from `State[A] => Actions[A]` where A is the aggregate type (the Lottery in this example), `State` is whether `Unitialized` or `Initialized` and `Actions` is the set of **Command Handlers** and **Event Handlers** (the Actions) that are applicable for a given `State`.
 
 There are two kinds of **Command Handlers**. Handlers that produce `Events` and handlers that reject commands, also know as 'guard clauses'.
 

@@ -54,7 +54,7 @@ class AggregateActor[A <: AggregateLike](
 
       case cmd: Command =>
         log.debug(s"Received cmd: $cmd")
-        val eventualEvents = interpreter.handleCommand(aggregateState, cmd)
+        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
         val origSender = sender()
 
         eventualEvents map {
@@ -223,7 +223,7 @@ class AggregateActor[A <: AggregateLike](
       val badEventsNames = events.collect {
         case e if !behavior(aggregateState).canHandleEvent(e) => e.getClass.getSimpleName
       }
-      origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
+      origSender ! Status.Failure(new CommandException(s"No event handlers defined for events: ${badEventsNames.mkString(",")}"))
     }
 
     changeState(Available)
