@@ -4,59 +4,67 @@ import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
 import io.funcqrs._
-import io.funcqrs.akka.AggregateActor._
-import io.funcqrs.behavior.Behavior
+import io.funcqrs.behavior.{ Behavior, Initialized, Uninitialized, State }
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
-  identifier: A#Id,
-  behavior: Behavior[A],
-  inactivityTimeout: Option[Duration] = None
-)
-    extends AggregateAliases with PersistentActor with ActorLogging {
+    identifier: A#Id,
+    behavior: Behavior[A],
+    inactivityTimeout: Option[Duration] = None
+) extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
 
   val interpreter = AsyncInterpreter(behavior)
+
+  /**
+   * state of Aggregate Root
+   */
+  sealed trait ActorState
+
+  case object Available extends ActorState
+
+  case object Busy extends ActorState
+
+  /**
+   * Specifies how many events should be processed before new snapshot is taken.
+   * TODO: make configurable
+   */
+  val eventsPerSnapshot = 100 // TODO: move to config
 
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier
   val persistenceId = identifier.value
 
-  /** The aggregate instance if initialized, None otherwise */
-  private var aggregateOpt: Option[Aggregate] = None
-
-  /**
-   * The lifecycle of the aggregate, by default [[Uninitialized]]
-   */
-  protected var state: State = Uninitialized
+  /** The aggregate instance if initialized, Uninitialized otherwise */
+  private var aggregateState: State[Aggregate] = Uninitialized(identifier)
 
   private var eventsSinceLastSnapshot = 0
 
   // always compose with defaultReceive
-  override def receiveCommand: Receive = uninitialized
+  override def receiveCommand: Receive = available
 
-  private def receiving(optionalAggregate: => Option[Aggregate], state: State): Receive = {
+  private def available: Receive = {
 
     val receive: Receive = {
 
       case cmd: Command =>
         log.debug(s"Received cmd: $cmd")
-        val eventualEvents = interpreter.handleCommand(optionalAggregate, cmd)
+        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
         val origSender = sender()
 
         eventualEvents map {
           events => Successful(events, origSender)
         } recover {
           case NonFatal(cause: DomainException) =>
-            FailedCommand(cause, origSender, state)
+            FailedCommand(cause, origSender)
           case NonFatal(cause) =>
             log.error(cause, s"Error while processing command: $cmd")
-            FailedCommand(cause, origSender, state)
+            FailedCommand(cause, origSender)
         } pipeTo self
 
         changeState(Busy)
@@ -68,24 +76,9 @@ class AggregateActor[A <: AggregateLike](
 
   }
 
-  /**
-   * PartialFunction to handle commands when the Actor is in the [[Uninitialized]] state
-   */
-  protected def uninitialized: Receive = receiving(None, Uninitialized)
-
-  /**
-   * PartialFunction to handle commands when the Actor is in the [[Available]] state
-   */
-  protected def available: Receive = receiving(aggregateOpt, Available)
-
-  def onCommandFailure(failedCmd: FailedCommand): Unit = {
-    failedCmd.origSender ! Status.Failure(failedCmd.cause)
-    changeState(failedCmd.state)
-  }
-
   private def busy: Receive = {
 
-    case StateRequest(requester) => sendState(requester)
+    case AggregateActor.StateRequest(requester) => sendState(requester)
     case Successful(events, origSender) => onSuccessful(events, origSender)
     case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
@@ -94,10 +87,15 @@ class AggregateActor[A <: AggregateLike](
       stash()
   }
 
+  def onCommandFailure(failedCmd: FailedCommand): Unit = {
+    failedCmd.origSender ! Status.Failure(failedCmd.cause)
+    changeState(Available)
+  }
+
   protected def defaultReceive: Receive = {
-    case StateRequest(requester) => sendState(requester)
-    case Exists(requester) => requester ! aggregateOpt.isDefined
-    case KillAggregate => context.stop(self)
+    case AggregateActor.StateRequest(requester) => sendState(requester)
+    case AggregateActor.Exists(requester) => requester ! aggregateState.isInitialized
+    case AggregateActor.KillAggregate => context.stop(self)
   }
 
   /**
@@ -110,16 +108,16 @@ class AggregateActor[A <: AggregateLike](
    */
   protected def afterEventPersisted(evt: Event): Unit = {
 
-    aggregateOpt = applyEvent(evt)
-
+    aggregateState = applyEvent(evt)
     eventsSinceLastSnapshot += 1
 
-    for {
-      aggregate <- aggregateOpt
-      if eventsSinceLastSnapshot >= eventsPerSnapshot
-    } yield {
-      log.debug(s"$eventsPerSnapshot events reached, saving snapshot")
-      saveSnapshot(aggregate)
+    if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+      aggregateState match {
+        case Initialized(aggregate) =>
+          log.debug(s"$eventsPerSnapshot events reached, saving snapshot")
+          saveSnapshot(aggregate)
+        case _ =>
+      }
       eventsSinceLastSnapshot = 0
     }
   }
@@ -130,39 +128,20 @@ class AggregateActor[A <: AggregateLike](
    * @param replyTo actor to send message to
    */
   protected def sendState(replyTo: ActorRef): Unit = {
-    aggregateOpt match {
-      case Some(aggregate) =>
+    aggregateState match {
+      case Initialized(aggregate) =>
         log.debug(s"sending aggregate state $aggregate to $replyTo")
         replyTo ! aggregate
-      case None =>
-        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $persistenceId not initialized"))
+      case Uninitialized(id) =>
+        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
     }
   }
 
   /**
    * Apply event on the AggregateRoot.
-   *
-   * Creational events are only applied if Aggregate is not yet initialized (ie: None)
-   * Update events are only applied on already initialized Aggregates (ie: Some(aggregate))
-   *
-   * All other combinations will be ignored and the current Aggregate state is returned.
    */
-  def applyEvent(event: DomainEvent): Option[Aggregate] = {
-
-    (aggregateOpt, event) match {
-
-      // apply CreateEvent if not yet initialized
-      case (None, evt: Event) => Some(behavior.onEvent(None, evt))
-
-      // Update events are applied on current state
-      case (Some(aggregate), evt: Event) => Some(behavior.onEvent(Some(aggregate), evt))
-
-      // Covers:
-      // (Some, CreateEvent) and (None, UpdateEvent)
-      // in both cases we must ignore it and return current state
-      case _ => aggregateOpt
-    }
-  }
+  def applyEvent(event: Event): State[Aggregate] =
+    Initialized(behavior(aggregateState).onEvent(event))
 
   /**
    * Recovery handler that receives persisted events during recovery. If a state snapshot
@@ -176,30 +155,24 @@ class AggregateActor[A <: AggregateLike](
    */
   override val receiveRecover: Receive = {
 
-    case SnapshotOffer(metadata, (state: State, data: Option[Aggregate] @unchecked)) =>
+    case SnapshotOffer(metadata, aggregate: Aggregate @unchecked) =>
       eventsSinceLastSnapshot = 0
       log.debug("recovering aggregate from snapshot")
-      restoreState(metadata, state, data)
-
-    case SnapshotOffer(metadata, data: Aggregate @unchecked) =>
-      eventsSinceLastSnapshot = 0
-      log.debug("recovering aggregate from snapshot")
-      restoreState(metadata, Available, Some(data))
+      restoreState(metadata, aggregate)
 
     case RecoveryCompleted =>
-      log.debug(s"aggregate '$persistenceId' has recovered, state = '$state'")
+      log.debug(s"aggregate '$identifier' has recovered")
 
-    case event: DomainEvent => onEvent(event)
+    case event: Event => onEvent(event)
 
     case unknown => log.debug(s"Unknown message on recovery")
   }
 
-  protected def onEvent(evt: DomainEvent): Unit = {
+  protected def onEvent(evt: Event): Unit = {
     log.debug(s"Reapplying event $evt")
     eventsSinceLastSnapshot += 1
-    aggregateOpt = applyEvent(evt)
-    log.debug(s"State after event $aggregateOpt")
-
+    aggregateState = applyEvent(evt)
+    log.debug(s"State after event $aggregateState")
     changeState(Available)
   }
 
@@ -207,23 +180,16 @@ class AggregateActor[A <: AggregateLike](
    * restore the lifecycle and state of the aggregate from a snapshot
    *
    * @param metadata snapshot metadata
-   * @param state the state of the aggregate
-   * @param data the data of the aggregate
+   * @param aggregate the aggregate
    */
-  protected def restoreState(metadata: SnapshotMetadata, state: State, data: Option[Aggregate]) = {
-    changeState(state)
-    log.debug(s"restoring data $data")
-    aggregateOpt = data
+  protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
+    log.debug(s"restoring data $aggregate")
+    aggregateState = Initialized(aggregate)
+    changeState(Available)
   }
 
-  def changeState(state: State): Unit = {
-    this.state = state
-    this.state match {
-      case Uninitialized =>
-        log.debug(s"Initializing")
-        context become uninitialized
-        unstashAll() // actually not need, but we never know :-)
-
+  def changeState(state: ActorState): Unit = {
+    state match {
       case Available =>
         log.debug(s"Accepting commands...")
         context become available
@@ -240,7 +206,7 @@ class AggregateActor[A <: AggregateLike](
     //val aggregate = aggregateOpt.get
 
     // extra check! persist it only if a listener is defined for each event
-    if (behavior.canHandleEvents(events, aggregateOpt)) {
+    if (behavior(aggregateState).canHandleEvents(events)) {
 
       // forall on an empty Seq always returns 'true' !!!!
       // and akka-persistence throw exception if an empty list of events are sent!
@@ -255,9 +221,9 @@ class AggregateActor[A <: AggregateLike](
 
       // collect events with listener
       val badEventsNames = events.collect {
-        case e if !behavior.canHandleEvent(e, aggregateOpt) => e.getClass.getSimpleName
+        case e if !behavior(aggregateState).canHandleEvent(e) => e.getClass.getSimpleName
       }
-      origSender ! Status.Failure(new CommandException(s"No event listeners defined for events: ${badEventsNames.mkString(",")}"))
+      origSender ! Status.Failure(new CommandException(s"No event handlers defined for events: ${badEventsNames.mkString(",")}"))
     }
 
     changeState(Available)
@@ -282,28 +248,13 @@ class AggregateActor[A <: AggregateLike](
   /**
    * Internal representation of a completed update command.
    */
-  //  private case class SuccessfulCreation(events: Events, origSender: ActorRef)
-  //
-  //  private case class SuccessfulUpdate(events: Events, origSender: ActorRef)
-
   private case class Successful(events: Events, origSender: ActorRef)
 
-  private case class FailedCommand(cause: Throwable, origSender: ActorRef, state: State)
+  private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 
 }
 
 object AggregateActor {
-
-  /**
-   * state of Aggregate Root
-   */
-  sealed trait State
-
-  case object Uninitialized extends State
-
-  case object Available extends State
-
-  case object Busy extends State
 
   /**
    * We don't want the aggregate to be killed if it hasn't fully restored yet,
@@ -313,12 +264,6 @@ object AggregateActor {
 
   case class StateRequest(requester: ActorRef)
   case class Exists(requester: ActorRef)
-
-  /**
-   * Specifies how many events should be processed before new snapshot is taken.
-   * TODO: make configurable
-   */
-  val eventsPerSnapshot = 100 // TODO: move to config
 
 }
 
