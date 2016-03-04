@@ -37,13 +37,13 @@ https://github.com/strongtyped/fun-cqrs/tree/master
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.4.0"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.4.1"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka backend.
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.4.0"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.4.1"
 ```
 
 ## Command Model
@@ -203,7 +203,7 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 (ref: https://github.com/strongtyped/fun-cqrs/tree/master/samples/lottery/src/main/scala/lottery/app/Main.scala[Main.scala, window="_blank"])
 
 <1> We create an `AkkaBackend` in-place.
-<2> The `AkkaBackend` will start its own `ActorSystem`, but of course you can use your own `ActorSystem` by overriding `AkkaBackend.actorSystem`. For instance, if you run a Play application you'll probably want to use Play's ActorSystem.
+<2> The `ActorSystem` to be used.
 <3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **<<_projections>>** section.
 <4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object.
 

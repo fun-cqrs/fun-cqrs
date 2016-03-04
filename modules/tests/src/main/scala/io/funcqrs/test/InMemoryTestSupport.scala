@@ -60,4 +60,6 @@ trait InMemoryTestSupport {
     assert(pf.isDefinedAt(evt), s"$evt does not match expected Event")
     pf(evt)
   }
+
+  def expectNoEvent() = assert(receivedEvents.isEmpty, "There are events on the queue")
 }

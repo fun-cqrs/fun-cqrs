@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 
 trait AkkaBackend extends Backend[Future] {
 
-  val actorSystem: ActorSystem = ActorSystem("FunCQRS")
+  val actorSystem: ActorSystem
 
   /** Parent actor for all projections! */
   lazy private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")

@@ -1,5 +1,6 @@
 package lottery.app
 
+import akka.actor.ActorSystem
 import akka.util.Timeout
 import io.funcqrs.akka.EventsSourceProvider
 import io.funcqrs.akka.backend.AkkaBackend
@@ -18,10 +19,7 @@ object Main extends App {
 
   // tag::akka-backend[]
   val backend = new AkkaBackend { // #<1>
-
-    // override this val in order to use another ActorSystem
-    // override val actorSystem: ActorSystem = ??? #<2>
-
+    val actorSystem: ActorSystem = ActorSystem("FunCQRS") // #<2>
     def sourceProvider(query: Query): EventsSourceProvider = { // #<3>
       query match {
         case QueryByTag(tag) => new LevelDbTaggedEventsSource(tag)
