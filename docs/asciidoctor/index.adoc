@@ -37,13 +37,13 @@ https://github.com/strongtyped/fun-cqrs/tree/master
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.4.0"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.4.1"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka backend.
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.4.0"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.4.1"
 ```
 
 ## Command Model
