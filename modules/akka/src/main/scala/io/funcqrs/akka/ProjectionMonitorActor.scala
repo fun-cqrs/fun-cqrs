@@ -94,7 +94,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     val shutdownEventsMonitorAfter = 10.seconds
     val monitor = context.actorOf(eventsMonitor(commandId, projectionName, shutdownEventsMonitorAfter), monitorName)
 
-    // subscribe for events having `commandId` and coming frmo projection named with `projectionName`
+    // subscribe for events having `commandId` and coming from projection named with `projectionName`
     eventBus.subscribe(monitor, (commandId, projectionName))
 
     log.debug(s"Created EventMonitor $monitor")
