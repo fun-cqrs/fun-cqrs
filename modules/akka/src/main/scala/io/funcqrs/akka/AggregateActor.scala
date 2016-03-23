@@ -130,7 +130,7 @@ class AggregateActor[A <: AggregateLike](
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
       case Initialized(aggregate) =>
-        log.debug(s"sending aggregate state $aggregate to $replyTo")
+        log.debug(s"sending aggregate ${aggregate.id} to $replyTo")
         replyTo ! aggregate
       case Uninitialized(id) =>
         replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
@@ -183,7 +183,7 @@ class AggregateActor[A <: AggregateLike](
    * @param aggregate the aggregate
    */
   protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
-    log.debug(s"restoring data $aggregate")
+    log.debug(s"restoring data for aggregate ${aggregate.id}")
     aggregateState = Initialized(aggregate)
     changeState(Available)
   }

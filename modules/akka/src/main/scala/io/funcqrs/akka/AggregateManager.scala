@@ -1,12 +1,15 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
+import com.typesafe.config.{ ConfigFactory, Config }
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
+import scala.util.Try
+import scala.util.control.NonFatal
 
 object AggregateManager {
 
@@ -19,11 +22,6 @@ object AggregateManager {
 }
 
 case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
-
-case class AggregatePassivationStrategy(
-  inactivityTimeout: Option[Duration] = None,
-  maxChildren: Option[MaxChildren] = None
-)
 
 /**
  * Base aggregate manager.
@@ -42,8 +40,7 @@ trait AggregateManager extends Actor
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
-  // TODO: move to config
-  def aggregatePassivationStrategy: AggregatePassivationStrategy = AggregatePassivationStrategy(maxChildren = Some(MaxChildren(40, 20)))
+  val passivationStrategy: PassivationStrategy = loadPassivationStrategy()
 
   override def receive: PartialFunction[Any, Unit] = {
     processCommand orElse defaultProcessCommand
@@ -57,6 +54,7 @@ trait AggregateManager extends Actor
   private def badAggregateId(id: AggregateId) = {
     sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
+
   private def defaultProcessCommand: Receive = {
 
     case Terminated(actor) => handleTermination(actor)
@@ -148,20 +146,113 @@ trait AggregateManager extends Actor
    * Build Props for a new Aggregate Actor with the passed Id
    */
   def aggregateActorProps(id: Id): Props = {
-    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), aggregatePassivationStrategy.inactivityTimeout)
+    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), passivationStrategy.inactivityTimeout)
   }
 
   private def killChildrenIfNecessary() = {
-    aggregatePassivationStrategy.maxChildren.foreach {
-      case MaxChildren(maxChildren, childrenToKillAtOnce) =>
-        val childrenCount = context.children.size - childrenBeingTerminated.size
-        if (childrenCount >= maxChildren) {
-          log.debug(s"Max manager children exceeded. Killing $childrenToKillAtOnce children.")
-          val childrenNotBeingTerminated = context.children.filterNot(childrenBeingTerminated)
-          val childrenToKill = childrenNotBeingTerminated take childrenToKillAtOnce
-          childrenToKill foreach (_ ! KillAggregate)
-          childrenBeingTerminated ++= childrenToKill
-        }
+
+    val candidates = passivationStrategy.determineChildrenToKill(context.children)
+
+    val childrenToTerminate = candidates.filterNot(childrenBeingTerminated)
+
+    if (childrenToTerminate.nonEmpty) {
+      log.debug(s"Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
+      childrenToTerminate foreach (_ ! KillAggregate)
+      childrenBeingTerminated ++= childrenToTerminate
+    }
+  }
+
+  def loadPassivationStrategy() = {
+
+    val config = context.system.settings.config
+
+    Try(config.getString("funcqrs.akka.passivation-strategy.class")).flatMap { configuredClassName =>
+      Try {
+        //laad de class
+        Thread.currentThread().getContextClassLoader.loadClass(configuredClassName).newInstance().asInstanceOf[PassivationStrategy]
+      }.recover {
+
+        case e: ClassNotFoundException =>
+
+          log.warning(
+            """
+              |#=============================================================================
+              |# Could not load class configured for funcqrs.akka.passivation-strategy.class.
+              |# Are you sure {} is correct and in your classpath?
+              |#
+              |# Falling back to default passivation strategy
+              |#=============================================================================
+            """.stripMargin, configuredClassName
+          )
+
+          new MaxChildrenPassivationStrategy()
+
+        case _: InstantiationException | _: IllegalAccessException =>
+
+          log.warning(
+            """"
+              |#====================================================================================
+              |# Could not instantiate the passivation strategy.
+              |# Are you sure {} has a default constructor and is a subclass of PassivationStrategy?
+              |#
+              |# Falling back to default passivation strategy
+              |#====================================================================================
+            """.stripMargin, configuredClassName
+          )
+
+          new MaxChildrenPassivationStrategy()
+
+        case NonFatal(exp) =>
+          //class niet gevonden, laad de default
+          log.error("Unknown error while loading passivation strategy class. Falling back to default passivation strategy.", exp)
+          new MaxChildrenPassivationStrategy()
+      }
+    }.getOrElse(new MaxChildrenPassivationStrategy())
+  }
+
+}
+
+/**
+ * Defines a passivation strategy for aggregate instances.
+ */
+trait PassivationStrategy {
+
+  /**
+   * Determines how long they can idle in memory
+   *
+   * @return
+   */
+  def inactivityTimeout: Option[Duration] = None
+
+  /**
+   * Return all the children that may be killed.
+   *
+   * @param candidates all the children for a given AggregateManager
+   * @return
+   */
+  def determineChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef]
+
+}
+
+class MaxChildrenPassivationStrategy extends PassivationStrategy {
+
+  val config: Config = ConfigFactory.load()
+
+  val max = {
+    Try(config.getInt("funcqrs.akka.passivation-strategy.max-children.max")).getOrElse(40)
+  }
+
+  val killAtOnce = {
+    Try(config.getInt("funcqrs.akka.passivation-strategy.max-children.kill-at-once")).getOrElse(20)
+  }
+
+  val maxChildren = MaxChildren(max = max, childrenToKillAtOnce = killAtOnce)
+
+  override def determineChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef] = {
+    if (candidates.size > maxChildren.max) {
+      candidates.take(maxChildren.childrenToKillAtOnce)
+    } else {
+      Nil
     }
   }
 
