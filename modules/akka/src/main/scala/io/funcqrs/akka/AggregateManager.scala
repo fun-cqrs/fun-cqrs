@@ -1,6 +1,7 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
+import com.typesafe.config.Config
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
@@ -8,6 +9,7 @@ import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
 import scala.util.Try
+import scala.util.control.NonFatal
 
 object AggregateManager {
 
@@ -181,7 +183,7 @@ trait AggregateManager extends Actor
             """.stripMargin, configuredClassName
           )
 
-          new MaxChildrenPassivationStrategy()
+          new MaxChildrenPassivationStrategy(config)
 
         case _: InstantiationException | _: IllegalAccessException =>
 
@@ -196,13 +198,14 @@ trait AggregateManager extends Actor
             """.stripMargin, configuredClassName
           )
 
-          new MaxChildrenPassivationStrategy()
+          new MaxChildrenPassivationStrategy(config)
 
-        case _ =>
+        case NonFatal(exp) =>
           //class niet gevonden, laad de default
-          new MaxChildrenPassivationStrategy()
+          log.error("Unknown error while loading passivation strategy class. Falling back to default passivation strategy.", exp)
+          new MaxChildrenPassivationStrategy(config)
       }
-    }.getOrElse(new MaxChildrenPassivationStrategy)
+    }.getOrElse(new MaxChildrenPassivationStrategy(config))
   }
 
 }
@@ -214,12 +217,14 @@ trait PassivationStrategy {
 
   /**
    * Determines how long they can idle in memory
+   *
    * @return
    */
   def inactivityTimeout: Option[Duration] = None
 
   /**
    * Return all the children that may be killed.
+   *
    * @param candidates all the children for a given AggregateManager
    * @return
    */
@@ -227,9 +232,17 @@ trait PassivationStrategy {
 
 }
 
-class MaxChildrenPassivationStrategy extends PassivationStrategy {
+class MaxChildrenPassivationStrategy(config: Config) extends PassivationStrategy {
+  //funcqrs.akka.passivation-strategy.class
+  val max = {
+    Try(config.getInt("funcqrs.akka.passivation-strategy.max-children.max")).getOrElse(40)
+  }
 
-  val maxChildren = MaxChildren(max = 40, childrenToKillAtOnce = 20)
+  val killAtOnce = {
+    Try(config.getInt("funcqrs.akka.passivation-strategy.max-children.kill-at-once")).getOrElse(20)
+  }
+
+  val maxChildren = MaxChildren(max = max, childrenToKillAtOnce = killAtOnce)
 
   override def determineChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef] = {
     if (candidates.size > maxChildren.max) {
