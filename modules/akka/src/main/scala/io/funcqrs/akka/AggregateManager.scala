@@ -1,10 +1,10 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import com.typesafe.config.{ConfigFactory, ConfigMergeable}
+import com.typesafe.config.{ ConfigFactory, ConfigMergeable }
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
-import io.funcqrs.akka.AggregateManager.{Exists, GetState}
+import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
@@ -24,12 +24,12 @@ object AggregateManager {
 case class MaxChildren(max: Int, childrenToKillAtOnce: Int)
 
 /**
-  * Base aggregate manager.
-  * Handles communication between client and aggregate.
-  * It is also capable of aggregates creation and removal.
-  */
+ * Base aggregate manager.
+ * Handles communication between client and aggregate.
+ * It is also capable of aggregates creation and removal.
+ */
 trait AggregateManager extends Actor
-  with ActorLogging with AggregateAliases with AggregateMessageExtractors {
+    with ActorLogging with AggregateAliases with AggregateMessageExtractors {
 
   import scala.collection.immutable._
 
@@ -46,7 +46,7 @@ trait AggregateManager extends Actor
     Try(config.getString("funcqrs.akka.passivation-strategy.class")).flatMap { configuredClassName =>
       Try {
         //laad de class
-        Class.forName(configuredClassName).newInstance().asInstanceOf[PassivationStrategy]
+        Thread.currentThread().getContextClassLoader.loadClass(configuredClassName).newInstance().asInstanceOf[PassivationStrategy]
       }.recover {
 
         case e: ClassNotFoundException =>
@@ -148,10 +148,10 @@ trait AggregateManager extends Actor
   }
 
   /**
-    * Processes aggregate command.
-    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
-    *
-    */
+   * Processes aggregate command.
+   * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
+   *
+   */
   def processAggregateCommand(aggregateId: Id, command: Command) = {
 
     val maybeChild = context child aggregateId.value
@@ -188,8 +188,8 @@ trait AggregateManager extends Actor
   def behavior(id: Aggregate#Id): Behavior[Aggregate]
 
   /**
-    * Build Props for a new Aggregate Actor with the passed Id
-    */
+   * Build Props for a new Aggregate Actor with the passed Id
+   */
   def aggregateActorProps(id: Id): Props = {
     Props(classOf[AggregateActor[Aggregate]], id, behavior(id), passivationStrategy.inactivityTimeout)
   }
@@ -209,22 +209,21 @@ trait AggregateManager extends Actor
 
 }
 
-
 /**
-  * Defines a passivation strategy for aggregrate instances.
-  *
-  * inactivityTimeout determines how long they can idle in memory
-  * determineChildrenToKill
-  */
+ * Defines a passivation strategy for aggregrate instances.
+ *
+ * inactivityTimeout determines how long they can idle in memory
+ * determineChildrenToKill
+ */
 trait PassivationStrategy {
 
   def inactivityTimeout: Option[Duration] = None
 
   /**
-    * Return all the children that may be killed.
-    * @param candidates all the children for a given AggregateManager
-    * @return
-    */
+   * Return all the children that may be killed.
+   * @param candidates all the children for a given AggregateManager
+   * @return
+   */
   def determineChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef]
 
 }
@@ -244,7 +243,7 @@ class MaxChildrenPassivationStrategy extends PassivationStrategy {
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A])
-  extends AggregateManager {
+    extends AggregateManager {
 
   type Aggregate = A
 
