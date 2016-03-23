@@ -1,7 +1,7 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import com.typesafe.config.Config
+import com.typesafe.config.{ ConfigFactory, Config }
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
@@ -163,7 +163,9 @@ trait AggregateManager extends Actor
   }
 
   def loadPassivationStrategy() = {
+
     val config = context.system.settings.config
+
     Try(config.getString("funcqrs.akka.passivation-strategy.class")).flatMap { configuredClassName =>
       Try {
         //laad de class
@@ -183,7 +185,7 @@ trait AggregateManager extends Actor
             """.stripMargin, configuredClassName
           )
 
-          new MaxChildrenPassivationStrategy(config)
+          new MaxChildrenPassivationStrategy()
 
         case _: InstantiationException | _: IllegalAccessException =>
 
@@ -198,14 +200,14 @@ trait AggregateManager extends Actor
             """.stripMargin, configuredClassName
           )
 
-          new MaxChildrenPassivationStrategy(config)
+          new MaxChildrenPassivationStrategy()
 
         case NonFatal(exp) =>
           //class niet gevonden, laad de default
           log.error("Unknown error while loading passivation strategy class. Falling back to default passivation strategy.", exp)
-          new MaxChildrenPassivationStrategy(config)
+          new MaxChildrenPassivationStrategy()
       }
-    }.getOrElse(new MaxChildrenPassivationStrategy(config))
+    }.getOrElse(new MaxChildrenPassivationStrategy())
   }
 
 }
@@ -232,8 +234,10 @@ trait PassivationStrategy {
 
 }
 
-class MaxChildrenPassivationStrategy(config: Config) extends PassivationStrategy {
-  //funcqrs.akka.passivation-strategy.class
+class MaxChildrenPassivationStrategy extends PassivationStrategy {
+
+  val config: Config = ConfigFactory.load()
+
   val max = {
     Try(config.getInt("funcqrs.akka.passivation-strategy.max-children.max")).getOrElse(40)
   }
