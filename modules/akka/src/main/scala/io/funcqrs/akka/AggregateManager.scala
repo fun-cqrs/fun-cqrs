@@ -1,7 +1,6 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import com.typesafe.config.{ ConfigFactory, ConfigMergeable }
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
@@ -9,7 +8,6 @@ import io.funcqrs.behavior.Behavior
 
 import scala.concurrent.duration.Duration
 import scala.util.Try
-import scala.util.control.NonFatal
 
 object AggregateManager {
 
@@ -40,52 +38,7 @@ trait AggregateManager extends Actor
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
-  lazy val passivationStrategy: PassivationStrategy = {
-    val config = context.system.settings.config
-
-    Try(config.getString("funcqrs.akka.passivation-strategy.class")).flatMap { configuredClassName =>
-      Try {
-        //laad de class
-        Thread.currentThread().getContextClassLoader.loadClass(configuredClassName).newInstance().asInstanceOf[PassivationStrategy]
-      }.recover {
-
-        case e: ClassNotFoundException =>
-
-          log.warning(
-            """
-              |----------------------------------------------------------------------------
-              |Could not load class configured for funcqrs.akka.passivation-strategy.class.
-              |Are you sure {} is correct and in your classpath?
-              |
-              |Falling back to default passivation strategy
-              |----------------------------------------------------------------------------
-            """.stripMargin, configuredClassName
-          )
-
-          new MaxChildrenPassivationStrategy()
-
-        case _: InstantiationException | _: IllegalAccessException =>
-
-          log.warning(
-            """"
-              |-----------------------------------------------------------------------------------
-              |Could not instantiate the passivation strategy.
-              |Are you sure {} has a default constructor and is a subclass of PassivationStrategy?
-              |
-              |Falling back to default passivation strategy
-              |-----------------------------------------------------------------------------------
-            """.stripMargin, configuredClassName
-          )
-
-          new MaxChildrenPassivationStrategy()
-
-        case _ =>
-          //class niet gevonden, laad de default
-          new MaxChildrenPassivationStrategy()
-      }
-    }.getOrElse(new MaxChildrenPassivationStrategy)
-
-  }
+  val passivationStrategy: PassivationStrategy = loadPassivationStrategy()
 
   override def receive: PartialFunction[Any, Unit] = {
     processCommand orElse defaultProcessCommand
@@ -207,16 +160,62 @@ trait AggregateManager extends Actor
     }
   }
 
+  def loadPassivationStrategy() = {
+    val config = context.system.settings.config
+    Try(config.getString("funcqrs.akka.passivation-strategy.class")).flatMap { configuredClassName =>
+      Try {
+        //laad de class
+        Thread.currentThread().getContextClassLoader.loadClass(configuredClassName).newInstance().asInstanceOf[PassivationStrategy]
+      }.recover {
+
+        case e: ClassNotFoundException =>
+
+          log.warning(
+            """
+              |#=============================================================================
+              |# Could not load class configured for funcqrs.akka.passivation-strategy.class.
+              |# Are you sure {} is correct and in your classpath?
+              |#
+              |# Falling back to default passivation strategy
+              |#=============================================================================
+            """.stripMargin, configuredClassName
+          )
+
+          new MaxChildrenPassivationStrategy()
+
+        case _: InstantiationException | _: IllegalAccessException =>
+
+          log.warning(
+            """"
+              |#====================================================================================
+              |# Could not instantiate the passivation strategy.
+              |# Are you sure {} has a default constructor and is a subclass of PassivationStrategy?
+              |#
+              |# Falling back to default passivation strategy
+              |#====================================================================================
+            """.stripMargin, configuredClassName
+          )
+
+          new MaxChildrenPassivationStrategy()
+
+        case _ =>
+          //class niet gevonden, laad de default
+          new MaxChildrenPassivationStrategy()
+      }
+    }.getOrElse(new MaxChildrenPassivationStrategy)
+  }
+
 }
 
 /**
- * Defines a passivation strategy for aggregrate instances.
- *
- * inactivityTimeout determines how long they can idle in memory
- * determineChildrenToKill
+ * Defines a passivation strategy for aggregate instances.
  */
 trait PassivationStrategy {
 
+  /**
+   * Determines how long they can idle in memory
+   * @return
+   */
   def inactivityTimeout: Option[Duration] = None
 
   /**
