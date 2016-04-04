@@ -111,6 +111,7 @@ abstract class ProjectionActor(
     case Status.Failure(e) =>
       // continue processing anyway,
       // we can only hope that next time we'll be able to save the offset
+      unstashAll()
       context become acceptingEvents
 
     case anyOther => stash()
