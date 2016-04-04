@@ -58,7 +58,7 @@ trait PersistedOffsetCustom extends OffsetPersistence {
  * However, the drawback is that most (if not all) akka-persistence plugins will
  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
  */
-trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor with Stash {
+trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor {
   self: ProjectionActor =>
 
   def persistenceId: String
