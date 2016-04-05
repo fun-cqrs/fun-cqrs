@@ -14,8 +14,7 @@ import scala.util.control.NonFatal
 case class AggregateActorRef[A <: AggregateLike](
     id: A#Id,
     aggregateManagerActor: ActorRef,
-    projectionMonitor: ActorRef
-) extends AggregateAliases {
+    projectionMonitor: ActorRef) extends AggregateAliases {
 
   type Aggregate = A
 
@@ -58,8 +57,7 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
     aggregateRef: AggregateActorRef[A],
     defaultView: String,
     projectionMonitorActorRef: ActorRef,
-    eventsFilter: EventsFilter = All
-) extends AggregateAliases {
+    eventsFilter: EventsFilter = All) extends AggregateAliases {
 
   type Aggregate = A
 
@@ -100,9 +98,9 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
     val askableProjectionMonitorActorRef = akka.pattern.ask(projectionMonitorActorRef)
 
     import scala.concurrent.ExecutionContext.Implicits.global
-    def newEventsMonitor() = {
-      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
-    }
+      def newEventsMonitor() = {
+        (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
+      }
 
     val resultOnWrite =
       for {
@@ -132,7 +130,8 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
     }
   }
 
-  class ProjectionJoinException(evts: Events, cause: Throwable) extends RuntimeException
+  class ProjectionJoinException(name: String, evts: Events, cause: Throwable)
+    extends RuntimeException(s"Failed to join projection '$defaultView")
 
 }
 
