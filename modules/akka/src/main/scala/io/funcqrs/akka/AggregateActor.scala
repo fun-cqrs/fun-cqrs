@@ -45,6 +45,11 @@ class AggregateActor[A <: AggregateLike](
 
   private var eventsSinceLastSnapshot = 0
 
+  // the sequence nr of the most recent successfull snapshot
+  // this is either the snapshot we recovered with, or the last confirmed successfull snapshot
+  // we will delete the snapshot with this sequencenr upon receiving confirmation that a new snapshot was taken
+  private var currentSnapshotSequenceNr: Option[Long] = None
+
   // always compose with defaultReceive
   override def receiveCommand: Receive = available
 
@@ -96,6 +101,10 @@ class AggregateActor[A <: AggregateLike](
     case AggregateActor.StateRequest(requester) => sendState(requester)
     case AggregateActor.Exists(requester) => requester ! aggregateState.isInitialized
     case AggregateActor.KillAggregate => context.stop(self)
+    case x: SaveSnapshotSuccess =>
+      // delete the previous snapshot now that we know we have a newer snapshot
+      currentSnapshotSequenceNr.foreach(deleteSnapshot)
+      currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
   }
 
   /**
@@ -184,6 +193,9 @@ class AggregateActor[A <: AggregateLike](
    */
   protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
     log.debug(s"restoring data for aggregate ${aggregate.id}")
+
+    currentSnapshotSequenceNr = Some(metadata.sequenceNr)
+
     aggregateState = Initialized(aggregate)
     changeState(Available)
   }
