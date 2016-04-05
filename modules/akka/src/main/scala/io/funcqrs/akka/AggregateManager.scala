@@ -146,7 +146,7 @@ trait AggregateManager extends Actor
    * Build Props for a new Aggregate Actor with the passed Id
    */
   def aggregateActorProps(id: Id): Props = {
-    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), passivationStrategy.inactivityTimeout)
+    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), passivationStrategy.inactivityTimeout, context.self.path.name)
   }
 
   private def killChildrenIfNecessary() = {
