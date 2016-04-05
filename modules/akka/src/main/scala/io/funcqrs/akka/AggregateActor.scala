@@ -3,15 +3,13 @@ package io.funcqrs.akka
 import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
-import com.typesafe.config.Config
 import io.funcqrs._
+import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.duration.Duration
-import scala.util.Try
 import scala.util.control.NonFatal
-import io.funcqrs.akka.util.ConfigReader._
 
 class AggregateActor[A <: AggregateLike](
     identifier: A#Id,

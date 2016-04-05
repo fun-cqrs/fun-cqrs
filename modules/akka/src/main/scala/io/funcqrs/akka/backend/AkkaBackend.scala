@@ -68,12 +68,8 @@ trait AkkaBackend extends Backend[Future] {
   }
 
   def actorOf[A <: AggregateLike](config: AggregateConfig[A])(implicit ev: ClassTag[A]): ActorRef = {
-    config.name match {
-      case Some(name) =>
-        actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior), name)
-      case None =>
-        actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior), ev.runtimeClass.getSimpleName)
-    }
+    val name = config.name.getOrElse(ev.runtimeClass.getSimpleName)
+    actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior), name)
   }
 
 }

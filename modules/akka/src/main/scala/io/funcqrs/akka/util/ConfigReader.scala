@@ -30,5 +30,4 @@ trait ConfigReader {
   }
 }
 
-object ConfigReader extends ConfigReader {
-}
+object ConfigReader extends ConfigReader
