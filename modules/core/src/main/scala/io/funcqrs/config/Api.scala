@@ -2,8 +2,7 @@ package io.funcqrs.config
 
 import io.funcqrs.backend.Query
 import io.funcqrs.behavior._
-import io.funcqrs.{ CommandException, AggregateLike, Projection }
-
+import io.funcqrs.{ AggregateLike, CommandException, Projection }
 import scala.language.higherKinds
 
 object Api {
@@ -32,4 +31,7 @@ object Api {
     ProjectionConfig(query, projection, name)
   }
 
+  def projection(query: Query, projection: Projection): ProjectionConfig = {
+    ProjectionConfig(query, projection, projection.name)
+  }
 }

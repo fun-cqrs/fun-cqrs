@@ -13,15 +13,12 @@ import io.funcqrs.{ DomainEvent, Projection }
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.concurrent.{ Await, Future }
 import scala.language.postfixOps
-import scala.util.control.NonFatal
 
-// TODO: document each parameter
 abstract class ProjectionActor(
     projection: Projection,
     sourceProvider: EventsSourceProvider
-) extends Actor with ActorLogging with Stash {
+) extends Actor with ActorLogging with ActorSubscriber with Stash {
 
   import context.dispatcher
 
@@ -29,12 +26,47 @@ abstract class ProjectionActor(
 
   var lastProcessedOffset: Option[Long] = None
 
+  private var stashSize = 0
+  private var stillToProcessMessageCount: Int = 0
+  def isStashing = stashSize > 0
+
+  val maxDemand = 10
+  private val watermarkRequestStrategy = WatermarkRequestStrategy(maxDemand)
+
+  protected def requestStrategy: RequestStrategy = new RequestStrategy {
+    def requestDemand(remainingRequested: Int): Int = {
+      if (isStashing) {
+        0
+      } else {
+        watermarkRequestStrategy.requestDemand(stillToProcessMessageCount)
+        //        maxDemand - stillToProcessMessageCount
+      }
+    }
+  }
+
+  def stashWithBackPressure(): Unit = {
+    stash()
+    stashSize += 1
+  }
+
+  def unstashAllWithBackPressure(): Unit = {
+    stillToProcessMessageCount = stashSize
+    super.unstashAll()
+    stashSize = 0
+  }
+
   def saveCurrentOffset(offset: Long): Future[Unit]
 
+  // default request strategy
+  protected def fallbackRequestStrategy: RequestStrategy = WatermarkRequestStrategy(200)
+
   def recoveryCompleted(): Unit = {
-    log.debug(s"ProjectionActor: starting projection... $projection")
+    log.debug("ProjectionActor: starting projection... {}", projection)
     implicit val mat = ActorMaterializer()
-    val actorSink = Sink.actorSubscriber(Props(classOf[ForwardingActorSubscriber], self, WatermarkRequestStrategy(10)))
+
+    val subscriber = ActorSubscriber[EventEnvelope](self)
+    val actorSink = Sink.fromSubscriber(subscriber)
+
     sourceProvider.source(lastProcessedOffset.map(_ + 1).getOrElse(0)).runWith(actorSink)
   }
 
@@ -45,11 +77,11 @@ abstract class ProjectionActor(
     val receive: Receive = {
 
       // stash new events while busy with projection
-      case OnNextDomainEvent(_, _) => stash()
+      case OnNextDomainEvent(_, _) => stashWithBackPressure()
 
       // ready with projection, notify parent and start consuming events
       case ProjectionActor.Done(lastEvent) =>
-        log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
+        log.debug("Processed {}, sending to parent {}", lastEvent, context.parent)
         context.parent ! lastEvent // send last processed event to parent
 
         // first switch behavior
@@ -66,7 +98,7 @@ abstract class ProjectionActor(
         }.pipeTo(self)
 
       case OnNext(any) =>
-        log.warning(s"Received something that is not a DomainEvent! $any - [${self.path.name}]")
+        log.warning("Received something that is not a DomainEvent! {} - [{}]", any, self.path.name)
     }
 
     receive orElse errorHandling("running projection")
@@ -76,11 +108,11 @@ abstract class ProjectionActor(
 
     val receive: Receive = {
       case OnNextDomainEvent(evt, offset) =>
-        log.debug(s"Received event $evt")
+        log.debug("Received event {}", evt)
         projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
         context become runningProjection(evt, offset)
 
-      case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+      case OnNext(any) => log.warning("Receive something that is not a DomainEvent! {}", any)
     }
 
     receive orElse errorHandling("accepting events")
@@ -93,28 +125,28 @@ abstract class ProjectionActor(
    */
   def errorHandling(phase: String): Receive = {
     case OnError(e) => // receive an error from the stream
-      log.error(e, s"OnError while $phase ... [${self.path.name}]")
+      log.error(e, "OnError while {} ... [{}]", phase, self.path.name)
       context.stop(self)
 
     case Status.Failure(e) => // receive a general error, probably from the projection
-      log.error(e, s"Failure while $phase ... [${self.path.name}]")
+      log.error(e, "Failure while {} ... [{}]", phase, self.path.name)
       context.stop(self)
   }
 
   def waitingOffsetPersistence(currentEvent: DomainEvent): Receive = {
 
     case ProjectionActor.OffsetPersisted(offset) =>
-      unstashAll()
+      unstashAllWithBackPressure()
       lastProcessedOffset = Option(offset)
       context become acceptingEvents
 
     case Status.Failure(e) =>
       // continue processing anyway,
       // we can only hope that next time we'll be able to save the offset
-      unstashAll()
+      unstashAllWithBackPressure()
       context become acceptingEvents
 
-    case anyOther => stash()
+    case anyOther => stashWithBackPressure()
   }
 
   object OnNextDomainEvent {
@@ -134,20 +166,6 @@ object ProjectionActor {
   case class Done(evt: DomainEvent)
   case class OffsetPersisted(offset: Long)
 
-}
-
-class ForwardingActorSubscriber(target: ActorRef, val requestStrategy: RequestStrategy) extends ActorSubscriber {
-
-  def receive: Actor.Receive = {
-
-    case onNext: OnNext =>
-      target forward onNext
-
-    case onError: OnError =>
-      target forward onError
-      context.system.stop(self)
-
-  }
 }
 
 /**

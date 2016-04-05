@@ -132,7 +132,8 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
     }
   }
 
-  class ProjectionJoinException(evts: Events, cause: Throwable) extends RuntimeException
+  class ProjectionJoinException(evts: Events, cause: Throwable)
+    extends RuntimeException(s"Failed to join projection '$defaultView")
 
 }
 

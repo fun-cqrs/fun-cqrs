@@ -9,6 +9,8 @@ trait Projection {
 
   type HandleFailure = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
 
+  def name = this.getClass.getSimpleName
+
   def handleEvent: HandleEvent
 
   def handleFailure: HandleFailure = PartialFunction.empty
@@ -81,6 +83,8 @@ object Projection {
 
     val projections = Seq(firstProj, secondProj)
 
+    override def name: String = s"${firstProj.name}-and-then-${secondProj.name}"
+
     def handleEvent: HandleEvent = {
       // note that we only broadcast if at least one of the underlying
       // projections is defined for the incoming event
@@ -104,6 +108,7 @@ object Projection {
    *
    */
   private[funcqrs] class OrElseProjection(firstProj: Projection, secondProj: Projection) extends ComposedProjection(firstProj, secondProj) with Projection {
+    override def name: String = s"${firstProj.name}-or-then-${secondProj.name}"
     def handleEvent = composedHandleEvent
   }
 
