@@ -3,17 +3,21 @@ package io.funcqrs.akka
 import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
+import com.typesafe.config.Config
 import io.funcqrs._
-import io.funcqrs.behavior.{ Behavior, Initialized, Uninitialized, State }
+import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.duration.Duration
+import scala.util.Try
 import scala.util.control.NonFatal
+import io.funcqrs.akka.util.ConfigReader._
 
 class AggregateActor[A <: AggregateLike](
     identifier: A#Id,
     behavior: Behavior[A],
-    inactivityTimeout: Option[Duration] = None
+    inactivityTimeout: Option[Duration] = None,
+    aggregateType: String
 ) extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
@@ -31,9 +35,12 @@ class AggregateActor[A <: AggregateLike](
 
   /**
    * Specifies how many events should be processed before new snapshot is taken.
-   * TODO: make configurable
    */
-  val eventsPerSnapshot = 100 // TODO: move to config
+  val eventsPerSnapshot = getConfig(
+    context.system.settings.config.getInt(s"funcqrs.akka.aggregates.$aggregateType.events-per-snapshot"),
+    context.system.settings.config.getInt("funcqrs.akka.aggregates.events-per-snapshot"),
+    defaultValue = 200
+  )
 
   import context.dispatcher
 
@@ -58,7 +65,7 @@ class AggregateActor[A <: AggregateLike](
     val receive: Receive = {
 
       case cmd: Command =>
-        log.debug(s"Received cmd: $cmd")
+        log.debug(s"Received cmd: {}", cmd)
         val eventualEvents = interpreter.onCommand(aggregateState, cmd)
         val origSender = sender()
 
@@ -88,7 +95,7 @@ class AggregateActor[A <: AggregateLike](
     case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
     case anyOther =>
-      log.debug(s"received $anyOther while processing another command")
+      log.debug(s"received {} while processing another command", anyOther)
       stash()
   }
 
@@ -123,7 +130,7 @@ class AggregateActor[A <: AggregateLike](
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
         case Initialized(aggregate) =>
-          log.debug(s"$eventsPerSnapshot events reached, saving snapshot")
+          log.debug(s"{} events reached, saving snapshot", eventsPerSnapshot)
           saveSnapshot(aggregate)
         case _ =>
       }
@@ -139,7 +146,7 @@ class AggregateActor[A <: AggregateLike](
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
       case Initialized(aggregate) =>
-        log.debug(s"sending aggregate ${aggregate.id} to $replyTo")
+        log.debug(s"sending aggregate {} to {}", aggregate.id, replyTo)
         replyTo ! aggregate
       case Uninitialized(id) =>
         replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
@@ -170,7 +177,7 @@ class AggregateActor[A <: AggregateLike](
       restoreState(metadata, aggregate)
 
     case RecoveryCompleted =>
-      log.debug(s"aggregate '$identifier' has recovered")
+      log.debug(s"aggregate '{}' has recovered", identifier)
 
     case event: Event => onEvent(event)
 
@@ -178,21 +185,21 @@ class AggregateActor[A <: AggregateLike](
   }
 
   protected def onEvent(evt: Event): Unit = {
-    log.debug(s"Reapplying event $evt")
+    log.debug(s"Reapplying event {}", evt)
     eventsSinceLastSnapshot += 1
     aggregateState = applyEvent(evt)
-    log.debug(s"State after event $aggregateState")
+    log.debug(s"State after event {}", aggregateState)
     changeState(Available)
   }
 
   /**
    * restore the lifecycle and state of the aggregate from a snapshot
    *
-   * @param metadata snapshot metadata
+   * @param metadata  snapshot metadata
    * @param aggregate the aggregate
    */
   protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
-    log.debug(s"restoring data for aggregate ${aggregate.id}")
+    log.debug(s"restoring data for aggregate {}", aggregate.id)
 
     currentSnapshotSequenceNr = Some(metadata.sequenceNr)
 
@@ -275,6 +282,7 @@ object AggregateActor {
   case object KillAggregate
 
   case class StateRequest(requester: ActorRef)
+
   case class Exists(requester: ActorRef)
 
 }
