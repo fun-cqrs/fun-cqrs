@@ -70,18 +70,18 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor {
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, offset: Long) =>
-      log.debug(s"[$persistenceId] snapshot offer - last processed event offset $offset")
+      log.debug("[{}] snapshot offer - last processed event offset {}", persistenceId, offset)
       lastProcessedOffset = Some(offset)
 
     case LastProcessedEventOffset(offset) =>
-      log.debug(s"[$persistenceId] - last processed event offset $offset")
+      log.debug("[{}] - last processed event offset {}", persistenceId, offset)
       lastProcessedOffset = Option(offset)
 
     case _: RecoveryCompleted =>
-      log.debug(s"[$persistenceId] recovery completed - last processed event offset $lastProcessedOffset")
+      log.debug("[{}] recovery completed - last processed event offset {}", persistenceId, lastProcessedOffset)
       recoveryCompleted()
 
-    case unknown => log.debug(s"Unknown message on recovery: $unknown")
+    case unknown => log.debug("Unknown message on recovery: {}", unknown)
 
   }
 
@@ -94,12 +94,12 @@ trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor {
 
     persist(LastProcessedEventOffset(offset)) { evt =>
 
-      log.debug(s"Projection: $persistenceId - saving domain event offset $offset")
+      log.debug("Projection: {} - saving domain event offset {}", persistenceId, offset)
       val seqNrToDelete = lastSequenceNr - 1
 
       // delete old message if any, no need to wait
       if (seqNrToDelete > 0) {
-        log.debug(s"Projection: $persistenceId - deleting previous projection event: $seqNrToDelete")
+        log.debug("Projection: {} - deleting previous projection event: {}", persistenceId, seqNrToDelete)
         deleteMessages(seqNrToDelete)
       }
 

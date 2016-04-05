@@ -66,14 +66,15 @@ trait AggregateManager extends Actor
 
     case cmd: Command =>
       log.error(
-        s"""
+        """
            | Received command without AggregateId!
-           | $cmd
+           | {}
            |#=============================================================================#
            |# Have you configured your aggregate to use assigned IDs?                     #
            |# In that case, you must always send commands together with the aggregate ID! #
            |#=============================================================================#
-         """.stripMargin
+         """.stripMargin,
+        cmd
       )
       sender() ! Status.Failure(
         new IllegalArgumentException(s"Command send without AggregateId: $cmd!")
@@ -128,13 +129,13 @@ trait AggregateManager extends Actor
 
   protected def findOrCreate(id: Id): ActorRef =
     context.child(id.value) getOrElse {
-      log.debug(s"creating $id")
+      log.debug("creating {}", id)
       create(id)
     }
 
   protected def create(id: Id): ActorRef = {
     killChildrenIfNecessary()
-    log.debug(s"creating $id")
+    log.debug("creating {}", id)
     val agg = context.actorOf(aggregateActorProps(id), id.value)
     context watch agg
     agg
@@ -156,7 +157,7 @@ trait AggregateManager extends Actor
     val childrenToTerminate = candidates.filterNot(childrenBeingTerminated)
 
     if (childrenToTerminate.nonEmpty) {
-      log.debug(s"Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
+      log.debug("Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
       childrenToTerminate foreach (_ ! KillAggregate)
       childrenBeingTerminated ++= childrenToTerminate
     }

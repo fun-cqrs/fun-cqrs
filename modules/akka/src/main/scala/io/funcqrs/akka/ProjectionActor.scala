@@ -61,7 +61,7 @@ abstract class ProjectionActor(
   protected def fallbackRequestStrategy: RequestStrategy = WatermarkRequestStrategy(200)
 
   def recoveryCompleted(): Unit = {
-    log.debug(s"ProjectionActor: starting projection... $projection")
+    log.debug("ProjectionActor: starting projection... {}", projection)
     implicit val mat = ActorMaterializer()
 
     val subscriber = ActorSubscriber[EventEnvelope](self)
@@ -81,7 +81,7 @@ abstract class ProjectionActor(
 
       // ready with projection, notify parent and start consuming events
       case ProjectionActor.Done(lastEvent) =>
-        log.debug(s"Processed $lastEvent, sending to parent ${context.parent}")
+        log.debug("Processed {}, sending to parent {}", lastEvent, context.parent)
         context.parent ! lastEvent // send last processed event to parent
 
         // first switch behavior
@@ -98,7 +98,7 @@ abstract class ProjectionActor(
         }.pipeTo(self)
 
       case OnNext(any) =>
-        log.warning(s"Received something that is not a DomainEvent! $any - [${self.path.name}]")
+        log.warning("Received something that is not a DomainEvent! {} - [{}]", any, self.path.name)
     }
 
     receive orElse errorHandling("running projection")
@@ -108,11 +108,11 @@ abstract class ProjectionActor(
 
     val receive: Receive = {
       case OnNextDomainEvent(evt, offset) =>
-        log.debug(s"Received event $evt")
+        log.debug("Received event {}", evt)
         projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
         context become runningProjection(evt, offset)
 
-      case OnNext(any) => log.warning(s"Receive something that is not a DomainEvent! $any")
+      case OnNext(any) => log.warning("Receive something that is not a DomainEvent! {}", any)
     }
 
     receive orElse errorHandling("accepting events")
@@ -125,11 +125,11 @@ abstract class ProjectionActor(
    */
   def errorHandling(phase: String): Receive = {
     case OnError(e) => // receive an error from the stream
-      log.error(e, s"OnError while $phase ... [${self.path.name}]")
+      log.error(e, "OnError while {} ... [{}]", phase, self.path.name)
       context.stop(self)
 
     case Status.Failure(e) => // receive a general error, probably from the projection
-      log.error(e, s"Failure while $phase ... [${self.path.name}]")
+      log.error(e, "Failure while {} ... [{}]", phase, self.path.name)
       context.stop(self)
   }
 

@@ -56,11 +56,11 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // child EventsMonitor is ready, can be removed
     case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
 
-    case anyOther => log.warning(s"Unknown message: $anyOther")
+    case anyOther => log.warning("Unknown message: {}", anyOther)
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {
-    log.debug(s"initializing new projection action $name")
+    log.debug("initializing new projection action {}", name)
 
     val supervisorProps =
       BackoffSupervisor.props(
@@ -82,7 +82,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     val currentSender = sender()
 
     val projectionName = currentSender.path.name
-    log.debug(s"received $evt from $currentSender, publishing it internally")
+    log.debug("received {} from {}, publishing it internally", evt, currentSender)
     eventBus.publish((evt, projectionName))
   }
 
@@ -97,13 +97,13 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // subscribe for events having `commandId` and coming from projection named with `projectionName`
     eventBus.subscribe(monitor, (commandId, projectionName))
 
-    log.debug(s"Created EventMonitor $monitor")
+    log.debug("Created EventMonitor {}", monitor)
     // sends monitor back
     sender() ! monitor
   }
 
   def removeEventMonitor(eventsMonitor: ActorRef): Unit = {
-    log.debug(s"Removing EventMonitor $eventsMonitor")
+    log.debug("Removing EventMonitor {}", eventsMonitor)
     eventBus.unsubscribe(eventsMonitor)
     context.stop(eventsMonitor)
   }
@@ -121,27 +121,27 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     def receive: Receive = {
       case Subscribe(events) =>
-        log.debug(s"received subscription for events $events")
+        log.debug("received subscription for events {}", events)
         eventsToWaitFor = events
         replyActor = Some(sender())
         tryComplete()
 
       case evt: DomainEvent =>
-        log.debug(s"received event $evt")
+        log.debug("received event {}", evt)
         eventsReceived = eventsReceived :+ evt
         tryComplete()
 
       case ReceiveTimeout =>
-        log.debug(s"Got timeout")
+        log.debug("Got timeout")
         removeMe()
 
-      case anyOther => log.debug(s"not expecting this one!! $anyOther")
+      case anyOther => log.debug("not expecting this one!! {}", anyOther)
     }
 
     def tryComplete() = {
       replyActor.foreach { replyActor =>
         if ((eventsToWaitFor diff eventsReceived).isEmpty) {
-          log.debug(s"Done, sending confirmation to $replyActor and shutting down")
+          log.debug("Done, sending confirmation to {} and shutting down", replyActor)
           replyActor ! Done
           removeMe()
         }
