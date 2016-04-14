@@ -88,13 +88,18 @@ class AggregateActor[A <: AggregateLike](
 
   private def busy: Receive = {
 
-    case AggregateActor.StateRequest(requester) => sendState(requester)
-    case Successful(events, origSender) => onSuccessful(events, origSender)
-    case failedCmd: FailedCommand => onCommandFailure(failedCmd)
+    val busyReceive : Receive = {
+      case AggregateActor.StateRequest(requester) => sendState(requester)
+      case Successful(events, origSender)         => onSuccessful(events, origSender)
+      case failedCmd: FailedCommand               => onCommandFailure(failedCmd)
 
-    case anyOther =>
-      log.debug("received {} while processing another command", anyOther)
-      stash()
+      case cmd: Command =>
+        log.debug("received {} while processing another command", cmd)
+        stash()
+    }
+
+    busyReceive orElse defaultReceive
+
   }
 
   def onCommandFailure(failedCmd: FailedCommand): Unit = {
@@ -108,7 +113,9 @@ class AggregateActor[A <: AggregateLike](
     case AggregateActor.KillAggregate => context.stop(self)
     case x: SaveSnapshotSuccess =>
       // delete the previous snapshot now that we know we have a newer snapshot
-      currentSnapshotSequenceNr.foreach(deleteSnapshot)
+      currentSnapshotSequenceNr.foreach { seqNr =>
+        deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
+      }
       currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
   }
 
