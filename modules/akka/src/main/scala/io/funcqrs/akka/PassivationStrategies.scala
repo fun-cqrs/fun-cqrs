@@ -77,11 +77,18 @@ object PassivationStrategy extends LazyLogging {
  * Defines a passivation strategy that will kill child actors when creating a new child
  * will push us over a threshold
  */
-trait MaxChildrenPassivationStrategySupport extends PassivationStrategy {
-  def max: Int
-  def killAtOnce: Int
+trait SelectionBasedPassivationStrategySupport extends PassivationStrategy {
 
-  def determineChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef] = {
+  def selectChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef]
+
+}
+
+class MaxChildrenPassivationStrategy(config: Config) extends SelectionBasedPassivationStrategySupport {
+
+  val max = Try(config.getInt("max-children.max")).getOrElse(40)
+  val killAtOnce = Try(config.getInt("max-children.kill-at-once")).getOrElse(20)
+
+  def selectChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef] = {
     if (candidates.size > max) {
       candidates.take(killAtOnce)
     } else {
@@ -90,16 +97,6 @@ trait MaxChildrenPassivationStrategySupport extends PassivationStrategy {
   }
 
   override def toString = s"${this.getClass.getSimpleName}(max=$max,killAtOnce=$killAtOnce)"
-}
-
-class MaxChildrenPassivationStrategy(config: Config) extends MaxChildrenPassivationStrategySupport {
-  override val max = {
-    Try(config.getInt("max-children.max")).getOrElse(40)
-  }
-
-  override val killAtOnce = {
-    Try(config.getInt("max-children.kill-at-once")).getOrElse(20)
-  }
 }
 
 trait InactivityTimeoutPassivationStrategySupport extends PassivationStrategy {

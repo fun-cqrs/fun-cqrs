@@ -152,8 +152,8 @@ trait AggregateManager extends Actor
 
   private def killChildrenIfNecessary() =
     passivationStrategy match {
-      case x: MaxChildrenPassivationStrategySupport =>
-        val candidates = x.determineChildrenToKill(context.children)
+      case x: SelectionBasedPassivationStrategySupport =>
+        val candidates = x.selectChildrenToKill(context.children)
 
         val childrenToTerminate = candidates.filterNot(childrenBeingTerminated)
 
