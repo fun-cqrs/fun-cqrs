@@ -2,7 +2,7 @@ import sbt.Keys._
 import sbt._
 
 //@formatter:off
-object Dependencies {  
+object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
@@ -22,17 +22,19 @@ object Dependencies {
   // Akka Module
   val akkaVersion               =   "2.4.2"
   val akkaActor                 =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
-  
+
   val akkaPersistence           =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
   val akkaSlf4j                 =   "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion
   val akkaStreams               =   "com.typesafe.akka"           %%  "akka-stream"       % akkaVersion
   val akkaTestKit               =   "com.typesafe.akka"           %%  "akka-testkit"      % akkaVersion     % "test"
   val akkaPersistenceQuery      =   "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion
+  val akkaPersistenceJDBC       =   "com.github.dnvriend"         %%  "akka-persistence-jdbc"               % "2.2.15"
 
   val akkaPersistenceInMemory   =   "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.2.2"     % "test"
+  val postgreSQL   =                "org.postgresql" % "postgresql" % "9.4-1206-jdbc42"
 
   val akkaDeps = Seq(
-    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaStreams, akkaSlf4j),
+    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaStreams, akkaSlf4j, akkaPersistenceJDBC),
     // experimental
     libraryDependencies ++= Seq(akkaPersistenceQuery),
     // test scope
@@ -40,7 +42,7 @@ object Dependencies {
   )
   //------------------------------------------------------------------------------------------------------------
 
-  
+
   //------------------------------------------------------------------------------------------------------------
   // Play Json support
   val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.4"
@@ -50,7 +52,7 @@ object Dependencies {
   val levelDbJNI        =   "org.fusesource.leveldbjni"   %   "leveldbjni-all"    % "1.8"
 
   val sampleDeps = Seq(
-    libraryDependencies ++= Seq(levelDb, levelDbJNI)
+    libraryDependencies ++= Seq(postgreSQL)
   ) ++ mainDeps ++ akkaDeps
 }
 // /@formatter:on
