@@ -27,13 +27,28 @@ object PassivationStrategy extends LazyLogging {
     val configuredClassName = config.getString("class")
 
     Try {
-      //laad de class
+
+      // load the class using constructor with Config
       Thread.currentThread()
         .getContextClassLoader
         .loadClass(configuredClassName)
         .getDeclaredConstructor(classOf[Config])
         .newInstance(config)
         .asInstanceOf[PassivationStrategy]
+
+    }.recoverWith {
+
+      case e: NoSuchMethodException =>
+        // try again using default constructor
+        Try {
+          Thread.currentThread()
+            .getContextClassLoader
+            .loadClass(configuredClassName)
+            .getDeclaredConstructor()
+            .newInstance()
+            .asInstanceOf[PassivationStrategy]
+        }
+
     }.recover {
       case e: ClassNotFoundException =>
 
@@ -66,7 +81,7 @@ object PassivationStrategy extends LazyLogging {
         new MaxChildrenPassivationStrategy(config)
 
       case NonFatal(exp) =>
-        //class niet gevonden, laad de default
+        //class not found, load default one
         logger.error("Unknown error while loading passivation strategy class. Falling back to default passivation strategy.", exp)
         new MaxChildrenPassivationStrategy(config)
     }.getOrElse(new MaxChildrenPassivationStrategy(config))
@@ -74,19 +89,31 @@ object PassivationStrategy extends LazyLogging {
 }
 
 /**
- * Defines a passivation strategy that will kill child actors when creating a new child
- * will push us over a threshold
+ * Common trait for Passivation Strategies that decides which actor to stop based on
+ * the list of current active AggregateActors
  */
 trait SelectionBasedPassivationStrategySupport extends PassivationStrategy {
 
+  /** 
+   * Filter function to select actor children to terminate. 
+
+   * @param - iterable of current active actors
+   * @return - a selection of Actors eligible for being terminated
+   */
   def selectChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef]
 
 }
 
+/**
+ * Defines a passivation strategy that will kill child actors when creating a new child
+ * will push us over a threshold
+ */
 class MaxChildrenPassivationStrategy(config: Config) extends SelectionBasedPassivationStrategySupport {
 
   val max = Try(config.getInt("max-children.max")).getOrElse(40)
   val killAtOnce = Try(config.getInt("max-children.kill-at-once")).getOrElse(20)
+
+  def this() = this(ConfigFactory.load())
 
   def selectChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef] = {
     if (candidates.size > max) {
@@ -115,6 +142,9 @@ trait InactivityTimeoutPassivationStrategySupport extends PassivationStrategy {
  * Defines a passivation strategy that will kill child actors when they have been idle for too long
  */
 class InactivityTimeoutPassivationStrategy(config: Config) extends InactivityTimeoutPassivationStrategySupport {
+
+  def this() = this(ConfigFactory.load())
+
   override val inactivityTimeout: Duration = {
     Try(Duration(config.getLong("inactivity-timeout"), SECONDS)).getOrElse(1.hours)
   }
