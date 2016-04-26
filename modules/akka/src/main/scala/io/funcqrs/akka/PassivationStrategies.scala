@@ -94,9 +94,9 @@ object PassivationStrategy extends LazyLogging {
  */
 trait SelectionBasedPassivationStrategySupport extends PassivationStrategy {
 
-  /** 
-   * Filter function to select actor children to terminate. 
-
+  /**
+   * Filter function to select actor children to terminate.
+   *
    * @param - iterable of current active actors
    * @return - a selection of Actors eligible for being terminated
    */

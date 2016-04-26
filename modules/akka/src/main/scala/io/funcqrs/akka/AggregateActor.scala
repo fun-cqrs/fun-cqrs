@@ -88,10 +88,10 @@ class AggregateActor[A <: AggregateLike](
 
   private def busy: Receive = {
 
-    val busyReceive : Receive = {
+    val busyReceive: Receive = {
       case AggregateActor.StateRequest(requester) => sendState(requester)
-      case Successful(events, origSender)         => onSuccessful(events, origSender)
-      case failedCmd: FailedCommand               => onCommandFailure(failedCmd)
+      case Successful(events, origSender) => onSuccessful(events, origSender)
+      case failedCmd: FailedCommand => onCommandFailure(failedCmd)
 
       case cmd: Command =>
         log.debug("received {} while processing another command", cmd)
