@@ -8,6 +8,7 @@ import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
+import scala.compat.Platform._
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
@@ -73,7 +74,8 @@ class AggregateActor[A <: AggregateLike](
           case NonFatal(cause: DomainException) =>
             FailedCommand(cause, origSender)
           case NonFatal(cause) =>
-            log.error(cause, "Error while processing command: {}", cmd)
+            val stack = cause.getStackTrace.mkString("", EOL, EOL)
+            log.info(s"Error while processing command: {}. Exception was: $cause: $EOL. $stack", cmd)
             FailedCommand(cause, origSender)
         } pipeTo self
 
@@ -292,4 +294,7 @@ object AggregateActor {
 
 }
 
-class DomainException extends RuntimeException
+/**
+ * Exceptions extending this trait will not get logged by FunCqrs as errors.
+ */
+trait DomainException { self: Throwable => }
