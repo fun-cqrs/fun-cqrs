@@ -71,12 +71,7 @@ class AggregateActor[A <: AggregateLike](
         eventualEvents map {
           events => Successful(events, origSender)
         } recover {
-          case NonFatal(cause: DomainException) =>
-            FailedCommand(cause, origSender)
-          case NonFatal(cause) =>
-            val stack = cause.getStackTrace.mkString("", EOL, EOL)
-            log.info(s"Error while processing command: {}. Exception was: $cause: $EOL. $stack", cmd)
-            FailedCommand(cause, origSender)
+          case NonFatal(cause) => FailedCommand(cause, origSender)
         } pipeTo self
 
         changeState(Busy)
