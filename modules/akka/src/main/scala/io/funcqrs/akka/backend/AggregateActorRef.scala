@@ -2,51 +2,54 @@ package io.funcqrs.akka.backend
 
 import _root_.akka.actor.{ Actor, ActorRef }
 import _root_.akka.util.Timeout
+import _root_.akka.pattern.{ ask => akkaAsk }
 import io.funcqrs.akka.AggregateManager.{ UntypedIdAndCommand, GetState, Exists }
 import io.funcqrs.akka.EventsMonitorActor.Subscribe
 import io.funcqrs.akka.{ EventsMonitorActor, ProjectionMonitorActor }
-import io.funcqrs.{ DomainEvent, DomainCommand, AggregateLike, AggregateAliases }
+import io.funcqrs._
 import scala.collection.immutable
 import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
 import scala.util.control.NonFatal
+import scala.concurrent.duration._
 
 case class AggregateActorRef[A <: AggregateLike](
     id: A#Id,
     aggregateManagerActor: ActorRef,
-    projectionMonitor: ActorRef
-) extends AggregateAliases {
+    projectionMonitor: ActorRef,
+    timeoutDuration: FiniteDuration = 5.seconds
+) extends AsyncAggregateRef[A] with AggregateAliases {
 
-  type Aggregate = A
+  def askTimeout = Timeout(timeoutDuration)
+
+  def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = copy(timeoutDuration = timeout)
 
   // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
-  private val askableActorRef = akka.pattern.ask(aggregateManagerActor)
+  private val askableActorRef = akkaAsk(aggregateManagerActor)
 
-  def !(cmd: Command)(implicit sender: ActorRef = Actor.noSender): Unit =
+  def tell(cmd: Command): Unit =
     aggregateManagerActor ! UntypedIdAndCommand(id, cmd)
 
-  def tell(cmd: Command, sender: ActorRef): Unit =
-    aggregateManagerActor.tell(UntypedIdAndCommand(id, cmd), sender)
-
-  def ?(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
-
-  def ask(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {
-    (askableActorRef ? UntypedIdAndCommand(id, cmd)).mapTo[Events]
+  def ask(cmd: Command): Future[Events] = {
+    askableActorRef.ask(UntypedIdAndCommand(id, cmd))(askTimeout).mapTo[Events]
   }
 
-  def state()(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[A] = {
+  def state(): Future[A] = {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
-    (askableActorRef ? GetState(id)).flatMap { res =>
+    val eventualState = askableActorRef.ask(GetState(id))(askTimeout)
+
+    eventualState.flatMap { res =>
       // can't use mapTo since we don't have a ClassTag for Aggregate in scope
       val tryCast = Try(res.asInstanceOf[Aggregate])
       Future.fromTry(tryCast)
     }
   }
 
-  def exists()(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Boolean] = {
-    (askableActorRef ? Exists(id)).mapTo[Boolean]
+  def exists(): Future[Boolean] = {
+    askableActorRef.ask(Exists(id))(askTimeout).mapTo[Boolean]
   }
 
   def join(viewName: String): ViewBoundedAggregateActorRef[A] = {
@@ -88,7 +91,6 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
    * @param cmd - a [[DomainCommand]] to be sent
    * @param sendCommandFunc - a function that will send the `cmd` to the Write Model.
    * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
-   *
    * @return - A Future with a [[Events]]. Future will complete succeffully iff the events originated from `cmd`
    *         are effectively applied on the Read Model, otherwise a [[scala.util.Failure]] holding a [[ProjectionJoinException]]
    *        is returned containing the Events and the Exception indicating the cause of the failure on the Read Model.
@@ -97,7 +99,7 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
   private def watchEvents(cmd: Command)(sendCommandFunc: => Future[Any])(implicit timeout: Timeout): Future[Events] = {
 
     // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
-    val askableProjectionMonitorActorRef = akka.pattern.ask(projectionMonitorActorRef)
+    val askableProjectionMonitorActorRef = akkaAsk(projectionMonitorActorRef)
 
     import scala.concurrent.ExecutionContext.Implicits.global
     def newEventsMonitor() = {
@@ -112,7 +114,7 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
         events <- sendCommandFunc.mapTo[Events]
 
         // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
-      } yield (akka.pattern.ask(monitor), events)
+      } yield (akkaAsk(monitor), events)
 
     val resultOnRead =
       for {

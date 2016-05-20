@@ -11,7 +11,7 @@ import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.{ concurrent, immutable }
-import scala.concurrent.Await
+import scala.concurrent.{ Future, Await }
 import scala.reflect.ClassTag
 import scala.concurrent.duration._
 
@@ -76,7 +76,7 @@ class InMemoryBackend extends Backend[Identity] {
     eventStream.onNext(evt)
   }
 
-  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] {
+  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] { self =>
 
     private var aggregateState: State[A] = Uninitialized(id)
 
@@ -105,5 +105,18 @@ class InMemoryBackend extends Backend[Identity] {
 
     def exists(): Identity[Boolean] = aggregateState.isInitialized
 
+    def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
+      def timeoutDuration: FiniteDuration = timeout
+
+      def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withTimeout(timeout)
+
+      def tell(cmd: Command): Unit = self.tell(cmd)
+
+      def ask(cmd: Command): Future[Events] = Future.successful(self.ask(cmd))
+
+      def state(): Future[Aggregate] = Future.successful(self.state())
+
+      def exists(): Future[Boolean] = Future.successful(self.exists())
+    }
   }
 }
