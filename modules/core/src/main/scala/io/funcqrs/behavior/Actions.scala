@@ -1,7 +1,7 @@
 package io.funcqrs.behavior
 
 import io.funcqrs.interpreters._
-import io.funcqrs.{ CommandException, AggregateLike, AggregateAliases }
+import io.funcqrs.{ AggregateAliases, AggregateLike, CommandException, MissingEventHandlerException }
 
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -41,9 +41,15 @@ case class Actions[A <: AggregateLike](
   /**
    * Applies the passed [[Event]] producing a new instance of [[Aggregate]].
    * Internally, this method calls the declared `Event Handlers`.
+   *
+   * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
    */
   def onEvent(evt: Event): Aggregate = {
-    eventHandlers(evt)
+
+    if (canHandleEvent(evt))
+      eventHandlers(evt)
+    else
+      throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
   }
 
   /**
@@ -212,28 +218,6 @@ case class Actions[A <: AggregateLike](
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: C => F[immutable.Seq[E]]): Actions[Aggregate]
   }
 
-  @deprecated(message = "Use handleEvent instead", since = "0.3.1")
-  def listener[E <: Event: ClassTag](eventHandler: E => A): Actions[Aggregate] =
-    handleEvent(eventHandler)
-
-  @deprecated(message = "Use handleCommand instead", since = "0.3.1")
-  def handler[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): Actions[Aggregate] =
-    handleCommand(cmdHandler)
-
-  @deprecated(message = "Use handleCommand instead", since = "0.3.1")
-  def handler: ManyEventsBinder[Identity] = handleCommand
-
-  @deprecated(message = "Use tryToHandleCommand instead", since = "0.3.1")
-  def tryHandler[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): Actions[Aggregate] =
-    tryToHandleCommand(cmdHandler)
-
-  @deprecated(message = "Use tryToHandleCommand instead", since = "0.3.1")
-  def tryHandler: ManyEventsBinder[Try] = tryToHandleCommand
-
-  @deprecated(message = "Use handleCommandAsync instead", since = "0.3.1")
-  def asyncHandler[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): Actions[Aggregate] =
-    handleCommandAsync(cmdHandler)
-
   @deprecated(message = "Use handleCommandAsync instead", since = "0.3.1")
   def asyncHandler: ManyEventsBinder[Future] = handleCommandAsync
 }
@@ -241,5 +225,6 @@ case class Actions[A <: AggregateLike](
 object Actions {
 
   def apply[A <: AggregateLike]: Actions[A] = Actions[A]()
+  def empty[A <: AggregateLike]: Actions[A] = apply
 
 }

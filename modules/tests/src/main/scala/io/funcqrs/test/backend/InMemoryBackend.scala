@@ -45,7 +45,6 @@ class InMemoryBackend extends Backend[Identity] {
 
     // does the event match the query criteria?
     def matchQuery(evt: DomainEvent with MetadataFacet[_]): Boolean = {
-
       config.query match {
         case QueryByTag(tag) => evt.tags.contains(tag)
         case QueryByTags(tags) => tags.subsetOf(evt.tags)
@@ -53,14 +52,26 @@ class InMemoryBackend extends Backend[Identity] {
       }
     }
 
+    def matchQueryWithoutTagging(evt: DomainEvent): Boolean = {
+      config.query match {
+        case QuerySelectAll => true
+        case _ => false
+      }
+    }
+
     //noinspection MatchToPartialFunction
     eventStream.subscribe { evt: DomainEvent =>
 
+      def sendToProjection(event: DomainEvent) = {
+        // TODO: projections should be interpreted as well to avoid this
+        Await.ready(config.projection.onEvent(evt), 10.seconds)
+        ()
+      }
       evt match {
         case evt: DomainEvent with MetadataFacet[_] if matchQuery(evt) =>
-          // TODO: projections should be interpreted as well to avoid this
-          Await.ready(config.projection.onEvent(evt), 10.seconds)
-          ()
+          sendToProjection(evt)
+        case evt: DomainEvent if matchQueryWithoutTagging(evt) =>
+          sendToProjection(evt)
         case anyEvent => // do nothing, don't send to projection
       }
     }
