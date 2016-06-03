@@ -11,4 +11,6 @@ trait Backend[F[_]] {
   def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): Backend[F]
 
   def configure(config: ProjectionConfig): Backend[F]
+
+  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateRef[A, F]
 }

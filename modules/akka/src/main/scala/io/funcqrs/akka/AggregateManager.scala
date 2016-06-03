@@ -38,7 +38,7 @@ trait AggregateManager extends Actor
 
   val passivationStrategy: PassivationStrategy = PassivationStrategy(self.path.name)
 
-  log.info(s"passivationStrategy=${passivationStrategy.toString}")
+  log.info(s"passivation strategy for '${self.path.name}': ${passivationStrategy.toString}")
 
   override def receive: PartialFunction[Any, Unit] = {
     processCommand orElse defaultProcessCommand

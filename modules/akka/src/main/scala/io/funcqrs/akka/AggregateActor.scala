@@ -4,6 +4,7 @@ import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
 import io.funcqrs._
+import io.funcqrs.akka.util.ConfigReader
 import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
@@ -33,11 +34,8 @@ class AggregateActor[A <: AggregateLike](
   /**
    * Specifies how many events should be processed before new snapshot is taken.
    */
-  val eventsPerSnapshot = getConfig(
-    context.system.settings.config.getInt(s"funcqrs.akka.aggregates.$aggregateType.events-per-snapshot"),
-    context.system.settings.config.getInt("funcqrs.akka.aggregates.events-per-snapshot"),
-    defaultValue = 200
-  )
+  val eventsPerSnapshot =
+    aggregateConfig(aggregateType).getInt("events-per-snapshot", 200)
 
   import context.dispatcher
 

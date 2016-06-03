@@ -13,6 +13,7 @@ import scala.util.control.NonFatal
 sealed trait PassivationStrategy
 
 object PassivationStrategy extends LazyLogging {
+
   val configPathPrefix = "funcqrs.akka.aggregates"
   val configPathSuffix = "passivation-strategy"
 
