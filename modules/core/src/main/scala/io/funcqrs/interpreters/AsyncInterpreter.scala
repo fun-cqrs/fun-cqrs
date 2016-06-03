@@ -5,7 +5,7 @@ import io.funcqrs.behavior._
 
 import scala.concurrent.Future
 import scala.language.higherKinds
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Try
 
 /**
  * An Interpreter with F[_] bounded to [[Future]].
@@ -17,21 +17,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
 
-  def onCommand(state: State[A], cmd: Command): Future[Events] = {
-
-    val currentActions = behavior(state)
-    val events =
-      currentActions.onCommand(cmd) match {
-        case IdCommandHandlerInvoker(handler) => Future.successful(handler(cmd))
-        case TryCommandHandlerInvoker(handler) => Future.fromTry(handler(cmd))
-        case FutureCommandHandlerInvoker(handler) => handler(cmd)
-      }
-
-    events.flatMap { evts =>
-      if (currentActions.canHandleEvents(evts)) Future.successful(evts)
-      else Future.failed(eventHandlerNotDefined(state, evts))
-    }
+  protected def interpret: InterpreterFunction = {
+    case (cmd, IdCommandHandlerInvoker(handler)) => Future.successful(handler(cmd))
+    case (cmd, TryCommandHandlerInvoker(handler)) => Future.fromTry(handler(cmd))
+    case (cmd, FutureCommandHandlerInvoker(handler)) => handler(cmd)
   }
+
+  protected def fromTry(events: Try[Events]): Future[Events] = Future.fromTry(events)
 }
 
 object AsyncInterpreter {
