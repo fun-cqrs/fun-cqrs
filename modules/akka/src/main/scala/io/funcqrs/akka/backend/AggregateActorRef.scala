@@ -23,7 +23,7 @@ case class AggregateActorRef[A <: AggregateLike](
 
   def askTimeout = Timeout(timeoutDuration)
 
-  def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = copy(timeoutDuration = timeout)
+  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = copy(timeoutDuration = timeout)
 
   // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
   private val askableActorRef = akkaAsk(aggregateManagerActor)

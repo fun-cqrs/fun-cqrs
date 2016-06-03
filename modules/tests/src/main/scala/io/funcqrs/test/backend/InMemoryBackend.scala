@@ -4,7 +4,6 @@ import io.funcqrs._
 import io.funcqrs.backend.{ QuerySelectAll, Backend, QueryByTag, QueryByTags }
 import io.funcqrs.behavior.{ Behavior, State, Uninitialized, Initialized }
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
-import io.funcqrs.interpreters.Monads._
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
@@ -116,10 +115,10 @@ class InMemoryBackend extends Backend[Identity] {
 
     def exists(): Identity[Boolean] = aggregateState.isInitialized
 
-    def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
+    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
       def timeoutDuration: FiniteDuration = timeout
 
-      def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withTimeout(timeout)
+      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withAskTimeout(timeout)
 
       def tell(cmd: Command): Unit = self.tell(cmd)
 

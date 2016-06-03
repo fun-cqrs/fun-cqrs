@@ -19,7 +19,7 @@ trait AggregateRef[A <: AggregateLike, F[_]] extends AggregateAliases {
   def state(): F[Aggregate]
   def exists(): F[Boolean]
 
-  def withTimeout(timeout: FiniteDuration): AggregateRef[A, Future]
+  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future]
 }
 
 trait IdentityAggregateRef[A <: AggregateLike] extends AggregateRef[A, Identity]

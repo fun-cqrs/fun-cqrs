@@ -3,12 +3,14 @@ package io.funcqrs.akka.backend
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.pattern._
 import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 import io.funcqrs.AggregateLike
 import io.funcqrs.akka._
 import io.funcqrs.backend._
 import io.funcqrs.config._
-
 import io.funcqrs.ClassTagImplicits
+import io.funcqrs.akka.util.ConfigReader
+import io.funcqrs.akka.util.ConfigReader.aggregateConfig
 
 import scala.collection.concurrent
 import scala.concurrent.Future
@@ -28,7 +30,11 @@ trait AkkaBackend extends Backend[Future] {
 
   def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateActorRef[A] = {
     val aggregateManager = aggregates(ClassTagImplicits[A])
-    new AggregateActorRef[A](id, aggregateManager, projectionMonitorActorRef)
+
+    val aggregateName = aggregateManager.path.name
+    val askTimeout = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
+
+    new AggregateActorRef[A](id, aggregateManager, projectionMonitorActorRef, askTimeout)
   }
 
   def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): AkkaBackend = {
