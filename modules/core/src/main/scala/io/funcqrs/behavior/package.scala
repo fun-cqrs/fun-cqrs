@@ -4,6 +4,8 @@ package object behavior {
 
   type Behavior[A <: AggregateLike] = PartialFunction[State[A], Actions[A]]
 
+  type BehaviorUnwrapped[A <: AggregateLike] = PartialFunction[A, Actions[A]]
+
   /**
    * A CommandToEvents is a PartialFunction from a DomainCommand to a CommandHandlerInvoker
    */
@@ -19,4 +21,9 @@ package object behavior {
   def actions[A <: AggregateLike] = Actions[A]()
 
   def action[A <: AggregateLike] = Actions[A]()
+
+  def Behavior[A <: AggregateLike](onCreation: => Actions[A])(postCreation: BehaviorUnwrapped[A]): Behavior[A] = {
+    case Uninitialized(_) => onCreation
+    case Initialized(aggregate) if postCreation.isDefinedAt(aggregate) => postCreation(aggregate)
+  }
 }

@@ -2,11 +2,10 @@ package io.funcqrs
 
 import java.time.OffsetDateTime
 
-import io.funcqrs.behavior.{ Behavior, Uninitialized, _ }
+import io.funcqrs.behavior._
 import io.funcqrs.interpreters.IdentityInterpreter
-import io.funcqrs.model.TimeTracker.Idle
 import io.funcqrs.model.TimerTrackerProtocol.{ TimerCreated, TimerStarted, _ }
-import io.funcqrs.model.{ TimeTracker, TrackerId }
+import io.funcqrs.model.{ BusyTracker, IdleTracker, TimeTracker, TrackerId }
 import org.scalatest.{ FunSuite, Matchers }
 /**
  * The intent of this test is not test a specific Interpreter, but to test the
@@ -20,10 +19,12 @@ class InterpreterTest extends FunSuite with Matchers {
 
     // a bogus TimeTracker behavior
     // can't start timer due to empty actions for Idle state
-    def behavior: Behavior[TimeTracker] = {
-      case Uninitialized(id) => createActions(id)
-      case Idle(tracker) => Actions.empty
-    }
+    def behavior: Behavior[TimeTracker] =
+      Behavior {
+        factoryActions(TrackerId.generate)
+      } {
+        case _ => Actions.empty
+      }
 
     val interpreter = IdentityInterpreter(behavior)
 
@@ -36,9 +37,13 @@ class InterpreterTest extends FunSuite with Matchers {
   test("A interpreter will fail a Command if missing behavior for a given state") {
     // a bogus TimeTracker behavior
     // can't start timer due to missing case for Idle state
-    def behavior: Behavior[TimeTracker] = {
-      case Uninitialized(id) => createActions(id)
-    }
+    def behavior: Behavior[TimeTracker] =
+      Behavior {
+        factoryActions(TrackerId.generate)
+      } {
+        // missing behavior for IdleTracker
+        case _: BusyTracker => Actions.empty
+      }
 
     val interpreter = IdentityInterpreter(behavior)
 
@@ -48,7 +53,7 @@ class InterpreterTest extends FunSuite with Matchers {
     }
   }
 
-  def createActions(trackerId: TrackerId) =
+  def factoryActions(trackerId: TrackerId) =
     actions[TimeTracker]
       .handleCommand.manyEvents {
         cmd: CreateAndStartTracking =>
@@ -61,6 +66,6 @@ class InterpreterTest extends FunSuite with Matchers {
           )
       }
       .handleEvent {
-        evt: TimerCreated => TimeTracker(trackerId)
+        evt: TimerCreated => IdleTracker(trackerId)
       }
 }
