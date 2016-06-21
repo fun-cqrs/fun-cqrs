@@ -109,7 +109,16 @@ abstract class ProjectionActor(
     val receive: Receive = {
       case OnNextDomainEvent(evt, offset) =>
         log.debug("Received event {}", evt)
-        projection.onEvent(evt).map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+        val eventFuture = projection.onEvent(evt)
+
+        eventFuture.map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+
+        eventFuture.onFailure {
+          case e =>
+            log.warning(s"Error while running projection for event $evt in projection ${projection.name}")
+            log.error(e, e.getMessage)
+        }
+
         context become runningProjection(evt, offset)
 
       case OnNext(any) => log.warning("Receive something that is not a DomainEvent! {}", any)

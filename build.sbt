@@ -25,6 +25,7 @@ lazy val root = Project(
   funCqrs,
   funCqrsAkka,
   funPlayJsonSupport,
+  funPlay25JsonSupport,
   funCqrsTestKit,
 //  shopApp,
   lotteryApp
@@ -50,7 +51,7 @@ lazy val funCqrsAkka = Project(
 
 
 
-// Play Json support ==============================
+// Play24 Json support ============================
 lazy val funPlayJsonSupport = Project(
   id = "fun-cqrs-play-json",
   base = file("modules/play-json"),
@@ -58,9 +59,17 @@ lazy val funPlayJsonSupport = Project(
 ) dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
+// Play25 Json support ==========================
+lazy val funPlay25JsonSupport = Project(
+  id = "fun-cqrs-play25-json",
+  base = file("modules/play25-json"),
+  settings = mainDeps ++ Seq(libraryDependencies += play25Json)
+) dependsOn (funCqrs % "compile->compile;test->test")
+//================================================
 
 
-// Play Json support ==============================
+
+//Test kit =======================================
 lazy val funCqrsTestKit = Project(
   id = "fun-cqrs-test-kit",
   base = file("modules/tests"),
