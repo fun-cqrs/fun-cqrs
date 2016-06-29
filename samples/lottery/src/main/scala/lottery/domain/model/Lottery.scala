@@ -6,127 +6,87 @@ import java.util.UUID
 import io.funcqrs._
 import io.funcqrs.behavior._
 
-import scala.concurrent.Future
 import scala.util.Random
 
-// tag::lottery-aggregate[]
-case class Lottery(
-    name: String,
-    participants: List[String] = List(),
-    winner: Option[String]     = None,
-    id: LotteryId
-) extends AggregateLike {
+sealed trait Lottery extends AggregateLike {
+  type Id       = LotteryId
+  type Protocol = LotteryProtocol.type
+}
 
-  type Id       = LotteryId // #<1>
-  type Protocol = LotteryProtocol.type // #<2>
-
-  def addParticipant(name: String): Lottery = {
-    copy(participants = participants :+ name)
-  }
-
-  def removeParticipant(name: String): Lottery = {
-    copy(participants = participants.filter(_ != name))
-  }
-
-  def selectParticipant(): String = {
-    val index = Random.nextInt(participants.size)
-    participants(index)
-  }
-
-  def hasWinner = winner.isDefined
-
-  def hasNoParticipants = participants.isEmpty
-  def hasParticipants   = participants.nonEmpty
-
-  def hasParticipant(name: String) = participants.contains(name)
-
-  def isNewParticipant(name: String) = !hasParticipant(name)
-  // end::lottery-aggregate[]
+case class EmptyLottery(id: LotteryId) extends Lottery {
 
   import LotteryProtocol._
 
-  // tag::lottery-aggregate-guards[]
   /**
-    * Action: reject Run command if has no participants
-    * Only applicable when list of participants is empty
-    */
+   * Action: reject Run command if has no participants
+   * Only applicable when list of participants is empty
+   */
   def canNotRunWithoutParticipants =
-    // format: off
     action[Lottery]
       .rejectCommand {
         // can't run if there is no participants
-        case _: Run.type if this.hasNoParticipants =>
+        case _: Run.type  =>
           new IllegalArgumentException("Lottery has no participants")
       }
-    // format: on
+
 
   /**
-    * Action: reject double booking. Can't add the same participant twice
-    * Only applicable after adding at least one participant
-    */
-  def rejectDoubleBooking =
-    // format: off
-    action[Lottery]
-      .rejectCommand {
-        // can't add participant twice
-        case cmd: AddParticipant if this.hasParticipant(cmd.name) =>
-          new IllegalArgumentException(s"Participant ${cmd.name} already added!")
-      }
-    // format: on
-
-  /**
-    * Action: reject all
-    * Applicable when a winner is selected. No new commands should be accepts.
-    */
-  def rejectAllCommands =
-    // format: off
-    action[Lottery]
-      .rejectCommand {
-        // no command can be accepted after having selected a winner
-        case anyCommand if this.hasWinner =>
-          new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is ${winner.get}")
-      }
-    // format: on
-
-  // end::lottery-aggregate-guards[]
-
-  // tag::lottery-aggregate-actions[]
-  /**
-    * Action: add a participant
-    * Applicable as long as we don't have a winner
-    */
+   * Action: add a participant
+   * Applicable as long as we don't have a winner
+   */
   def acceptParticipants =
-    // format: off
     actions[Lottery]
       .handleCommand {
         cmd: AddParticipant => ParticipantAdded(cmd.name, id)
       }
       .handleEvent {
-        evt: ParticipantAdded => this.addParticipant(evt.name)
+        evt: ParticipantAdded =>
+          NonEmptyLottery(
+            participants = List(evt.name),
+            id = id
+          )
       }
-    // format: on
+}
+
+case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lottery {
+
+  import LotteryProtocol._
+
 
   /**
-    * Action: run the lottery
-    * Only applicable if it has at least one participant
-    */
-  def runTheLottery =
-    // format: off
+   * Action: reject double booking. Can't add the same participant twice
+   * Only applicable after adding at least one participant
+   */
+  def rejectDoubleBooking = {
+
+    def hasParticipant(name: String) = participants.contains(name)
+
+    action[Lottery]
+      .rejectCommand {
+        // can't add participant twice
+        case cmd: AddParticipant if hasParticipant(cmd.name) =>
+          new IllegalArgumentException(s"Participant ${cmd.name} already added!")
+      }
+  }
+
+  /**
+   * Action: add a participant
+   * Applicable as long as we don't have a winner
+   */
+  def acceptParticipants =
     actions[Lottery]
       .handleCommand {
-        cmd: Run.type => WinnerSelected(selectParticipant(), OffsetDateTime.now, id)
+        cmd: AddParticipant => ParticipantAdded(cmd.name, id)
       }
       .handleEvent {
-        evt: WinnerSelected => this.copy(winner = Option(evt.winner))
+        evt: ParticipantAdded => copy(participants = participants :+ evt.name)
       }
-    // format: on
 
   /**
-    * Action: remove partipants (single or all)
-    * Only applicable if Lottery has participants
-    */
-  def removingParticipants =
-    // format: off
+   * Action: remove participants (single or all)
+   * Only applicable if Lottery has participants
+   */
+  def removeParticipants =
     actions[Lottery]
       // removing participants (single or all) produce ParticipantRemoved events
       .handleCommand {
@@ -138,19 +98,50 @@ case class Lottery(
           this.participants.map { name => ParticipantRemoved(name, id) }
       }
       .handleEvent {
-        evt: ParticipantRemoved => this.removeParticipant(evt.name)
+        evt: ParticipantRemoved =>
+          val newParticipants = participants.filter(_ != evt.name)
+          // if last participant is removed, transition to EmptyLottery
+          if (newParticipants.isEmpty)
+            EmptyLottery(id)
+          else
+            copy(participants = newParticipants)
       }
-    // format: on
-  // end::lottery-aggregate-actions[]
-
+  /**
+   * Action: run the lottery
+   * Only applicable if it has at least one participant
+   */
+  def runTheLottery =
+  actions[Lottery]
+    .handleCommand {
+      cmd: Run.type =>
+        val index = Random.nextInt(participants.size)
+        val winner = participants(index)
+        WinnerSelected(winner, OffsetDateTime.now, id)
+    }
+    .handleEvent {
+      // transition to end state on winner selection
+      evt: WinnerSelected => FinishedLottery(evt.winner, id)
+    }
 }
 
-// end::lottery-aggregate[]
+case class FinishedLottery(winner: String, id: LotteryId) extends Lottery {
 
-// tag::lottery-id[]
+  /**
+   * Action: reject all
+   * Applicable when a winner is selected. No new commands should be accepts.
+   */
+  def rejectAllCommands =
+    action[Lottery]
+      .rejectCommand {
+        // no command can be accepted after having selected a winner
+        case anyCommand  =>
+          new LotteryHasAlreadyAWinner(s"Lottery has already a winner and the winner is $winner")
+      }
+}
+
+/** Defines the a type-safe ID for Lottery Aggregate */
 case class LotteryId(value: String) extends AggregateId
 
-// end::lottery-id[]
 
 object LotteryId {
 
@@ -161,11 +152,12 @@ object LotteryId {
   def generate(): LotteryId = LotteryId(UUID.randomUUID().toString)
 }
 
-// tag::lottery-protocol[]
-object LotteryProtocol extends ProtocolLike { // #<1>
+
+/** Defines the Lottery Protocol, all Commands it may receive and Events it may emit */
+object LotteryProtocol extends ProtocolLike {
 
   // Commands ============================================================
-  sealed trait LotteryCommand extends ProtocolCommand // #<2>
+  sealed trait LotteryCommand extends ProtocolCommand
   // Creation Command
   case class CreateLottery(name: String) extends LotteryCommand
 
@@ -179,7 +171,7 @@ object LotteryProtocol extends ProtocolLike { // #<1>
   case object Run extends LotteryCommand
 
   // Events ============================================================
-  sealed trait LotteryEvent extends ProtocolEvent { // #<3>
+  sealed trait LotteryEvent extends ProtocolEvent {
     def lotteryId: LotteryId
   }
 
@@ -193,9 +185,6 @@ object LotteryProtocol extends ProtocolLike { // #<1>
 
 }
 
-// end::lottery-protocol[]
-
-// tag::lottery-behavior[]
 object Lottery {
 
   // import the protocol to have access to Commands and Events
@@ -204,34 +193,31 @@ object Lottery {
   // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
 
-  def createLottery(lotteryId: LotteryId) = // <1>
-    // format: off
+  def createLottery(lotteryId: LotteryId) =
     actions[Lottery]
       .handleCommand {
         cmd: CreateLottery => LotteryCreated(cmd.name, lotteryId)
       }
       .handleEvent {
-        evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
+        evt: LotteryCreated => EmptyLottery(id = lotteryId)
       }
-    // format: on
 
   def behavior(lotteryId: LotteryId): Behavior[Lottery] =
     Behavior {
-      createLottery(lotteryId) // <1>
+      createLottery(lotteryId)
     } {
-      case lottery if lottery.hasWinner => lottery.rejectAllCommands //<2>
-
-      case lottery if lottery.hasNoParticipants => // <3>
+      case lottery: EmptyLottery =>
         lottery.canNotRunWithoutParticipants ++
           lottery.acceptParticipants
 
-      case lottery if lottery.hasParticipants => // <4>
+      case lottery: NonEmptyLottery=>
         lottery.rejectDoubleBooking ++
           lottery.acceptParticipants ++
-          lottery.removingParticipants ++
+          lottery.removeParticipants ++
           lottery.runTheLottery
+
+      case lottery: FinishedLottery => lottery.rejectAllCommands
     }
 }
-// end::lottery-behavior[]
 
 class LotteryHasAlreadyAWinner(msg: String) extends RuntimeException(msg)

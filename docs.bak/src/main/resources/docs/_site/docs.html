@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang=""> <![endif]--><!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8" lang=""> <![endif]--><!--[if IE 8]>         <html class="no-js lt-ie9" lang=""> <![endif]--><!--[if gt IE 8]><!--><html class="no-js" lang="">
+<!--<![endif]-->
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <!-- docs.html -->
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title>Fun.CQRS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A functional CQRS/ES library for Scala">
+  <meta name="author" content="">
+  <link rel="icon" type="image/png" href="%7B%7B%20site.favicon.url%20%7D%7D">
+  <meta property="og:image" content="http://localhost:8000/default/poster.png">
+  <meta name="twitter:image" content="http://localhost:8000/default/poster.png">
+  <meta property="og:title" content="Fun.CQRS">
+  <meta property="og:site_name" content="Fun.CQRS">
+  <meta property="og:url" content="http://www.funcqrs.io/">
+  <meta property="og:type" content="website">
+  <meta property="og:description" content="A functional CQRS/ES library for Scala">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@strongtyped">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+</head>
+
+<body class="docs">
+  <!--[if IE]>
+    <script src="https://cdn.jsdelivr.net/html5shiv/3.7.2/html5shiv.min.js"></script>
+  	<script src="https://cdn.jsdelivr.net/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+  <div id="wrapper">
+    <div id="sidebar-wrapper">
+      <ul id="sidebar" class="sidebar-nav">
+        <li class="sidebar-brand">
+          <a href="#" data-href="/fun-cqrs/">
+              <div class="brand-wrapper" style="background:url('http://localhost:8000/default/sidebar_brand.png') no-repeat">
+              <span>Fun.CQRS</span>
+            </div>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div id="page-content-wrapper">
+      <div class="nav">
+        <div class="container-fluid">
+          <div class="row">
+            <div class="col-lg-12">
+              <div class="action-menu pull-left clearfix">
+                <a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a>
+              </div>
+              <ul class="pull-right">
+                <li class="hidden-xs"><a href="#" data-href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-eye"></i><span>WATCH (<m id="eyes">--</m>)</span></a></li>
+                <li class="hidden-xs"><a href="#" data-href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-star-o"></i><span>STARS (<m id="stars">--</m>)</span></a></li>
+                <li><a href="#" onclick="shareSiteTwitter();"><i class="fa fa-twitter"></i></a></li>
+                <li><a href="#" onclick="shareSiteFacebook();"><i class="fa fa-facebook"></i></a></li>
+                <li><a href="#" onclick="shareSiteGoogle();"><i class="fa fa-google-plus"></i></a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!--Heading-->
+      <div id="content"><h1>What is a Fun.CQRS?</h1>
+</div>
+
+
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/languages/scala.min.js"></script>
+
+  <script>
+    jQuery(document).ready(function() {
+      activeLinks();
+      loadHighlight();
+      loadStyle();
+      hljs.initHighlightingOnLoad();
+      activeToggle();
+      organizeContent();
+      loadGitHubStats();
+    });
+
+    function loadStyle() {
+
+      $("<link/>", {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "http://localhost:8000/style.css"
+      }).appendTo("head");
+      
+      $("<link/>", {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "http://localhost:8000/default/palette.css"
+      }).appendTo("head");
+
+    }
+
+    function loadHighlight() {
+      $("<link/>", {
+        rel: "stylesheet",
+        type: "text/css",
+        href: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.4.0/styles/foundation.min.css"
+      }).appendTo("head");
+    }
+
+    function organizeContent() {
+      var content = $('#content');
+      var subcontent = $('<div></div>');
+      content.prepend(subcontent);
+
+      content.find('h1').each(function(index) {
+        var section = $('<section></section>');
+        subcontent.append(section);
+        var h1 = $(this);
+        var elements = h1.nextUntil('h1');
+        var text = h1.text();
+        var slug = slugify(text) + '-' + index;
+        addSectionToSidebar(text, slug);
+        section.append(makeSectionAnchor(h1, text, slug));
+
+        if (elements.length > 0) {
+          elements.appendTo(section);
+          organizeSubSection(slug, elements);
+
+        }
+      });
+
+      removeEmptyList();
+    }
+
+    function organizeSubSection(s, children) {
+      children.filter('h2').each(function(index, el) {
+        var h2 = $(this);
+        var text = h2.text();
+        var slug = s + '-' + slugify(text) + '-' + index;
+        var a = makeSectionAnchor(h2, text, slug);
+        addSubSectionToSidebar(text, slug, s);
+
+      });
+    }
+
+    function makeSectionAnchor(h, text, slug) {
+      var a = $('<a></a>').attr({
+        'class': 'anchor',
+        'name': slug,
+        'href': '#' + slug
+      });
+      a.append(h.clone());
+      h.replaceWith(a);
+      return a;
+    }
+
+    function addSectionToSidebar(text, slug) {
+      var ul = $('<ul></ul>').addClass('sub_section');
+      var a = $('<a href="#' + slug + '">' + text + '<span><i class="fa fa-angle-right"></i></span></a>');
+      var li = $('<li class="' + slug + '"></li>');
+      li.append(a).append(ul);
+      $('#sidebar').append(li);
+
+      a.click(function(event) {
+        $('#sidebar li').add('#sidebar a').removeClass('active');
+        $('#sidebar .sub_section').not(ul).slideUp();
+        ul.slideToggle('fast');
+        li.add(a).toggleClass('active');
+
+      });
+    }
+
+    function addSubSectionToSidebar(text, slug, s) {
+      var ul = $('#sidebar li.' + s + ' ul');
+      var li = $('<li class="' + slug + '"><a href="#' + slug + '">' + text + '</a></li>');
+      ul.append(li);
+    }
+
+    function removeEmptyList() {
+      $('#sidebar>li').not('.sidebar-brand').each(function(index, el) {
+        var li = $(this);
+        var children = li.find('li');
+        if (children.size() == 0) {
+          li.find('span').remove();
+        }
+      });
+    }
+
+    function slugify(text) {
+      return text.toString().toLowerCase()
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+        .replace(/\-\-+/g, '-') // Replace multiple - with single -
+        .replace(/^-+/, '') // Trim - from start of text
+        .replace(/-+$/, ''); // Trim - from end of text
+    }
+
+    function activeToggle() {
+      $("#menu-toggle").click(function(e) {
+        e.preventDefault();
+        $("#wrapper").toggleClass("toggled");
+      });
+    }
+
+    function activeLinks() {
+      $('a[data-href]').each(function(index, el) {
+        $(this).attr('href', $(this).attr('data-href'));
+      });
+    }
+
+    var baseURL = window.location.href;
+
+    function shareSiteFacebook() {
+      var title = 'Fun.CQRS: A functional CQRS/ES library for Scala';
+      launchPopup('http://www.facebook.com/sharer/sharer.php?u='+baseURL+'&t=' + title);
+    }
+
+    function shareSiteTwitter() {
+      var text = 'Fun.CQRS: A functional CQRS/ES library for Scala '+baseURL;
+      launchPopup('https://twitter.com/home?status=' + text);
+      return false;
+    }
+
+    function shareSiteGoogle() {
+      launchPopup('https://plus.google.com/share?url='+baseURL);
+      return false;
+    }
+
+    function launchPopup(url) {
+      window.open(url, 'Social Share', 'height=320, width=640, toolbar=no, menubar=no, scrollbars=no, resizable=no, location=no, directories=no, status=no');
+    }
+
+    function loadGitHubStats() {
+
+      var gitHubAPI = "https://api.github.com/repos/" + "strongtyped/fun-cqrs" + "?callback=?";
+      $.getJSON(gitHubAPI).done(function(data) {
+        $('#eyes').text(data.data.subscribers_count);
+        $('#stars').text(data.data.stargazers_count);
+      });
+
+    }
+  </script>
+
+</body>
+
+
+
+
+
+
+
+
+
+
+</html>
+
+
+<!-- https://cdn.rawgit.com/47deg/microsites/cdn/docs.html -->
+<!-- https://rawgit.com/47deg/microsites/cdn/docs.html -->
+<!-- http://localhost/~rafaparadela/cdn47/microsites/docs.html -->

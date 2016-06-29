@@ -23,6 +23,7 @@ trait AggregateRef[A <: AggregateLike, F[_]] extends AggregateAliases {
 }
 
 trait IdentityAggregateRef[A <: AggregateLike] extends AggregateRef[A, Identity]
+
 trait TryAggregateRef[A <: AggregateLike] extends AggregateRef[A, Try]
 
 trait AsyncAggregateRef[A <: AggregateLike] extends AggregateRef[A, Future] {

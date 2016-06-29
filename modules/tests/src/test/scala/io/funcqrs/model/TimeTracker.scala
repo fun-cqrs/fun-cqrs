@@ -21,6 +21,7 @@ sealed trait TimeTracker extends AggregateLike {
     }
 
   def isIdle = !isBusy
+
 }
 
 case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Task] = List()) extends TimeTracker {

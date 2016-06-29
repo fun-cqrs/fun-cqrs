@@ -11,9 +11,7 @@ object Dependencies {
   val rxScala               =  "io.reactivex"               %% "rxscala"            % "0.26.2"
 
 
-  val mainDeps = Seq(
-    libraryDependencies ++= Seq(scalaLogging, scalaTest, rxScala)
-  )
+  val mainDeps = Seq(scalaLogging, scalaTest, rxScala)
   //------------------------------------------------------------------------------------------------------------
 
 
@@ -22,7 +20,7 @@ object Dependencies {
   // Akka Module
   val akkaDeps = {
     val akkaVersion               =   "2.4.8"
-    val deps =
+    
       Seq(
         "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion,
         "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion,
@@ -34,8 +32,6 @@ object Dependencies {
         "com.typesafe.akka"           %%  "akka-testkit"                        % akkaVersion   % "test",
         "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.3.5"       % "test"
       )
-
-    Seq(libraryDependencies ++= deps)  
   }
   //------------------------------------------------------------------------------------------------------------
 
@@ -49,8 +45,6 @@ object Dependencies {
   val levelDb           =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"
   val levelDbJNI        =   "org.fusesource.leveldbjni"   %   "leveldbjni-all"    % "1.8"
 
-  val sampleDeps = Seq(
-    libraryDependencies ++= Seq(levelDb, levelDbJNI)
-  ) ++ mainDeps ++ akkaDeps
+  val sampleDeps = Seq(levelDb, levelDbJNI) ++ mainDeps ++ akkaDeps
 }
 // /@formatter:on

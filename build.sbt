@@ -1,6 +1,5 @@
-//@formatter:off
-
 import Dependencies._
+import BuildSettings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
@@ -13,6 +12,7 @@ ivyScala := ivyScala.value map {
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
 scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
+
 
 // dependencies
 lazy val root = Project(
@@ -27,33 +27,43 @@ lazy val root = Project(
     funPlayJsonSupport,
     funPlay25JsonSupport,
     funCqrsTestKit,
-//  shopApp,
     lotteryApp
   )
+
+
 
 // Core ==========================================
 lazy val funCqrs = Project(
   id       = "fun-cqrs-core",
   base     = file("modules/core"),
-  settings = mainDeps
-)
+  settings = defaultSettings
+).settings(libraryDependencies ++= mainDeps)
 //================================================
+
+
 
 // Akka integration ==============================
 lazy val funCqrsAkka = Project(
     id       = "fun-cqrs-akka",
     base     = file("modules/akka"),
-    settings = mainDeps ++ akkaDeps
-  ) dependsOn (funCqrs % "compile->compile;test->test")
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
+   .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
+
+
 
 // Play24 Json support ============================
 lazy val funPlayJsonSupport = Project(
     id       = "fun-cqrs-play-json",
     base     = file("modules/play-json"),
-    settings = mainDeps ++ Seq(libraryDependencies += playJson)
-  ) dependsOn (funCqrs % "compile->compile;test->test")
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps)
+   .settings(libraryDependencies += playJson)
+   .dependsOn(funCqrs % "compile->compile;test->test")
 //================================================
+
+
 
 // Play25 Json support ==========================
 lazy val funPlay25JsonSupport = {
@@ -64,17 +74,24 @@ lazy val funPlay25JsonSupport = {
   Project(
     id       = "fun-cqrs-play25-json",
     base     = file("modules/play25-json"),
-    settings = mainDeps ++ Seq(libraryDependencies += play25Json)
-  ).dependsOn(funCqrs % "compile->compile;test->test").settings(unmanagedSourceDirectories in Compile <<= sourceDir)
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps)
+   .settings(libraryDependencies += play25Json)
+   .settings(unmanagedSourceDirectories in Compile <<= sourceDir)
+   .dependsOn(funCqrs % "compile->compile;test->test")
+   
 }
 //================================================
+
+
 
 //Test kit =======================================
 lazy val funCqrsTestKit = Project(
     id       = "fun-cqrs-test-kit",
     base     = file("modules/tests"),
-    settings = mainDeps
-  ) dependsOn (funCqrs % "compile->compile;test->test")
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps)
+   .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
 // #####################################################
@@ -82,15 +99,15 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 
 lazy val lotteryApp = Project(
-  id   = "sample-lottery",
-  base = file("samples/lottery"),
-  settings = Seq(
-      publishArtifact := false,
-      routesGenerator := InjectedRoutesGenerator
-    ) ++ sampleDeps
-).dependsOn(funCqrs).dependsOn(funCqrsTestKit).dependsOn(funCqrsAkka)
+  id        = "sample-lottery",
+  base      = file("samples/lottery"),
+  settings  = defaultSettings
+).settings(libraryDependencies ++= sampleDeps)
+ .settings(publishArtifact := false)
+ .dependsOn(funCqrs)
+ .dependsOn(funCqrsTestKit)
+ .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")
 addCommandAlias("runLotteryInMemory", "sample-lottery/runMain lottery.app.MainInMemory")
 
-//@formatter:on
