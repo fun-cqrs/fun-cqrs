@@ -5,13 +5,9 @@ import io.funcqrs.test.backend.InMemoryBackend
 import lottery.app.LotteryBackendConfig
 import lottery.domain.model.LotteryProtocol._
 import lottery.domain.service.LotteryViewRepo
-import org.scalatest.concurrent.{ Futures, ScalaFutures }
-import org.scalatest.{ FunSuite, Matchers, OptionValues }
+import org.scalatest.{ FunSuite, Matchers, OptionValues, TryValues }
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
-class LotteryTest extends FunSuite with Matchers with Futures
-    with OptionValues with ScalaFutures with FailedFutures {
+class LotteryTest extends FunSuite with Matchers with OptionValues with TryValues {
 
   val repo = new LotteryViewRepo
 
@@ -45,7 +41,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
       expectEventType[WinnerSelected]
 
       // check the view projection
-      val view = repo.find(id).futureValue
+      val view = repo.find(id).success.value
       view.participants should have size 2
       view.winner shouldBe defined
     }
@@ -111,12 +107,12 @@ class LotteryTest extends FunSuite with Matchers with Futures
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
 
-      val view = repo.find(id).futureValue
+      val view = repo.find(id).success.value
       view.participants should have size 2
 
       lottery ? RemoveAllParticipants
 
-      val updatedView = repo.find(id).futureValue
+      val updatedView = repo.find(id).success.value
       updatedView.participants should have size 0
 
     }
@@ -134,7 +130,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
       lottery ? AddParticipant("Paul")
       lottery ? Run
 
-      val view = repo.find(id).futureValue
+      val view = repo.find(id).success.value
       view.participants should have size 2
       view.winner shouldBe defined
 
@@ -144,7 +140,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
 
       }
 
-      val updateView = repo.find(id).futureValue
+      val updateView = repo.find(id).success.value
       updateView.participants should have size 2
 
     }
@@ -162,7 +158,7 @@ class LotteryTest extends FunSuite with Matchers with Futures
       lottery ? AddParticipant("Paul")
       lottery ? Run
 
-      val view = repo.find(id).futureValue
+      val view = repo.find(id).success.value
       view.participants should have size 2
       view.winner shouldBe defined
 

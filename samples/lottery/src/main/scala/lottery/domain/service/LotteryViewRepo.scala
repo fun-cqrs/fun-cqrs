@@ -1,6 +1,5 @@
 package lottery.domain.service
 
-import io.funcqrs.InMemoryRepository
 import lottery.domain.model.{ LotteryId, LotteryView }
 
 class LotteryViewRepo extends InMemoryRepository {
@@ -8,6 +7,6 @@ class LotteryViewRepo extends InMemoryRepository {
   type Identifier = LotteryId
   type Model = LotteryView
 
-  /** Extract id van Model */
+  /** Extract id from Model */
   protected def $id(view: LotteryView): LotteryId = view.id
 }

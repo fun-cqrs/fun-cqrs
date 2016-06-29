@@ -4,14 +4,13 @@ import io.funcqrs._
 import io.funcqrs.backend.{ QuerySelectAll, Backend, QueryByTag, QueryByTags }
 import io.funcqrs.behavior.{ Behavior, State, Uninitialized, Initialized }
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
-import io.funcqrs.interpreters.Monads._
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.{ concurrent, immutable }
-import scala.concurrent.Await
+import scala.concurrent.{ Future, Await }
 import scala.reflect.ClassTag
 import scala.concurrent.duration._
 
@@ -45,7 +44,6 @@ class InMemoryBackend extends Backend[Identity] {
 
     // does the event match the query criteria?
     def matchQuery(evt: DomainEvent with MetadataFacet[_]): Boolean = {
-
       config.query match {
         case QueryByTag(tag) => evt.tags.contains(tag)
         case QueryByTags(tags) => tags.subsetOf(evt.tags)
@@ -53,14 +51,26 @@ class InMemoryBackend extends Backend[Identity] {
       }
     }
 
+    def matchQueryWithoutTagging(evt: DomainEvent): Boolean = {
+      config.query match {
+        case QuerySelectAll => true
+        case _ => false
+      }
+    }
+
     //noinspection MatchToPartialFunction
     eventStream.subscribe { evt: DomainEvent =>
 
+      def sendToProjection(event: DomainEvent) = {
+        // TODO: projections should be interpreted as well to avoid this
+        Await.ready(config.projection.onEvent(evt), 10.seconds)
+        ()
+      }
       evt match {
         case evt: DomainEvent with MetadataFacet[_] if matchQuery(evt) =>
-          // TODO: projections should be interpreted as well to avoid this
-          Await.ready(config.projection.onEvent(evt), 10.seconds)
-          ()
+          sendToProjection(evt)
+        case evt: DomainEvent if matchQueryWithoutTagging(evt) =>
+          sendToProjection(evt)
         case anyEvent => // do nothing, don't send to projection
       }
     }
@@ -76,7 +86,7 @@ class InMemoryBackend extends Backend[Identity] {
     eventStream.onNext(evt)
   }
 
-  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] {
+  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] { self =>
 
     private var aggregateState: State[A] = Uninitialized(id)
 
@@ -105,5 +115,18 @@ class InMemoryBackend extends Backend[Identity] {
 
     def exists(): Identity[Boolean] = aggregateState.isInitialized
 
+    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
+      def timeoutDuration: FiniteDuration = timeout
+
+      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withAskTimeout(timeout)
+
+      def tell(cmd: Command): Unit = self.tell(cmd)
+
+      def ask(cmd: Command): Future[Events] = Future.successful(self.ask(cmd))
+
+      def state(): Future[Aggregate] = Future.successful(self.state())
+
+      def exists(): Future[Boolean] = Future.successful(self.exists())
+    }
   }
 }

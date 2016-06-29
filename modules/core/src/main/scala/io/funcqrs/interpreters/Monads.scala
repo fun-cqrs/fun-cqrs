@@ -64,17 +64,10 @@ object Monads {
     }
   }
 
-  /** Builds a 'Monad' for whatever F[_] having a MonadOps type-class in the implicit scope  */
-  def monad[A, F[_]: MonadOps](fa: F[A]) =
+  implicit class MonadSyntax[F[_]: MonadOps, A](fa: F[A]) {
+    def map[B](f: A => B): F[B] = MonadOps[F].map(fa)(f)
 
-    new Monad[A, F] {
+    def flatMap[B](f: A => F[B]): F[B] = MonadOps[F].flatMap(fa)(f)
 
-      def map[B](f: A => B): F[B] = {
-        MonadOps[F].map(fa)(f)
-      }
-
-      def flatMap[B](f: A => F[B]): F[B] = {
-        MonadOps[F].flatMap(fa)(f)
-      }
-    }
+  }
 }

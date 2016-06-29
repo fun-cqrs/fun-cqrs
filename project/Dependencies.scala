@@ -44,6 +44,7 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Play Json support
   val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.4"
+  val play25Json            =    "com.typesafe.play"          %% "play-json"          %  "2.5.3"
   //------------------------------------------------------------------------------------------------------------
 
   val levelDb           =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"

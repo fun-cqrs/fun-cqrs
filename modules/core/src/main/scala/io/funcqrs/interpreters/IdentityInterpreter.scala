@@ -3,8 +3,9 @@ package io.funcqrs.interpreters
 import io.funcqrs.AggregateLike
 import io.funcqrs.behavior._
 
-import scala.concurrent.{ Future, Await }
+import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.{ Duration, _ }
+import scala.util.Try
 
 /**
  * An Interpreter with F[_] bounded to [[Identity]].
@@ -21,19 +22,15 @@ import scala.concurrent.duration.{ Duration, _ }
  */
 class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
 
-  def onCommand(state: State[A], cmd: Command): Identity[Events] = {
-
-    val currentActions = behavior(state)
-    val events =
-      currentActions.onCommand(cmd) match {
-        case IdCommandHandlerInvoker(handler) => handler(cmd)
-        case TryCommandHandlerInvoker(handler) => handler(cmd).get
-        case FutureCommandHandlerInvoker(handler) => Await.result(handler(cmd), atMost)
-      }
-
-    if (currentActions.canHandleEvents(events)) events
-    else throw eventHandlerNotDefined(state, events)
+  protected def interpret: InterpreterFunction = {
+    case (cmd, IdCommandHandlerInvoker(handler)) => handler(cmd)
+    case (cmd, TryCommandHandlerInvoker(handler)) => handler(cmd).get
+    case (cmd, FutureCommandHandlerInvoker(handler)) => Await.result(handler(cmd), atMost)
   }
+
+  protected def fromTry(events: Try[Events]): Identity[Events] =
+    events.get // yes, we force a 'get'. Nothing can be done if we can't handle an event
+
 }
 
 object IdentityInterpreter {

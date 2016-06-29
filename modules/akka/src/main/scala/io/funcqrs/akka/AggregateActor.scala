@@ -4,23 +4,23 @@ import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
 import io.funcqrs._
+import io.funcqrs.akka.util.ConfigReader
 import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.duration.Duration
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
     identifier: A#Id,
-    behavior: Behavior[A],
+    interpreter: AsyncInterpreter[A],
     inactivityTimeout: Option[Duration] = None,
     aggregateType: String
 ) extends AggregateAliases with PersistentActor with ActorLogging {
 
   type Aggregate = A
-
-  val interpreter = AsyncInterpreter(behavior)
 
   /**
    * state of Aggregate Root
@@ -34,11 +34,8 @@ class AggregateActor[A <: AggregateLike](
   /**
    * Specifies how many events should be processed before new snapshot is taken.
    */
-  val eventsPerSnapshot = getConfig(
-    context.system.settings.config.getInt(s"funcqrs.akka.aggregates.$aggregateType.events-per-snapshot"),
-    context.system.settings.config.getInt("funcqrs.akka.aggregates.events-per-snapshot"),
-    defaultValue = 200
-  )
+  val eventsPerSnapshot =
+    aggregateConfig(aggregateType).getInt("events-per-snapshot", 200)
 
   import context.dispatcher
 
@@ -54,115 +51,6 @@ class AggregateActor[A <: AggregateLike](
   // this is either the snapshot we recovered with, or the last confirmed successfull snapshot
   // we will delete the snapshot with this sequencenr upon receiving confirmation that a new snapshot was taken
   private var currentSnapshotSequenceNr: Option[Long] = None
-
-  // always compose with defaultReceive
-  override def receiveCommand: Receive = available
-
-  private def available: Receive = {
-
-    val receive: Receive = {
-
-      case cmd: Command =>
-        log.debug("Received cmd: {}", cmd)
-        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
-        val origSender = sender()
-
-        eventualEvents map {
-          events => Successful(events, origSender)
-        } recover {
-          case NonFatal(cause: DomainException) =>
-            FailedCommand(cause, origSender)
-          case NonFatal(cause) =>
-            log.error(cause, "Error while processing command: {}", cmd)
-            FailedCommand(cause, origSender)
-        } pipeTo self
-
-        changeState(Busy)
-
-    }
-
-    // always compose with defaultReceive
-    receive orElse defaultReceive
-
-  }
-
-  private def busy: Receive = {
-
-    val busyReceive: Receive = {
-      case AggregateActor.StateRequest(requester) => sendState(requester)
-      case Successful(events, origSender) => onSuccessful(events, origSender)
-      case failedCmd: FailedCommand => onCommandFailure(failedCmd)
-
-      case cmd: Command =>
-        log.debug("received {} while processing another command", cmd)
-        stash()
-    }
-
-    busyReceive orElse defaultReceive
-
-  }
-
-  def onCommandFailure(failedCmd: FailedCommand): Unit = {
-    failedCmd.origSender ! Status.Failure(failedCmd.cause)
-    changeState(Available)
-  }
-
-  protected def defaultReceive: Receive = {
-    case AggregateActor.StateRequest(requester) => sendState(requester)
-    case AggregateActor.Exists(requester) => requester ! aggregateState.isInitialized
-    case AggregateActor.KillAggregate => context.stop(self)
-    case x: SaveSnapshotSuccess =>
-      // delete the previous snapshot now that we know we have a newer snapshot
-      currentSnapshotSequenceNr.foreach { seqNr =>
-        deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
-      }
-      currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
-  }
-
-  /**
-   * This method should be used as a callback handler for persist() method.
-   * It will:
-   * - apply the event on the aggregate effectively changing its state
-   * - check if a snapshot needs to be saved.
-   *
-   * @param evt DomainEvent that has been persisted
-   */
-  protected def afterEventPersisted(evt: Event): Unit = {
-
-    aggregateState = applyEvent(evt)
-    eventsSinceLastSnapshot += 1
-
-    if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
-      aggregateState match {
-        case Initialized(aggregate) =>
-          log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
-          saveSnapshot(aggregate)
-        case _ =>
-      }
-      eventsSinceLastSnapshot = 0
-    }
-  }
-
-  /**
-   * send a message containing the aggregate's state back to the requester
-   *
-   * @param replyTo actor to send message to
-   */
-  protected def sendState(replyTo: ActorRef): Unit = {
-    aggregateState match {
-      case Initialized(aggregate) =>
-        log.debug("sending aggregate {} to {}", aggregate.id, replyTo)
-        replyTo ! aggregate
-      case Uninitialized(id) =>
-        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
-    }
-  }
-
-  /**
-   * Apply event on the AggregateRoot.
-   */
-  def applyEvent(event: Event): State[Aggregate] =
-    Initialized(behavior(aggregateState).onEvent(event))
 
   /**
    * Recovery handler that receives persisted events during recovery. If a state snapshot
@@ -188,6 +76,88 @@ class AggregateActor[A <: AggregateLike](
 
     case unknown => log.debug("Unknown message on recovery")
   }
+
+  // always compose with defaultReceive
+  override def receiveCommand: Receive = available
+
+  private def available: Receive = {
+
+    val receive: Receive = {
+
+      case cmd: Command =>
+        log.debug("Received cmd: {}", cmd)
+        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
+        val origSender = sender()
+
+        eventualEvents map {
+          events => Successful(events, origSender)
+        } recover {
+          case NonFatal(cause) => FailedCommand(cause, origSender)
+        } pipeTo self
+
+        changeState(Busy)
+
+    }
+
+    // always compose with defaultReceive
+    receive orElse defaultReceive
+
+  }
+
+  private def busy: Receive = {
+
+    val busyReceive: Receive = {
+
+      case AggregateActor.StateRequest(requester) => sendState(requester)
+      case Successful(events, origSender) => onSuccess(events, origSender)
+      case failedCmd: FailedCommand => onFailure(failedCmd)
+
+      case cmd: Command =>
+        log.debug("received {} while processing another command", cmd)
+        stash()
+    }
+
+    busyReceive orElse defaultReceive
+
+  }
+
+  def onFailure(failedCmd: FailedCommand): Unit = {
+    failedCmd.origSender ! Status.Failure(failedCmd.cause)
+    changeState(Available)
+  }
+
+  protected def defaultReceive: Receive = {
+    case AggregateActor.StateRequest(requester) => sendState(requester)
+    case AggregateActor.Exists(requester) => requester ! aggregateState.isInitialized
+    case AggregateActor.KillAggregate => context.stop(self)
+    case x: SaveSnapshotSuccess =>
+      // delete the previous snapshot now that we know we have a newer snapshot
+      currentSnapshotSequenceNr.foreach { seqNr =>
+        deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
+      }
+      currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
+  }
+
+  /**
+   * send a message containing the aggregate's state back to the requester
+   *
+   * @param replyTo actor to send message to
+   */
+  protected def sendState(replyTo: ActorRef): Unit = {
+    aggregateState match {
+      case Initialized(aggregate) =>
+        log.debug("sending aggregate {} to {}", aggregate.id, replyTo)
+        replyTo ! aggregate
+      case Uninitialized(id) =>
+        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
+    }
+  }
+
+  /**
+   * Apply event on the AggregateRoot.
+   */
+  def applyEvent(event: Event): State[Aggregate] =
+    interpreter.onEvent(aggregateState, event)
 
   protected def onEvent(evt: Event): Unit = {
     log.debug("Reapplying event {}", evt)
@@ -225,32 +195,37 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  private def onSuccessful(events: Events, origSender: ActorRef): Unit = {
+  private def onSuccess(events: Events, origSender: ActorRef): Unit = {
 
-    //val aggregate = aggregateOpt.get
-
-    // extra check! persist it only if a listener is defined for each event
-    if (behavior(aggregateState).canHandleEvents(events)) {
-
-      // forall on an empty Seq always returns 'true' !!!!
-      // and akka-persistence throw exception if an empty list of events are sent!
-      if (events.nonEmpty) {
-        persistAll(events) { evt =>
-          afterEventPersisted(evt)
-        }
-      }
-      origSender ! events
-
-    } else {
-
-      // collect events with listener
-      val badEventsNames = events.collect {
-        case e if !behavior(aggregateState).canHandleEvent(e) => e.getClass.getSimpleName
-      }
-      origSender ! Status.Failure(new CommandException(s"No event handlers defined for events: ${badEventsNames.mkString(",")}"))
+    if (events.nonEmpty) {
+      persistAll(events) { evt => afterEventPersisted(evt) }
     }
-
+    origSender ! events
     changeState(Available)
+  }
+
+  /**
+   * This method should be used as a callback handler for persist() method.
+   * It will:
+   * - apply the event on the aggregate effectively changing its state
+   * - check if a snapshot needs to be saved.
+   *
+   * @param evt DomainEvent that has been persisted
+   */
+  protected def afterEventPersisted(evt: Event): Unit = {
+
+    aggregateState = applyEvent(evt)
+    eventsSinceLastSnapshot += 1
+
+    if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+      aggregateState match {
+        case Initialized(aggregate) =>
+          log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
+          saveSnapshot(aggregate)
+        case _ =>
+      }
+      eventsSinceLastSnapshot = 0
+    }
   }
 
   override def preStart() {
@@ -292,4 +267,7 @@ object AggregateActor {
 
 }
 
-class DomainException extends RuntimeException
+/**
+ * Exceptions extending this trait will not get logged by FunCqrs as errors.
+ */
+trait DomainException { self: Throwable => }

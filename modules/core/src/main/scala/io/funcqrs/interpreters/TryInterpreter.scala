@@ -22,21 +22,14 @@ import scala.util.{ Failure, Success, Try }
  */
 class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Try] {
 
-  def onCommand(state: State[A], cmd: Command): Try[Events] = {
-
-    val currentActions = behavior(state)
-    val events =
-      currentActions.onCommand(cmd) match {
-        case IdCommandHandlerInvoker(handler) => Try(handler(cmd))
-        case TryCommandHandlerInvoker(handler) => handler(cmd)
-        case FutureCommandHandlerInvoker(handler) => Try(Await.result(handler(cmd), atMost))
-      }
-
-    events.flatMap { evts =>
-      if (currentActions.canHandleEvents(evts)) Success(evts)
-      else Failure(eventHandlerNotDefined(state, evts))
-    }
+  protected def interpret: InterpreterFunction = {
+    case (cmd, IdCommandHandlerInvoker(handler)) => Try(handler(cmd))
+    case (cmd, TryCommandHandlerInvoker(handler)) => handler(cmd)
+    case (cmd, FutureCommandHandlerInvoker(handler)) => Try(Await.result(handler(cmd), atMost))
   }
+
+  protected def fromTry(events: Try[Events]): Try[Events] = events
+
 }
 
 object TryInterpreter {

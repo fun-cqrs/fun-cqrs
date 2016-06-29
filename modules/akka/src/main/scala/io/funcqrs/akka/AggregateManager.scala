@@ -5,6 +5,8 @@ import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.behavior.Behavior
+import io.funcqrs.interpreters.AsyncInterpreter
+
 import scala.concurrent.duration.Duration
 
 object AggregateManager {
@@ -36,7 +38,7 @@ trait AggregateManager extends Actor
 
   val passivationStrategy: PassivationStrategy = PassivationStrategy(self.path.name)
 
-  log.info(s"passivationStrategy=${passivationStrategy.toString}")
+  log.info(s"passivation strategy for '${self.path.name}': ${passivationStrategy.toString}")
 
   override def receive: PartialFunction[Any, Unit] = {
     processCommand orElse defaultProcessCommand
@@ -147,7 +149,14 @@ trait AggregateManager extends Actor
       case x: InactivityTimeoutPassivationStrategySupport => Some(x.inactivityTimeout)
       case _ => None
     }
-    Props(classOf[AggregateActor[Aggregate]], id, behavior(id), inactivityTimeout, context.self.path.name)
+    Props(
+      classOf[AggregateActor[Aggregate]],
+      // actor parameters
+      id,
+      AsyncInterpreter(behavior(id)),
+      inactivityTimeout,
+      context.self.path.name
+    )
   }
 
   private def killChildrenIfNecessary() =
