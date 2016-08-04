@@ -4,7 +4,7 @@ import Dependencies._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
-scalaVersion in ThisBuild := "2.11.7"
+scalaVersion in ThisBuild := "2.11.8"
 
 
 ivyScala := ivyScala.value map {
