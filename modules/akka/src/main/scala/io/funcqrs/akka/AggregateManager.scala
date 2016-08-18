@@ -5,9 +5,6 @@ import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
 import io.funcqrs.behavior.Behavior
-import io.funcqrs.interpreters.AsyncInterpreter
-
-import scala.concurrent.duration.Duration
 
 object AggregateManager {
 
@@ -31,16 +28,16 @@ trait AggregateManager extends Actor
 
   type Aggregate <: AggregateLike
 
-  case class PendingCommand(sender: ActorRef, targetProcessorId: Id, command: Command)
+  case class PendingCommand(sender: ActorRef, aggregateId: Id, command: Command)
 
   private var childrenBeingTerminated: Set[ActorRef] = Set.empty
   private var pendingCommands: Seq[PendingCommand] = Nil
 
   val passivationStrategy: PassivationStrategy = PassivationStrategy(self.path.name)
 
-  log.info(s"passivation strategy for '${self.path.name}': ${passivationStrategy.toString}")
+  log.info("passivation strategy for '{}': {}", self.path.name, passivationStrategy.toString)
 
-  override def receive: PartialFunction[Any, Unit] = {
+  override def receive: Receive = {
     processCommand orElse defaultProcessCommand
   }
 
@@ -90,13 +87,20 @@ trait AggregateManager extends Actor
     findOrCreate(id) forward AggregateActor.Exists(sender())
   }
 
-  private def handleTermination(actor: ActorRef) = {
-    childrenBeingTerminated = childrenBeingTerminated filterNot (_ == actor)
-    val (commandsForChild, remainingCommands) = pendingCommands partition (_.targetProcessorId == actor.path.name)
+  private def handleTermination(actorRef: ActorRef) = {
+
+    // remove actor from list of 'being terminated' actors
+    childrenBeingTerminated = childrenBeingTerminated filterNot (_ == actorRef)
+
+    val (commandsForChild, remainingCommands) = pendingCommands partition (_.aggregateId.value == actorRef.path.name)
+
+    // hold remaining commands as pending
     pendingCommands = remainingCommands
+
+    // recreate child and send buffered commands to it
     log.debug("Child termination finished. Applying {} cached commands.", commandsForChild.size)
-    for (PendingCommand(commandSender, targetProcessorId, command) <- commandsForChild) {
-      val child = findOrCreate(targetProcessorId)
+    for (PendingCommand(commandSender, aggregateId, command) <- commandsForChild) {
+      val child = findOrCreate(aggregateId)
       child.tell(command, commandSender)
     }
   }
@@ -145,18 +149,7 @@ trait AggregateManager extends Actor
    * Build Props for a new Aggregate Actor with the passed Id
    */
   def aggregateActorProps(id: Id): Props = {
-    val inactivityTimeout: Option[Duration] = passivationStrategy match {
-      case x: InactivityTimeoutPassivationStrategySupport => Some(x.inactivityTimeout)
-      case _ => None
-    }
-    Props(
-      classOf[AggregateActor[Aggregate]],
-      // actor parameters
-      id,
-      AsyncInterpreter(behavior(id)),
-      inactivityTimeout,
-      context.self.path.name
-    )
+    AggregateActor.props[Aggregate](id, behavior(id), context.self.path.name)
   }
 
   private def killChildrenIfNecessary() =
@@ -170,12 +163,8 @@ trait AggregateManager extends Actor
           log.debug("Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
           childrenToTerminate foreach (_ ! KillAggregate)
           childrenBeingTerminated ++= childrenToTerminate
-          if (childrenToTerminate.nonEmpty) {
-            log.debug(s"Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
-            childrenToTerminate foreach (_ ! KillAggregate)
-            childrenBeingTerminated ++= childrenToTerminate
-          }
         }
+
       case _ =>
     }
 }

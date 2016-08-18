@@ -34,7 +34,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
   object BadId {
 
-    def unapply(aggregateId: AggregateId): Option[AggregateId] = {
+    def unapply(aggregateId: Aggregate#Id): Option[AggregateId] = {
       Try(aggregateId) match {
         case Success(id) => None
         case _ => Some(aggregateId)

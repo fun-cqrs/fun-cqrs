@@ -3,7 +3,6 @@ package io.funcqrs.akka
 import akka.actor.ActorRef
 import com.typesafe.config.{ ConfigFactory, Config }
 import com.typesafe.scalalogging.LazyLogging
-import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -98,7 +97,7 @@ trait SelectionBasedPassivationStrategySupport extends PassivationStrategy {
   /**
    * Filter function to select actor children to terminate.
    *
-   * @param - iterable of current active actors
+   * @param candidates - iterable of current active actors
    * @return - a selection of Actors eligible for being terminated
    */
   def selectChildrenToKill(candidates: Iterable[ActorRef]): Iterable[ActorRef]
@@ -124,30 +123,5 @@ class MaxChildrenPassivationStrategy(config: Config) extends SelectionBasedPassi
     }
   }
 
-  override def toString = s"${this.getClass.getSimpleName}(max=$max,killAtOnce=$killAtOnce)"
-}
-
-trait InactivityTimeoutPassivationStrategySupport extends PassivationStrategy {
-
-  /**
-   * Determines how long they can idle in memory
-   *
-   * @return
-   */
-  def inactivityTimeout: Duration
-
-  override def toString = s"${this.getClass.getSimpleName}(inactivityTimeout=$inactivityTimeout)"
-}
-
-/**
- * Defines a passivation strategy that will kill child actors when they have been idle for too long
- */
-class InactivityTimeoutPassivationStrategy(config: Config) extends InactivityTimeoutPassivationStrategySupport {
-
-  def this() = this(ConfigFactory.load())
-
-  override val inactivityTimeout: Duration = {
-    Try(Duration(config.getLong("inactivity-timeout"), SECONDS)).getOrElse(1.hours)
-  }
-
+  override def toString = s"${this.getClass.getSimpleName}(max=$max, killAtOnce=$killAtOnce)"
 }

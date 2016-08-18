@@ -4,19 +4,15 @@ import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
 import io.funcqrs._
-import io.funcqrs.akka.util.ConfigReader
 import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
-import scala.concurrent.duration.Duration
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
     identifier: A#Id,
     interpreter: AsyncInterpreter[A],
-    inactivityTimeout: Option[Duration] = None,
     aggregateType: String
 ) extends AggregateAliases with PersistentActor with ActorLogging {
 
@@ -228,22 +224,6 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  override def preStart() {
-    inactivityTimeout.foreach { t =>
-      log.debug("Setting timeout to {}", t)
-      context.setReceiveTimeout(t)
-    }
-  }
-
-  override def unhandled(message: Any) = {
-    message match {
-      case ReceiveTimeout =>
-        log.info("Stopping")
-        context.stop(self)
-      case _ => super.unhandled(message)
-    }
-  }
-
   /**
    * Internal representation of a completed update command.
    */
@@ -265,6 +245,9 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
+  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String) = {
+    Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
+  }
 }
 
 /**
