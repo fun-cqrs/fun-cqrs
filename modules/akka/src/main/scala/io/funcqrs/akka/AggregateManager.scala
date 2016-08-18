@@ -1,5 +1,7 @@
 package io.funcqrs.akka
 
+import java.time.OffsetDateTime
+
 import _root_.akka.actor._
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
@@ -28,41 +30,62 @@ trait AggregateManager extends Actor
 
   type Aggregate <: AggregateLike
 
-  case class PendingCommand(sender: ActorRef, aggregateId: Id, command: Command)
+  case class PendingMessage(origSender: ActorRef, message: Any)
 
-  private var childrenBeingTerminated: Set[ActorRef] = Set.empty
-  private var pendingCommands: Seq[PendingCommand] = Nil
+  private var aggregateCells: List[AggregateCell] = Nil
 
   val passivationStrategy: PassivationStrategy = PassivationStrategy(self.path.name)
 
   log.info("passivation strategy for '{}': {}", self.path.name, passivationStrategy.toString)
 
+  class AggregateCell(val aggregateId: Id, val actorRef: ActorRef) {
+
+    private var _terminating: Boolean = false
+    private var _lastReceiveMsgTime: Option[OffsetDateTime] = None
+    private var _undeliveredMessages: List[PendingMessage] = Nil
+
+    def isActive = !_terminating
+    def markAsTerminating() = _terminating = true
+    def hasUndeliveredMessages = _undeliveredMessages.nonEmpty
+
+    def undeliveredMessages = _undeliveredMessages.reverse
+    def undeliveredCount = _undeliveredMessages.size
+
+    def forward(message: Any): Unit = {
+      if (_terminating) {
+        // buffer message if terminating
+        log.debug("Received message for aggregate currently being killed. Adding message to cache.")
+        _undeliveredMessages = PendingMessage(sender(), message) :: _undeliveredMessages
+      } else {
+        // forward message if active
+        deliverMessage(message, sender())
+      }
+    }
+
+    def deliverPendingMessage(pendingMessage: PendingMessage): Unit = {
+      deliverMessage(pendingMessage.message, pendingMessage.origSender)
+    }
+
+    private def deliverMessage(message: Any, origSender: ActorRef): Unit = {
+      actorRef.tell(message, origSender)
+      _lastReceiveMsgTime = Some(OffsetDateTime.now())
+    }
+  }
+
   override def receive: Receive = {
-    processCommand orElse defaultProcessCommand
-  }
 
-  // def processCreation: Receive
-  def processCommand: Receive = {
-    case IdAndCommand(id, cmd) => processAggregateCommand(id, cmd)
-  }
-
-  private def badAggregateId(id: AggregateId) = {
-    sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
-  }
-
-  private def defaultProcessCommand: Receive = {
+    case IdAndCommand(id, cmd) => processMessageForAggregate(id, cmd)
+    case GetState(GoodId(id)) => processMessageForAggregate(id, AggregateActor.StateRequest(sender()))
+    case Exists(GoodId(id)) => processMessageForAggregate(id, AggregateActor.Exists(sender()))
 
     case Terminated(actor) => handleTermination(actor)
-    case GetState(GoodId(id)) => fetchState(id)
     case GetState(BadId(id)) => badAggregateId(id)
-
-    case Exists(GoodId(id)) => exists(id)
     case Exists(BadId(id)) => badAggregateId(id)
 
     case cmd: Command =>
       log.error(
         """
-           | Received command without AggregateId!
+           | Received message without AggregateId!
            | {}
            |#=============================================================================#
            |# Have you configured your aggregate to use assigned IDs?                     #
@@ -79,68 +102,62 @@ trait AggregateManager extends Actor
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
-  def fetchState(id: Id): Unit = {
-    findOrCreate(id) forward AggregateActor.StateRequest(sender())
-  }
-
-  def exists(id: Id): Unit = {
-    findOrCreate(id) forward AggregateActor.Exists(sender())
+  private def badAggregateId(id: AggregateId) = {
+    sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
 
   private def handleTermination(actorRef: ActorRef) = {
 
-    // remove actor from list of 'being terminated' actors
-    childrenBeingTerminated = childrenBeingTerminated filterNot (_ == actorRef)
+    // find terminated AggregateCell
+    val oldCellOpt = aggregateCells.find(_.actorRef == actorRef)
 
-    val (commandsForChild, remainingCommands) = pendingCommands partition (_.aggregateId.value == actorRef.path.name)
+    oldCellOpt.foreach { oldCell =>
 
-    // hold remaining commands as pending
-    pendingCommands = remainingCommands
+      // remove old cell from list
+      aggregateCells = aggregateCells.filterNot(_.aggregateId == oldCell.aggregateId)
 
-    // recreate child and send buffered commands to it
-    log.debug("Child termination finished. Applying {} cached commands.", commandsForChild.size)
-    for (PendingCommand(commandSender, aggregateId, command) <- commandsForChild) {
-      val child = findOrCreate(aggregateId)
-      child.tell(command, commandSender)
+      if (oldCell.hasUndeliveredMessages) {
+        log.debug("Child {} termination finished. Re-delivering {} pending messages", actorRef, oldCell.undeliveredCount)
+
+        // recreate it and send message
+        val newCell = create(oldCell.aggregateId)
+        oldCell.undeliveredMessages.foreach { msg =>
+          newCell.deliverPendingMessage(msg)
+        }
+      }
     }
+
   }
 
   /**
-   * Processes aggregate command.
+   * Processes aggregate message.
    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
    *
    */
-  def processAggregateCommand(aggregateId: Id, command: Command) = {
-
-    val maybeChild = context child aggregateId.value
-
-    maybeChild match {
-
-      case Some(child) if childrenBeingTerminated contains child =>
-        log.debug("Received command for aggregate currently being killed. Adding command to cache.")
-        pendingCommands :+= PendingCommand(sender(), aggregateId, command)
-
-      case Some(child) =>
-        child forward command
-
-      case None =>
-        val child = create(aggregateId)
-        child forward command
-    }
+  private def processMessageForAggregate(aggregateId: Id, message: Any) = {
+    findOrCreate(aggregateId) forward message
   }
 
-  protected def findOrCreate(id: Id): ActorRef =
-    context.child(id.value) getOrElse {
-      log.debug("creating {}", id)
-      create(id)
-    }
+  def findOrCreate(aggregateId: Id): AggregateCell = {
+    aggregateCells
+      .find(_.aggregateId == aggregateId)
+      .getOrElse(create(aggregateId))
+  }
 
-  protected def create(id: Id): ActorRef = {
-    killChildrenIfNecessary()
+  protected def create(id: Id): AggregateCell = {
+
+    // first run some clean-up
+    applyPassivationStrategy()
+
     log.debug("creating {}", id)
-    val agg = context.actorOf(aggregateActorProps(id), id.value)
-    context watch agg
-    agg
+    val aggActorRef = context.actorOf(aggregateActorProps(id), id.value)
+    context watch aggActorRef
+
+    // add to an AggregateCell for internal management
+    val newCell = new AggregateCell(id, aggActorRef)
+    aggregateCells = newCell :: aggregateCells
+
+    newCell
   }
 
   def behavior(id: Aggregate#Id): Behavior[Aggregate]
@@ -152,21 +169,37 @@ trait AggregateManager extends Actor
     AggregateActor.props[Aggregate](id, behavior(id), context.self.path.name)
   }
 
-  private def killChildrenIfNecessary() =
+  private def applyPassivationStrategy() =
+
     passivationStrategy match {
       case x: SelectionBasedPassivationStrategySupport =>
-        val candidates = x.selectChildrenToKill(context.children)
 
-        val childrenToTerminate = candidates.filterNot(childrenBeingTerminated)
+        val currentlyActive = aggregateCells.collect {
+          case cell if cell.isActive => cell.actorRef
+        }
 
-        if (childrenToTerminate.nonEmpty) {
-          log.debug("Max manager children exceeded. Killing {} children.", childrenToTerminate.size)
-          childrenToTerminate foreach (_ ! KillAggregate)
-          childrenBeingTerminated ++= childrenToTerminate
+        // offer active children (actorRef) to passivation strategy
+        val candidates = x.selectChildrenToKill(currentlyActive)
+
+        // retain those selected for termination
+        val cellsToTerminate = aggregateCells.filter { cell =>
+          candidates.exists(_ == cell.actorRef)
+        }
+
+        if (cellsToTerminate.nonEmpty) {
+          log.debug("Max manager children exceeded. Killing {} children.", cellsToTerminate.size)
+          terminateChildren(cellsToTerminate)
         }
 
       case _ =>
     }
+
+  private def terminateChildren(cellsToTerminate: List[AggregateCell]): Unit = {
+    cellsToTerminate.foreach { cell =>
+      cell.actorRef ! KillAggregate
+      cell.markAsTerminating()
+    }
+  }
 }
 
 class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A])
