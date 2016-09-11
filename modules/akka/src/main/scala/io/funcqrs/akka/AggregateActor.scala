@@ -82,11 +82,11 @@ class AggregateActor[A <: AggregateLike](
 
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
-        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
+        val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
         val origSender = sender()
 
         eventualEvents map {
-          events => Successful(events, origSender)
+          case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
           case NonFatal(cause) => FailedCommand(cause, origSender)
         } pipeTo self
@@ -105,7 +105,7 @@ class AggregateActor[A <: AggregateLike](
     val busyReceive: Receive = {
 
       case AggregateActor.StateRequest(requester) => sendState(requester)
-      case Successful(events, origSender) => onSuccess(events, origSender)
+      case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand => onFailure(failedCmd)
 
       case cmd: Command =>
@@ -191,28 +191,21 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  private def onSuccess(events: Events, origSender: ActorRef): Unit = {
+  private def onSuccess(events: Events, updatedState: State[Aggregate], origSender: ActorRef): Unit = {
 
     if (events.nonEmpty) {
-      persistAll(events) { evt => afterEventPersisted(evt) }
+      persistAll(events) { _ =>
+        // do nothing on persist callback
+        // at the point we have already an updated aggregate in-memory
+        // we only need to hold that instance internally after we persist all events
+      }
     }
-    origSender ! events
-    changeState(Available)
-  }
 
-  /**
-   * This method should be used as a callback handler for persist() method.
-   * It will:
-   * - apply the event on the aggregate effectively changing its state
-   * - check if a snapshot needs to be saved.
-   *
-   * @param evt DomainEvent that has been persisted
-   */
-  protected def afterEventPersisted(evt: Event): Unit = {
+    // once all events are persisted, we update the internal aggregate state
+    aggregateState = updatedState
 
-    aggregateState = applyEvent(evt)
-    eventsSinceLastSnapshot += 1
-
+    // have we crossed the snapshot threshold?
+    eventsSinceLastSnapshot += events.size
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
         case Initialized(aggregate) =>
@@ -222,12 +215,15 @@ class AggregateActor[A <: AggregateLike](
       }
       eventsSinceLastSnapshot = 0
     }
+
+    origSender ! events
+    changeState(Available)
   }
 
   /**
    * Internal representation of a completed update command.
    */
-  private case class Successful(events: Events, origSender: ActorRef)
+  private case class Successful(events: Events, nextState: State[Aggregate], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 

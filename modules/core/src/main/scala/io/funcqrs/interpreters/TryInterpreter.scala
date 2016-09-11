@@ -28,7 +28,7 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
     case (cmd, FutureCommandHandlerInvoker(handler)) => Try(Await.result(handler(cmd), atMost))
   }
 
-  protected def fromTry(events: Try[Events]): Try[Events] = events
+  protected def onCommandFailure(ex: Throwable): Try[Events] = Failure[Events](ex)
 
 }
 

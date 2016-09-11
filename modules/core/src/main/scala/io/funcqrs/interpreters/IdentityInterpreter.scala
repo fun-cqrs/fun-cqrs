@@ -28,8 +28,8 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
     case (cmd, FutureCommandHandlerInvoker(handler)) => Await.result(handler(cmd), atMost)
   }
 
-  protected def fromTry(events: Try[Events]): Identity[Events] =
-    events.get // yes, we force a 'get'. Nothing can be done if we can't handle an event
+  protected def onCommandFailure(ex: Throwable): Identity[Events] =
+    throw ex // Nothing can be done if we can't handle a command
 
 }
 

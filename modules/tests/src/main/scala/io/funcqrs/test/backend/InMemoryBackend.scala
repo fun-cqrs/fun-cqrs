@@ -101,7 +101,7 @@ class InMemoryBackend extends Backend[Identity] {
     }
 
     private def handle(state: State[Aggregate], cmd: Command): interpreter.Events = {
-      val (events, updatedAgg) = interpreter.applyCommand(cmd, state)
+      val (events, updatedAgg) = interpreter.applyCommand(state, cmd)
       aggregateState = updatedAgg
       publishEvents(events)
       events
