@@ -23,7 +23,7 @@ class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends In
     case (cmd, FutureCommandHandlerInvoker(handler)) => handler(cmd)
   }
 
-  protected def onCommandFailure(ex: Throwable): Future[Events] = Future.failed(ex)
+  protected def fromTry[B](any: Try[B]): Future[B] = Future.fromTry(any)
 }
 
 object AsyncInterpreter {

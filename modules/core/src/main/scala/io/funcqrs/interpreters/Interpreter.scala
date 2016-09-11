@@ -38,40 +38,37 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
   protected def interpret: InterpreterFunction
 
   /**
-   * @param ex - the exception emitted when handling the command
+   * Convert a [[Try]] to a [[F]]
+   *
+   * In the occurrence of missing behavior, we have no other choice than emitting a [[MissingBehaviorException]].
+   * This is wrapped in a [[Try]] that must be converted to the correct error type for F[_]
+   *
+   * @param any - the produced events
    * @return
    */
-  protected def onCommandFailure(ex: Throwable): F[Events]
+  protected def fromTry[B](any: Try[B]): F[B]
 
   private final def onCommand(state: State[Aggregate], cmd: Command): F[Events] = {
 
-    val actionsTry =
-      Try(behavior(state)).recoverWith {
-        case _: MatchError =>
-          Failure(new MissingBehaviorException(s"No behavior defined for current aggregate state"))
+    val tryActions =
+      if (behavior.isDefinedAt(state)) {
+        Success(behavior(state))
+      } else {
+        Failure(new MissingBehaviorException(s"No behavior defined for current aggregate state"))
       }
 
     // produce all events by applying Command
-    val events = actionsTry.map { actions =>
+    val tryEvents = tryActions.map { actions =>
       interpret(cmd, actions.onCommand(cmd))
     }
 
     // Try[F[Events]] -> F[Events]
-    events match {
+    tryEvents match {
       case Success(eventsInF) => eventsInF
-      case Failure(ex) => onCommandFailure(ex)
+      case Failure(ex) => fromTry(Failure(ex))
     }
   }
 
-  private final def tryHandleAllEvents(state: State[Aggregate], events: Events): Try[Events] = {
-    // apply all emitted events to aggregate state to verify that
-    // we have event handlers for them all
-    Try(onEvents(state, events))
-      .map(_ => events) // if successful, return a Success(events)
-      .recoverWith {
-        case _: MatchError => Failure(new MissingBehaviorException(s"No behavior defined for current aggregate state"))
-      }
-  }
   /**
    * Apply all 'evt' on passed 'state'.
    *
@@ -96,16 +93,22 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
    * @throws MissingEventHandlerException if no Event handler is defined for one of the passed events.
    * @return new aggregate state after applying all events
    */
-  private final def onEvents(state: State[Aggregate], evts: Events): State[Aggregate] = {
-    evts.foldLeft(state) {
-      case (aggState, evt) => onEvent(aggState, evt)
-    }
+  private final def onEvents(state: State[Aggregate], evts: Events): F[State[Aggregate]] = {
+
+    val tried =
+      Try { // don't let exceptions leak
+        evts.foldLeft(state) {
+          case (aggState, evt) => onEvent(aggState, evt)
+        }
+      }
+
+    fromTry(tried)
   }
 
-  final def applyCommand(state: State[Aggregate], cmd: Command): F[(Events, State[A])] = {
-    onCommand(state, cmd).map { evts: Events =>
-      (evts, onEvents(state, evts))
-    }
-  }
+  final def applyCommand(state: State[Aggregate], cmd: Command): F[(Events, State[A])] =
+    for {
+      evts <- onCommand(state, cmd)
+      updatedAgg <- onEvents(state, evts)
+    } yield (evts, updatedAgg)
 
 }
