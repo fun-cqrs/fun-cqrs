@@ -149,16 +149,10 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  /**
-   * Apply event on the AggregateRoot.
-   */
-  def applyEvent(event: Event): State[Aggregate] =
-    interpreter.onEvent(aggregateState, event)
-
   protected def onEvent(evt: Event): Unit = {
     log.debug("Reapplying event {}", evt)
     eventsSinceLastSnapshot += 1
-    aggregateState = applyEvent(evt)
+    aggregateState = interpreter.onEvent(aggregateState, evt)
     log.debug("State after event {}", aggregateState)
     changeState(Available)
   }
@@ -194,18 +188,52 @@ class AggregateActor[A <: AggregateLike](
   private def onSuccess(events: Events, updatedState: State[Aggregate], origSender: ActorRef): Unit = {
 
     if (events.nonEmpty) {
+
+      var eventsCount = events.size
+
       persistAll(events) { _ =>
-        // do nothing on persist callback
-        // at the point we have already an updated aggregate in-memory
-        // we only need to hold that instance internally after we persist all events
+
+        eventsCount -= 1
+        eventsSinceLastSnapshot += 1
+
+        // are we on last event?
+        if (eventsCount == 0) {
+
+          // we only update the internal aggregate state once all events are persisted
+          aggregateState = updatedState
+
+          // have we crossed the snapshot threshold?
+          if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+            aggregateState match {
+              case Initialized(aggregate) =>
+                log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
+                saveSnapshot(aggregate)
+              case _ =>
+            }
+            eventsSinceLastSnapshot = 0
+          }
+          // send feedback to command sender
+          origSender ! events
+        }
       }
     }
 
-    // once all events are persisted, we update the internal aggregate state
-    aggregateState = updatedState
+    changeState(Available)
 
-    // have we crossed the snapshot threshold?
-    eventsSinceLastSnapshot += events.size
+  }
+
+  /**
+   * This method should be used as a callback handler for persist() method.
+   * It will:
+   * - apply the event on the aggregate effectively changing its state
+   * - check if a snapshot needs to be saved.
+   *
+   * @param evt DomainEvent that has been persisted
+   */
+  protected def afterEventPersisted(evt: Event): Unit = {
+
+    eventsSinceLastSnapshot += 1
+
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
         case Initialized(aggregate) =>
@@ -215,9 +243,6 @@ class AggregateActor[A <: AggregateLike](
       }
       eventsSinceLastSnapshot = 0
     }
-
-    origSender ! events
-    changeState(Available)
   }
 
   /**
