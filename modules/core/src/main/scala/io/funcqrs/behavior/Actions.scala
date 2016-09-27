@@ -45,31 +45,10 @@ case class Actions[A <: AggregateLike](
    * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
    */
   def onEvent(evt: Event): Aggregate = {
-
-    if (canHandleEvent(evt))
+    if (eventHandlers.isDefinedAt(evt))
       eventHandlers(evt)
     else
       throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
-  }
-
-  /**
-   * Check if the passed [[Event]] can be handled by this Actions instance
-   *
-   * INTERNAL API
-   * This method is used to prevent that Events that can't be handle are stored.
-   */
-  def canHandleEvent(event: Event): Boolean = {
-    eventHandlers.isDefinedAt(event)
-  }
-
-  /**
-   * Check if the passed [[Event]]s can be handled by this Actions instance
-   *
-   * INTERNAL API
-   * This method is used to prevent that Events that can't be handle are stored.
-   */
-  def canHandleEvents(events: Events): Boolean = {
-    events.forall { evt => canHandleEvent(evt) }
   }
 
   /**
@@ -100,7 +79,7 @@ case class Actions[A <: AggregateLike](
    * A guard clause is a `Command Handler` as it handles a incoming command,
    * but instead of producing [[Event]], it returns a [[Throwable]] to signalize an error condition.
    *
-   * Guard clauses command handlers have predecence over handlers producting [[Event]]s.
+   * Guard clauses command handlers have precedence over handlers producing [[Event]]s.
    *
    * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
    * @return - return a [[Actions]].

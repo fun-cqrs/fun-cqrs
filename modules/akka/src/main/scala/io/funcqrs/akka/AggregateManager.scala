@@ -72,6 +72,8 @@ trait AggregateManager extends Actor
     }
   }
 
+  def behavior(id: Aggregate#Id): Behavior[Aggregate]
+
   override def receive: Receive = {
 
     case IdAndCommand(id, cmd) => processMessageForAggregate(id, cmd)
@@ -159,8 +161,6 @@ trait AggregateManager extends Actor
 
     newCell
   }
-
-  def behavior(id: Aggregate#Id): Behavior[Aggregate]
 
   /**
    * Build Props for a new Aggregate Actor with the passed Id

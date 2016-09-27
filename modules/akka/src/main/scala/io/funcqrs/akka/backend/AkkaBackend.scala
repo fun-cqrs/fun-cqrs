@@ -9,7 +9,6 @@ import io.funcqrs.akka._
 import io.funcqrs.backend._
 import io.funcqrs.config._
 import io.funcqrs.ClassTagImplicits
-import io.funcqrs.akka.util.ConfigReader
 import io.funcqrs.akka.util.ConfigReader.aggregateConfig
 
 import scala.collection.concurrent

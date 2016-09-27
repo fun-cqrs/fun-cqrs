@@ -22,8 +22,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
 
   /**
    * The interpret PartialFunction is specific to each interpreter.
-   * It's responsible for execution the command and lifting the output
-   * to F[_]
+   * It's responsible for executing the command and lifting the output to F[_]
    *
    * {{{ // example of interpret for an AsyncInterpreter
    *    def interpret: InterpreterFunction = {
@@ -38,10 +37,10 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
   protected def interpret: InterpreterFunction
 
   /**
-   * Convert a [[Try]] to a [[F]]
+   * Natural transformation from [[Try]] to a [[F]]
    *
    * In the occurrence of missing behavior, we have no other choice than emitting a [[MissingBehaviorException]].
-   * This is wrapped in a [[Try]] that must be converted to the correct error type for F[_]
+   * This is wrapped in a [[Try]] that must be transformed to the correct error type for F[_]
    *
    * @param any - the produced events
    * @return
