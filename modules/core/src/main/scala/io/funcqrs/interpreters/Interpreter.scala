@@ -2,7 +2,6 @@ package io.funcqrs.interpreters
 
 import io.funcqrs._
 import io.funcqrs.behavior._
-import io.funcqrs.interpreters.Monads._
 
 import scala.language.higherKinds
 import scala.util.{ Failure, Success, Try }
@@ -12,7 +11,7 @@ import scala.util.{ Failure, Success, Try }
  *
  * Implementors must define which type F must be bound to.
  */
-abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends AggregateAliases {
+abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
 
   type Aggregate = A
 
@@ -47,7 +46,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
    */
   protected def fromTry[B](any: Try[B]): F[B]
 
-  private final def onCommand(state: State[Aggregate], cmd: Command): F[Events] = {
+  final def onCommand(state: State[Aggregate], cmd: Command): F[Events] = {
 
     val tryActions =
       if (behavior.isDefinedAt(state)) {
@@ -92,7 +91,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
    * @throws MissingEventHandlerException if no Event handler is defined for one of the passed events.
    * @return new aggregate state after applying all events
    */
-  private final def onEvents(state: State[Aggregate], evts: Events): F[State[Aggregate]] = {
+  final def onEvents(state: State[Aggregate], evts: Events): F[State[Aggregate]] = {
 
     val tried =
       Try { // don't let exceptions leak
@@ -104,10 +103,6 @@ abstract class Interpreter[A <: AggregateLike, F[_]: MonadOps] extends Aggregate
     fromTry(tried)
   }
 
-  final def applyCommand(state: State[Aggregate], cmd: Command): F[(Events, State[A])] =
-    for {
-      evts <- onCommand(state, cmd)
-      updatedAgg <- onEvents(state, evts)
-    } yield (evts, updatedAgg)
+  def applyCommand(state: State[Aggregate], cmd: Command): F[(Events, State[A])]
 
 }

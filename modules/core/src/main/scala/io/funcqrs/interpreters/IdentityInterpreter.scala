@@ -31,6 +31,11 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
   protected def fromTry[B](any: Try[B]): Identity[B] =
     any.get // yes, we force a 'get'. Nothing can be done if we can't handle an event
 
+  def applyCommand(state: State[A], cmd: Command): (Events, State[A]) = {
+    val evts = onCommand(state, cmd)
+    val updatedAgg = onEvents(state, evts)
+    (evts, updatedAgg)
+  }
 }
 
 object IdentityInterpreter {
