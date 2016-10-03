@@ -7,9 +7,9 @@ package object behavior {
   type BehaviorUnwrapped[A <: AggregateLike] = PartialFunction[A, Actions[A]]
 
   /**
-   * A CommandToEvents is a PartialFunction from a DomainCommand to a CommandHandlerInvoker
+   * A CommandToInvoker is a PartialFunction from a DomainCommand to a CommandHandlerInvoker
    */
-  type CommandHandlerToInvoker[C <: DomainCommand, E <: DomainEvent] = PartialFunction[C, CommandHandlerInvoker[C, E]]
+  type CommandToInvoker[C <: DomainCommand, E <: DomainEvent] = PartialFunction[C, CommandHandlerInvoker[C, E]]
 
   /**
    * An EventHandler is a PartialFunction from a DomainEvent to an Aggregate

@@ -5,7 +5,6 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior._
-import io.funcqrs.model.TimerTrackerProtocol.{ TimerStarted, TimerStopped }
 
 sealed trait TimeTracker extends AggregateLike {
 
@@ -37,7 +36,7 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
       .handleCommand {
         cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId(), cmd.id)
       }
-      .handleCommand.manyEvents {
+      .handleCommand {
         cmd: ReplaceTask =>
           val now = OffsetDateTime.now()
           List(
@@ -101,7 +100,7 @@ object TimeTracker {
       .handleCommand {
         cmd: CreateTracker.type => TimerCreated(EventId(), cmd.id)
       }
-      .handleCommand.manyEvents {
+      .handleCommand {
         cmd: CreateAndStartTracking =>
           List(
             TimerCreated(EventId(), cmd.id),

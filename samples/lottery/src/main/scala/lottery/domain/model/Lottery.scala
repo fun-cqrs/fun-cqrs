@@ -6,6 +6,7 @@ import java.util.UUID
 import io.funcqrs._
 import io.funcqrs.behavior._
 
+import scala.concurrent.Future
 import scala.util.Random
 
 // tag::lottery-aggregate[]
@@ -125,7 +126,7 @@ case class Lottery(
       .handleCommand {
         cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
       }
-      .handleCommand.manyEvents {
+      .handleCommand {
         // will produce a List[ParticipantRemoved]
         cmd: RemoveAllParticipants.type =>
           this.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }

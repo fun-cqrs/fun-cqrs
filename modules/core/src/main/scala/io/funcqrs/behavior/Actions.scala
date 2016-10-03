@@ -10,8 +10,8 @@ import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
 case class Actions[A <: AggregateLike](
-    cmdHandlerInvokers: CommandHandlerToInvoker[A#Command, A#Event] = PartialFunction.empty,
-    rejectCmdInvokers: CommandHandlerToInvoker[A#Command, A#Event] = PartialFunction.empty,
+    cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
+    rejectCmdInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
     eventHandlers: EventHandler[A#Event, A] = PartialFunction.empty
 ) extends AggregateAliases {
 
@@ -86,7 +86,7 @@ case class Actions[A <: AggregateLike](
    */
   def reject(cmdHandler: PartialFunction[A#Command, Throwable]): Actions[Aggregate] = {
 
-    val invokerPF: CommandHandlerToInvoker[A#Command, A#Event] = {
+    val invokerPF: CommandToInvoker[A#Command, A#Event] = {
       case cmd if cmdHandler.isDefinedAt(cmd) =>
         TryCommandHandlerInvoker(cmd => Failure(cmdHandler(cmd)))
     }
@@ -103,76 +103,72 @@ case class Actions[A <: AggregateLike](
   def handleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): Actions[Aggregate] = {
     // wrap single event in immutable.Seq
     val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
-    handleCommand.manyEvents(handlerWithSeq)
+    handleCommand[C, E, immutable.Seq](handlerWithSeq)
   }
 
-  /**  */
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[E])(implicit ivk: InvokerDirective[F]): Actions[Aggregate] =
+    addInvoker(ivk.newInvoker(cmdHandler))
+
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(implicit ivk: InvokerSeqDirective[F]): Actions[Aggregate] =
+    addInvoker(ivk.newInvoker(cmdHandler))
+
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(implicit ivk: InvokerListDirective[F]): Actions[Aggregate] =
+    addInvoker(ivk.newInvoker(cmdHandler))
+
+  private def addInvoker[C <: Command: ClassTag, E <: Event](invoker: CommandHandlerInvoker[C, E]): Actions[Aggregate] = {
+
+    // TODO: we can better solve it with a Map[Class, Invoker]
+    // as such we can detect if a duplicated key is added
+    object CmdExtractor extends ClassTagExtractor[C]
+    // PF from Cmd to Invoker
+    val invokerPF: CommandToInvoker[C, E] = { case CmdExtractor(cmd) => invoker }
+    // add it
+    this.copy(
+      cmdHandlerInvokers = cmdHandlerInvokers orElse invokerPF.asInstanceOf[CommandToInvoker[Command, Event]]
+    )
+  }
+
+  /**
+   */
+  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
 
   case class IdentityManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Identity] {
-
     /** Declares a `Command Handler` that produces a Seq[[Event]] */
+    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): Actions[Aggregate] = {
-
-      object CmdExtractor extends ClassTagExtractor[C]
-
-      val invokerPF: CommandHandlerToInvoker[C, E] = {
-        case CmdExtractor(cmd) => IdCommandHandlerInvoker(cmdHandler)
-      }
-
-      behavior.copy(
-        cmdHandlerInvokers = cmdHandlerInvokers orElse invokerPF.asInstanceOf[CommandHandlerToInvoker[Command, Event]]
-      )
+      handleCommand[C, E, immutable.Seq](cmdHandler)
     }
   }
 
+  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def tryToHandleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): Actions[Aggregate] = {
-    // wrap single event in immutable.Seq
-    val handlerWithSeq: (C) => Try[immutable.Seq[E]] = (cmd: C) => cmdHandler(cmd).map(immutable.Seq(_))
-    tryToHandleCommand.manyEvents(handlerWithSeq)
+    handleCommand[C, E, Try](cmdHandler)
   }
 
+  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def tryToHandleCommand: ManyEventsBinder[Try] = TryManyEventsBinder(this)
 
   case class TryManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Try] {
+    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Try[immutable.Seq[E]]): Actions[A] = {
-
-      object CmdExtractor extends ClassTagExtractor[C]
-
-      val invokerPF: CommandHandlerToInvoker[C, E] = {
-        case CmdExtractor(cmd) => TryCommandHandlerInvoker(cmdHandler)
-      }
-
-      //consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]
-      behavior.copy(
-        cmdHandlerInvokers = cmdHandlerInvokers orElse invokerPF.asInstanceOf[CommandHandlerToInvoker[Command, Event]]
-      )
+      handleCommand[C, E, Try](cmdHandler)
     }
   }
 
+  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommandAsync[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): Actions[Aggregate] = {
-    import scala.concurrent.ExecutionContext.Implicits.global
-    // wrap single event in immutable.Seq
-    val handlerWithSeq: (C) => Future[immutable.Seq[E]] = (cmd: C) => cmdHandler(cmd).map(immutable.Seq(_))
-    handleCommandAsync.manyEvents(handlerWithSeq)
+    handleCommand[C, E, Future](cmdHandler)
   }
 
+  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommandAsync: ManyEventsBinder[Future] = FutureManyEventsBinder(this)
 
   case class FutureManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Future] {
 
+    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Future[immutable.Seq[E]]): Actions[A] = {
-
-      object CmdExtractor extends ClassTagExtractor[C]
-
-      val invokerPF: CommandHandlerToInvoker[C, E] = {
-        case CmdExtractor(cmd) => FutureCommandHandlerInvoker(cmdHandler)
-      }
-
-      //consInvoker: PartialFunction[C, F[immutable.Seq[E]]] => CommandHandlerInvoker[C, E]
-      behavior.copy(
-        cmdHandlerInvokers = cmdHandlerInvokers orElse invokerPF.asInstanceOf[CommandHandlerToInvoker[Command, Event]]
-      )
+      handleCommand[C, E, Future](cmdHandler)
     }
   }
 
