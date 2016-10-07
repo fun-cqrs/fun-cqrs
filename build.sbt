@@ -60,11 +60,18 @@ lazy val funPlayJsonSupport = Project(
 //================================================
 
 // Play25 Json support ==========================
-lazy val funPlay25JsonSupport = Project(
-  id = "fun-cqrs-play25-json",
-  base = file("modules/play25-json"),
-  settings = mainDeps ++ Seq(libraryDependencies += play25Json)
-) dependsOn (funCqrs % "compile->compile;test->test")
+lazy val funPlay25JsonSupport = {
+
+  //set source dir to source dir in commonPlayModule
+  val sourceDir = (baseDirectory in ThisBuild)( b => Seq( b / "modules/play-json/src/main/scala"))   
+
+  Project(
+    id = "fun-cqrs-play25-json",
+      base = file("modules/play25-json"),
+    settings = mainDeps ++ Seq(libraryDependencies += play25Json)
+  ).dependsOn (funCqrs % "compile->compile;test->test")
+   .settings( unmanagedSourceDirectories in Compile <<= sourceDir )
+}
 //================================================
 
 
