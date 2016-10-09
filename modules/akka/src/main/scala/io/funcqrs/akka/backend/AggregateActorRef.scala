@@ -77,9 +77,9 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
 
   def limit(count: Int): ViewBoundedAggregateActorRef[A] = withFilter(Limit(count))
 
-  def ?(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
+  def ?(cmd: Command with CommandIdFacet)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
 
-  def ask(cmd: Command)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {
+  def ask(cmd: Command with CommandIdFacet)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = {
     watchEvents(cmd) {
       underlyingRef ? cmd
     }
@@ -96,14 +96,14 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
    *        is returned containing the Events and the Exception indicating the cause of the failure on the Read Model.
    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
    */
-  private def watchEvents(cmd: Command)(sendCommandFunc: => Future[Any])(implicit timeout: Timeout): Future[Events] = {
+  private def watchEvents(cmd: Command with CommandIdFacet)(sendCommandFunc: => Future[Any])(implicit timeout: Timeout): Future[Events] = {
 
     // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
     val askableProjectionMonitorActorRef = akkaAsk(projectionMonitorActorRef)
 
     import scala.concurrent.ExecutionContext.Implicits.global
     def newEventsMonitor() = {
-      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
+      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.commandId, defaultView)).mapTo[ActorRef]
     }
 
     val resultOnWrite =

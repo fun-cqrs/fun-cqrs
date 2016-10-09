@@ -10,6 +10,7 @@ import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
 import io.funcqrs.DomainEvent
+import io.funcqrs.CommandIdFacet
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
@@ -20,7 +21,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
   // (ProjectionName, DomainEvent)
-  type EventWithProjectionName = (DomainEvent, String)
+  type EventWithProjectionName = (DomainEvent with CommandIdFacet, String)
 
   // internal EventBus to dispatch events to subscribed EventsMonitor
   // (too lazy to build and maintain my own Map[CommandId, ActorRef])
@@ -48,7 +49,10 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     // receive status from child projection
     // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent => receivedEventFromProjection(evt)
+    case evt: DomainEvent with CommandIdFacet => receivedEventFromProjection(evt)
+
+    // do nothing with events without CommandId
+    case evt: DomainEvent => // ignore
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
@@ -78,7 +82,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     sender() ! projectionSupervisor // send projection actor back
   }
 
-  private def receivedEventFromProjection(evt: DomainEvent): Unit = {
+  private def receivedEventFromProjection(evt: DomainEvent with CommandIdFacet): Unit = {
     val currentSender = sender()
 
     val projectionName = currentSender.path.name

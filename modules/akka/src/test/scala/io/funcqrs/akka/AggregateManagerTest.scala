@@ -123,7 +123,7 @@ class AggregateManagerTest(val actorSys: ActorSystem) extends TestKit(actorSys)
 
     aggregateManager ! UntypedIdAndCommand(userId, DeleteUser)
     expectMsgPF(hint = "sending delete command") {
-      case (evt: UserDeleted) :: _ => //ok
+      case (evt: UserDeleted.type) :: _ => //ok
     }
 
     aggregateManager ! UntypedIdAndCommand(userId, ChangeName("Osvaldo"))

@@ -37,16 +37,16 @@ class InterpreterTest extends FunSuite with Matchers {
   def factoryActions(trackerId: TrackerId) =
     actions[TimeTracker]
       .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId(), cmd.id)
+        cmd: CreateTracker.type => TimerCreated(EventId())
       }
       .handleCommand.manyEvents {
         cmd: CreateAndStartTracking =>
           List(
-            TimerCreated(EventId(), cmd.id),
+            TimerCreated(EventId()),
             // the event handler for TimerStarter depends on a created Tracker
             // and therefore can't be defined in this 'Actions'
             // behavior is available in next transition
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
           )
       }
       .handleEvent {
