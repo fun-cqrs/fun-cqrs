@@ -103,7 +103,7 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
 
     import scala.concurrent.ExecutionContext.Implicits.global
     def newEventsMonitor() = {
-      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.commandId, defaultView)).mapTo[ActorRef]
+      (askableProjectionMonitorActorRef ? ProjectionMonitorActor.EventsMonitorRequest(cmd.id, defaultView)).mapTo[ActorRef]
     }
 
     val resultOnWrite =

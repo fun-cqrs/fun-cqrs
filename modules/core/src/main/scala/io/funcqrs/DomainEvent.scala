@@ -7,5 +7,9 @@ trait DomainEvent
 case class EventId(value: UUID = UUID.randomUUID())
 
 trait EventIdFacet {
-  def eventId: EventId
+  def id: EventId
+}
+
+trait EventWithCommandId { this: DomainEvent =>
+  def commandId: CommandId
 }

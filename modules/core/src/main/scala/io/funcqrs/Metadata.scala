@@ -34,7 +34,7 @@ trait JavaTime {
  * Enriches [[DomainEvent]] with [[Metadata]] information.
  * @tparam M a Metadata subtype
  */
-trait MetadataFacet[M <: Metadata] extends CommandIdFacet {
+trait MetadataFacet[M <: Metadata] {
   this: DomainEvent =>
 
   def metadata: M

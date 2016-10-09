@@ -7,5 +7,5 @@ trait DomainCommand
 case class CommandId(value: UUID = UUID.randomUUID())
 
 trait CommandIdFacet {
-  def commandId: CommandId
+  def id: CommandId
 }
