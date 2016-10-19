@@ -18,7 +18,7 @@ object Api {
           }
     }
     // enrich user defined behavior with a fallback
-    // this will prevent that MatchError if user fails to define an exhaustive match
+    // this will prevent MatchErrors if user fails to define an exhaustive match
     val behaviorWithFallback = (id: A#Id) => {
       behaviorFunc(id) orElse fallback
     }

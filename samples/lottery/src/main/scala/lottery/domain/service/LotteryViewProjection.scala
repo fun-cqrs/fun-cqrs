@@ -7,7 +7,6 @@ import lottery.domain.model.LotteryProtocol._
 import lottery.domain.model.LotteryView
 import lottery.domain.model.LotteryView.Participant
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
@@ -15,11 +14,11 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
   def handleEvent: HandleEvent = {
 
     case e: LotteryCreated =>
-      Future.successful(repo.save(LotteryView(name = e.name, id = e.metadata.aggregateId)))
+      Future.successful(repo.save(LotteryView(name = e.name, id = e.lotteryId)))
 
     case e: LotteryUpdateEvent =>
       Future.successful {
-        repo.updateById(e.metadata.aggregateId) { lot =>
+        repo.updateById(e.lotteryId) { lot =>
           updateFunc(lot, e)
         }.map(_ => ())
       }
@@ -40,6 +39,6 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
   }
 
   private def newParticipant(evt: ParticipantAdded): Participant =
-    LotteryView.Participant(evt.name, evt.date)
+    LotteryView.Participant(evt.name)
 }
 //end::lottery-view-projection[]

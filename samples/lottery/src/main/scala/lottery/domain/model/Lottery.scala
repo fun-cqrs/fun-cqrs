@@ -45,11 +45,6 @@ case class Lottery(
 
   import LotteryProtocol._
 
-  // convenient method to instantiate LotteryMetadata objects
-  def metadata(cmd: LotteryCommand): LotteryMetadata = {
-    Lottery.metadata(id, cmd)
-  }
-
   // tag::lottery-aggregate-guards[]
   /**
    * Action: reject Run command if has no participants
@@ -97,7 +92,7 @@ case class Lottery(
   def acceptParticipants =
     actions[Lottery]
       .handleCommand {
-        cmd: AddParticipant => ParticipantAdded(cmd.name, metadata(cmd))
+        cmd: AddParticipant => ParticipantAdded(cmd.name, id)
       }
       .handleEvent {
         evt: ParticipantAdded => this.addParticipant(evt.name)
@@ -110,7 +105,7 @@ case class Lottery(
   def runTheLottery =
     actions[Lottery]
       .handleCommand {
-        cmd: Run.type => WinnerSelected(selectParticipant(), metadata(cmd))
+        cmd: Run.type => WinnerSelected(selectParticipant(), OffsetDateTime.now, id)
       }
       .handleEvent {
         evt: WinnerSelected => this.copy(winner = Option(evt.winner))
@@ -124,12 +119,12 @@ case class Lottery(
     actions[Lottery]
       // removing participants (single or all) produce ParticipantRemoved events
       .handleCommand {
-        cmd: RemoveParticipant => ParticipantRemoved(cmd.name, metadata(cmd))
+        cmd: RemoveParticipant => ParticipantRemoved(cmd.name, id)
       }
       .handleCommand {
         // will produce a List[ParticipantRemoved]
         cmd: RemoveAllParticipants.type =>
-          this.participants.map { name => ParticipantRemoved(name, metadata(cmd)) }
+          this.participants.map { name => ParticipantRemoved(name, id) }
       }
       .handleEvent {
         evt: ParticipantRemoved => this.removeParticipant(evt.name)
@@ -158,7 +153,6 @@ object LotteryProtocol extends ProtocolLike { // #<1>
 
   // Commands ============================================================
   sealed trait LotteryCommand extends ProtocolCommand // #<2>
-
   // Creation Command
   case class CreateLottery(name: String) extends LotteryCommand
 
@@ -172,29 +166,17 @@ object LotteryProtocol extends ProtocolLike { // #<1>
   case object Run extends LotteryCommand
 
   // Events ============================================================
-  sealed trait LotteryEvent extends ProtocolEvent with MetadataFacet[LotteryMetadata] // #<3>
-
-  case class LotteryMetadata( // #<4>
-      aggregateId: LotteryId, // #<5>
-      commandId: CommandId, // #<6>
-      eventId: EventId = EventId(), // #<7>
-      date: OffsetDateTime = OffsetDateTime.now(), // #<8>
-      tags: Set[Tag] = Set() // #<9>
-  ) extends Metadata with JavaTime {
-    type Id = LotteryId
+  sealed trait LotteryEvent extends ProtocolEvent { // #<3>
+    def lotteryId: LotteryId
   }
 
   // Creation Event
-  case class LotteryCreated(name: String, metadata: LotteryMetadata) extends LotteryEvent
-
+  case class LotteryCreated(name: String, lotteryId: LotteryId) extends LotteryEvent
   // Update Events
   sealed trait LotteryUpdateEvent extends LotteryEvent
-
-  case class ParticipantAdded(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
-
-  case class ParticipantRemoved(name: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
-
-  case class WinnerSelected(winner: String, metadata: LotteryMetadata) extends LotteryUpdateEvent
+  case class ParticipantAdded(name: String, lotteryId: LotteryId) extends LotteryUpdateEvent
+  case class ParticipantRemoved(name: String, lotteryId: LotteryId) extends LotteryUpdateEvent
+  case class WinnerSelected(winner: String, date: OffsetDateTime, lotteryId: LotteryId) extends LotteryUpdateEvent
 
 }
 
@@ -209,35 +191,31 @@ object Lottery {
   // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
 
-  def metadata(lotteryId: LotteryId, cmd: LotteryCommand) = {
-    LotteryMetadata(lotteryId, cmd.id, tags = Set(tag))
-  }
-
   def createLottery(lotteryId: LotteryId) = // <1>
     actions[Lottery]
       .handleCommand {
-        cmd: CreateLottery => LotteryCreated(cmd.name, metadata(lotteryId, cmd))
+        cmd: CreateLottery => LotteryCreated(cmd.name, lotteryId)
       }
       .handleEvent {
         evt: LotteryCreated => Lottery(name = evt.name, id = lotteryId)
       }
 
-  def behavior(lotteryId: LotteryId): Behavior[Lottery] = {
+  def behavior(lotteryId: LotteryId): Behavior[Lottery] =
+    Behavior {
+      createLottery(lotteryId) // <1>
+    } {
+      case lottery if lottery.hasWinner => lottery.rejectAllCommands //<2>
 
-    case Uninitialized(id) => createLottery(id) // <1>
+      case lottery if lottery.hasNoParticipants => // <3>
+        lottery.canNotRunWithoutParticipants ++
+          lottery.acceptParticipants
 
-    case Initialized(lottery) if lottery.hasWinner => lottery.rejectAllCommands //<2> 
-
-    case Initialized(lottery) if lottery.hasNoParticipants => // <3>
-      lottery.canNotRunWithoutParticipants ++
-        lottery.acceptParticipants
-
-    case Initialized(lottery) if lottery.hasParticipants => // <4>
-      lottery.rejectDoubleBooking ++
-        lottery.acceptParticipants ++
-        lottery.removingParticipants ++
-        lottery.runTheLottery
-  }
+      case lottery if lottery.hasParticipants => // <4>
+        lottery.rejectDoubleBooking ++
+          lottery.acceptParticipants ++
+          lottery.removingParticipants ++
+          lottery.runTheLottery
+    }
 }
 // end::lottery-behavior[]
 

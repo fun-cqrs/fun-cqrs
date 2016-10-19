@@ -34,16 +34,16 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
   def actionsWhenBusy =
     actions[TimeTracker]
       .handleCommand {
-        cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId(), cmd.id)
+        cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId())
       }
       .handleCommand {
         cmd: ReplaceTask =>
           val now = OffsetDateTime.now()
           List(
-            TimerStopped(now, EventId(), cmd.id),
+            TimerStopped(now, EventId()),
             // the event handler for TimerStarter is defined
             // on the behavior case branch for idling TimeTracker
-            TimerStarted(cmd.title, now, EventId(), cmd.id)
+            TimerStarted(cmd.title, now, EventId())
           )
       }
       .handleEvent {
@@ -63,10 +63,10 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
   def actionsWhenIdle =
     actions[TimeTracker]
       .handleCommand {
-        cmd: StartTracking => TimerStarted(cmd.title, OffsetDateTime.now(), EventId(), cmd.id)
+        cmd: StartTracking => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
       }
       .handleCommand {
-        cmd: ReplaceTask => TimerStarted(cmd.title, OffsetDateTime.now(), EventId(), cmd.id)
+        cmd: ReplaceTask => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
       }
       .handleEvent {
         evt: TimerStarted => start(evt.title, evt.start)
@@ -87,9 +87,9 @@ object TimerTrackerProtocol extends ProtocolLike {
   case class ReplaceTask(title: String) extends ProtocolCommand
   case object StopTracking extends ProtocolCommand
 
-  case class TimerCreated(id: EventId, commandId: CommandId) extends ProtocolEvent
-  case class TimerStarted(title: String, start: OffsetDateTime, id: EventId, commandId: CommandId) extends ProtocolEvent
-  case class TimerStopped(end: OffsetDateTime, id: EventId, commandId: CommandId) extends ProtocolEvent
+  case class TimerCreated(id: EventId) extends ProtocolEvent
+  case class TimerStarted(title: String, start: OffsetDateTime, id: EventId) extends ProtocolEvent
+  case class TimerStopped(end: OffsetDateTime, id: EventId) extends ProtocolEvent
 }
 object TimeTracker {
 
@@ -98,16 +98,16 @@ object TimeTracker {
   def factoryActions(id: TrackerId) =
     actions[TimeTracker]
       .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId(), cmd.id)
+        cmd: CreateTracker.type => TimerCreated(EventId())
       }
       .handleCommand {
         cmd: CreateAndStartTracking =>
           List(
-            TimerCreated(EventId(), cmd.id),
+            TimerCreated(EventId()),
             // the event handler for TimerStarter depends on a created Tracker
             // and therefore can't be defined in this 'Actions'
             // behavior is available in next transition
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
           )
       }
       .handleEvent {

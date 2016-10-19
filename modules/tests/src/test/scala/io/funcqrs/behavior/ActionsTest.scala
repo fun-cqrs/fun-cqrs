@@ -32,15 +32,15 @@ class ActionsTest extends FunSuite with Matchers {
 
       // handle command single event
       .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId(), cmd.id)
+        cmd: CreateTracker.type => TimerCreated(EventId())
       }
 
       // handle command single List[Event]
       .handleCommand {
         cmd: CreateAndStartTracking =>
           List(
-            TimerCreated(EventId(), cmd.id),
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+            TimerCreated(EventId()),
+            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
           )
       }
 
@@ -48,14 +48,14 @@ class ActionsTest extends FunSuite with Matchers {
       .handleCommand {
         cmd: CreateAndStartTracking =>
           immutable.Seq(
-            TimerCreated(EventId(), cmd.id),
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+            TimerCreated(EventId()),
+            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
           )
       }
 
       // handle command single Try[Event]
       .handleCommand {
-        cmd: CreateTracker.type => Try(TimerCreated(EventId(), cmd.id))
+        cmd: CreateTracker.type => Try(TimerCreated(EventId()))
       }
 
       // handle command single Try[List[Event]]
@@ -63,8 +63,8 @@ class ActionsTest extends FunSuite with Matchers {
         cmd: CreateAndStartTracking =>
           Try {
             List(
-              TimerCreated(EventId(), cmd.id),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+              TimerCreated(EventId()),
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
             )
           }
       }
@@ -74,14 +74,14 @@ class ActionsTest extends FunSuite with Matchers {
         cmd: CreateAndStartTracking =>
           Try {
             immutable.Seq(
-              TimerCreated(EventId(), cmd.id),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+              TimerCreated(EventId()),
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
             )
           }
       }
       // handle command single Future[Event]
       .handleCommand {
-        cmd: CreateTracker.type => Future.successful(TimerCreated(EventId(), cmd.id))
+        cmd: CreateTracker.type => Future.successful(TimerCreated(EventId()))
       }
 
       // handle command single Future[List[Event]]
@@ -89,8 +89,8 @@ class ActionsTest extends FunSuite with Matchers {
         cmd: CreateAndStartTracking =>
           Future.successful {
             List(
-              TimerCreated(EventId(), cmd.id),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+              TimerCreated(EventId()),
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
             )
           }
       }
@@ -100,8 +100,8 @@ class ActionsTest extends FunSuite with Matchers {
         cmd: CreateAndStartTracking =>
           Future.successful {
             immutable.Seq(
-              TimerCreated(EventId(), cmd.id),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+              TimerCreated(EventId()),
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
             )
           }
       }
