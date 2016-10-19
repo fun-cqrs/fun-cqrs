@@ -13,7 +13,7 @@ case class LotteryView(
 
   override def toString: String = {
     val participantsString =
-      participants.map { p => s"name: ${p.name} - date: ${p.date}" }.mkString(" | ")
+      participants.map(_.name).mkString(" | ")
     s"""
        |LotteryView
        |  name: $name
@@ -26,6 +26,6 @@ case class LotteryView(
 }
 
 object LotteryView {
-  case class Participant(name: String, date: OffsetDateTime)
+  case class Participant(name: String)
 }
 //end::lottery-view[]

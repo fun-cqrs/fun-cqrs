@@ -4,19 +4,15 @@ import _root_.akka.actor._
 import _root_.akka.pattern.pipe
 import _root_.akka.persistence._
 import io.funcqrs._
-import io.funcqrs.akka.util.ConfigReader
 import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
-import scala.concurrent.duration.Duration
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
     identifier: A#Id,
     interpreter: AsyncInterpreter[A],
-    inactivityTimeout: Option[Duration] = None,
     aggregateType: String
 ) extends AggregateAliases with PersistentActor with ActorLogging {
 
@@ -86,11 +82,11 @@ class AggregateActor[A <: AggregateLike](
 
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
-        val eventualEvents = interpreter.onCommand(aggregateState, cmd)
+        val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
         val origSender = sender()
 
         eventualEvents map {
-          events => Successful(events, origSender)
+          case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
           case NonFatal(cause) => FailedCommand(cause, origSender)
         } pipeTo self
@@ -109,7 +105,7 @@ class AggregateActor[A <: AggregateLike](
     val busyReceive: Receive = {
 
       case AggregateActor.StateRequest(requester) => sendState(requester)
-      case Successful(events, origSender) => onSuccess(events, origSender)
+      case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand => onFailure(failedCmd)
 
       case cmd: Command =>
@@ -153,16 +149,10 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  /**
-   * Apply event on the AggregateRoot.
-   */
-  def applyEvent(event: Event): State[Aggregate] =
-    interpreter.onEvent(aggregateState, event)
-
   protected def onEvent(evt: Event): Unit = {
     log.debug("Reapplying event {}", evt)
     eventsSinceLastSnapshot += 1
-    aggregateState = applyEvent(evt)
+    aggregateState = interpreter.onEvent(aggregateState, evt)
     log.debug("State after event {}", aggregateState)
     changeState(Available)
   }
@@ -195,13 +185,44 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  private def onSuccess(events: Events, origSender: ActorRef): Unit = {
+  private def onSuccess(events: Events, updatedState: State[Aggregate], origSender: ActorRef): Unit = {
 
     if (events.nonEmpty) {
-      persistAll(events) { evt => afterEventPersisted(evt) }
+
+      var eventsCount = events.size
+
+      persistAll(events) { _ =>
+
+        eventsCount -= 1
+        eventsSinceLastSnapshot += 1
+
+        // are we on last event?
+        if (eventsCount == 0) {
+
+          // we only update the internal aggregate state once all events are persisted
+          aggregateState = updatedState
+
+          // have we crossed the snapshot threshold?
+          if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
+            aggregateState match {
+              case Initialized(aggregate) =>
+                log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
+                saveSnapshot(aggregate)
+              case _ =>
+            }
+            eventsSinceLastSnapshot = 0
+          }
+          // send feedback to command sender
+          origSender ! events
+        }
+      }
+    } else {
+      // if empty, we don't persist, but we send an empty list back to sender
+      origSender ! events
     }
-    origSender ! events
+
     changeState(Available)
+
   }
 
   /**
@@ -214,7 +235,6 @@ class AggregateActor[A <: AggregateLike](
    */
   protected def afterEventPersisted(evt: Event): Unit = {
 
-    aggregateState = applyEvent(evt)
     eventsSinceLastSnapshot += 1
 
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
@@ -228,26 +248,10 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  override def preStart() {
-    inactivityTimeout.foreach { t =>
-      log.debug("Setting timeout to {}", t)
-      context.setReceiveTimeout(t)
-    }
-  }
-
-  override def unhandled(message: Any) = {
-    message match {
-      case ReceiveTimeout =>
-        log.info("Stopping")
-        context.stop(self)
-      case _ => super.unhandled(message)
-    }
-  }
-
   /**
    * Internal representation of a completed update command.
    */
-  private case class Successful(events: Events, origSender: ActorRef)
+  private case class Successful(events: Events, nextState: State[Aggregate], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 
@@ -265,6 +269,9 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
+  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String) = {
+    Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
+  }
 }
 
 /**

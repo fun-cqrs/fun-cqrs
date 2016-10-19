@@ -28,8 +28,14 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
     case (cmd, FutureCommandHandlerInvoker(handler)) => Try(Await.result(handler(cmd), atMost))
   }
 
-  protected def fromTry(events: Try[Events]): Try[Events] = events
+  protected def fromTry[B](any: Try[B]): Try[B] = any
 
+  def applyCommand(state: State[A], cmd: Command): Try[(Events, State[A])] = {
+    for {
+      evts <- onCommand(state, cmd)
+      updatedAgg <- onEvents(state, evts)
+    } yield (evts, updatedAgg)
+  }
 }
 
 object TryInterpreter {

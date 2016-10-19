@@ -30,7 +30,7 @@ trait InMemoryRepository {
   def fetchAll: Seq[Model] =
     store.values.toSeq
 
-  /** Extract id van Model */
+  /** Extract id from Model */
   protected def $id(model: Model): Identifier
 
 }

@@ -179,10 +179,10 @@ include::../../samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala
 ----
 (ref: https://github.com/strongtyped/fun-cqrs/blob/master/samples/lottery/src/main/scala/lottery/domain/model/Lottery.scala[Lottery.scala, window="_blank"])
 
-<1> The creation case is a special one. It plays the rol of Aggregate Factory and therfore cannot be defined in the `Lottery` itself.
-<2> To make sure we won't run a `Lottery` twice, the next case to match must check if the `Lottery` has already a winner. If that's the case we reject all subsequent commands. The `Lottery` reached its 'end-of-life' can cannot evolve its state anymore.
-<3> While the `Lottery` has no partipants, it can only accept subscriptions and reject the `Run` command. Therefore this state is the composition of `canNotRunWithoutParticipants` and `acceptParticipants` Actions.
-<4> As soon the `Lottery` has at least one participant it can accept new participatns (`acceptParticipants`), reject double booking (`rejectDoubleBooking`), remove participants (`removingParticipants`) and finally we can select a winner by running it (`runTheLottery`).
+<1> The creation case is a special one. It plays the role of Aggregate Factory and therfore cannot be defined in the `Lottery` itself.
+<2> To make sure we won't run a `Lottery` twice, the next case to match must check if the `Lottery` has already a winner. If that's the case we reject all subsequent commands. The `Lottery` reached its 'end-of-life', it cannot evolve its state anymore.
+<3> While the `Lottery` has no participants, it can only accept subscriptions and reject the `Run` command. Therefore this state is the composition of `canNotRunWithoutParticipants` and `acceptParticipants` Actions.
+<4> As soon the `Lottery` has at least one participant it can accept new participants (`acceptParticipants`), reject double booking (`rejectDoubleBooking`), remove participants (`removingParticipants`) and finally we can select a winner by running it (`runTheLottery`).
 
 ### Configuring the Aggregate
 
@@ -204,7 +204,7 @@ include::../../samples/lottery/src/main/scala/lottery/app/Main.scala[tags=lotter
 
 <1> We create an `AkkaBackend` in-place.
 <2> The `ActorSystem` to be used.
-<3> The `AkkaBackend` requires a `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **<<_projections>>** section.
+<3> The `AkkaBackend` requires an `EventsSourceProvider` that will be used to query the event store. This is needed for the projections. We'll come back to that on the **<<_projections>>** section.
 <4> We declare that `Lottery` is an Aggregate and pass the behavior method defined in its companion object.
 
 

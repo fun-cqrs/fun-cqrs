@@ -6,9 +6,9 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging          =  "com.typesafe.scala-logging" %% "scala-logging"      % "3.1.0"
-  val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0-M10" % "test"
-  val rxScala               =  "io.reactivex"               %% "rxscala"            % "0.26.0"
+  val scalaLogging          =  "com.typesafe.scala-logging" %% "scala-logging"      % "3.4.0"
+  val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0" % "test"
+  val rxScala               =  "io.reactivex"               %% "rxscala"            % "0.26.2"
 
 
   val mainDeps = Seq(
@@ -20,31 +20,30 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
-  val akkaVersion               =   "2.4.2"
-  val akkaActor                 =   "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion
-  
-  val akkaPersistence           =   "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion
-  val akkaSlf4j                 =   "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion
-  val akkaStreams               =   "com.typesafe.akka"           %%  "akka-stream"       % akkaVersion
-  val akkaTestKit               =   "com.typesafe.akka"           %%  "akka-testkit"      % akkaVersion     % "test"
-  val akkaPersistenceQuery      =   "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion
+  val akkaDeps = {
+    val akkaVersion               =   "2.4.8"
+    val deps =
+      Seq(
+        "com.typesafe.akka"           %%  "akka-actor"        % akkaVersion,
+        "com.typesafe.akka"           %%  "akka-persistence"  % akkaVersion,
+        "com.typesafe.akka"           %%  "akka-slf4j"        % akkaVersion,
+        "com.typesafe.akka"           %%  "akka-stream"       % akkaVersion,
+        // experimental
+        "com.typesafe.akka"           %%  "akka-persistence-query-experimental" % akkaVersion,
+        // test scope
+        "com.typesafe.akka"           %%  "akka-testkit"                        % akkaVersion   % "test",
+        "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.3.5"       % "test"
+      )
 
-  val akkaPersistenceInMemory   =   "com.github.dnvriend"         %%  "akka-persistence-inmemory"           % "1.2.2"     % "test"
-
-  val akkaDeps = Seq(
-    libraryDependencies ++= Seq(akkaActor, akkaPersistence, akkaStreams, akkaSlf4j),
-    // experimental
-    libraryDependencies ++= Seq(akkaPersistenceQuery),
-    // test scope
-    libraryDependencies ++= Seq(akkaTestKit, akkaPersistenceInMemory)
-  )
+    Seq(libraryDependencies ++= deps)  
+  }
   //------------------------------------------------------------------------------------------------------------
 
   
   //------------------------------------------------------------------------------------------------------------
   // Play Json support
-  val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.4"
-  val play25Json            =    "com.typesafe.play"          %% "play-json"          %  "2.5.3"
+  val playJson              =    "com.typesafe.play"          %% "play-json"          %  "2.4.8"
+  val play25Json            =    "com.typesafe.play"          %% "play-json"          %  "2.5.4"
   //------------------------------------------------------------------------------------------------------------
 
   val levelDb           =   "org.iq80.leveldb"            %   "leveldb"           % "0.7"

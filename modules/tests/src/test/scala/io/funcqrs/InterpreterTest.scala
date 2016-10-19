@@ -4,7 +4,7 @@ import java.time.OffsetDateTime
 
 import io.funcqrs.behavior._
 import io.funcqrs.interpreters.IdentityInterpreter
-import io.funcqrs.model.TimerTrackerProtocol.{ TimerCreated, TimerStarted, _ }
+import io.funcqrs.model.TimerTrackerProtocol._
 import io.funcqrs.model.{ BusyTracker, IdleTracker, TimeTracker, TrackerId }
 import org.scalatest.{ FunSuite, Matchers }
 /**
@@ -14,25 +14,6 @@ import org.scalatest.{ FunSuite, Matchers }
 class InterpreterTest extends FunSuite with Matchers {
 
   val initialState = Uninitialized[TimeTracker](TrackerId.generate)
-
-  test("A interpreter will fail a Command if missing event handlers for a given event") {
-
-    // a bogus TimeTracker behavior
-    // can't start timer due to empty actions for Idle state
-    def behavior: Behavior[TimeTracker] =
-      Behavior {
-        factoryActions(TrackerId.generate)
-      } {
-        case _ => Actions.empty
-      }
-
-    val interpreter = IdentityInterpreter(behavior)
-
-    // missing handler for TimerStarted event
-    intercept[MissingEventHandlerException] {
-      interpreter.onCommand(initialState, CreateAndStartTracking("test"))
-    }
-  }
 
   test("A interpreter will fail a Command if missing behavior for a given state") {
     // a bogus TimeTracker behavior
@@ -49,20 +30,23 @@ class InterpreterTest extends FunSuite with Matchers {
 
     // missing behavior for Idle state
     intercept[MissingBehaviorException] {
-      interpreter.onCommand(initialState, CreateAndStartTracking("test"))
+      interpreter.applyCommand(initialState, CreateAndStartTracking("test"))
     }
   }
 
   def factoryActions(trackerId: TrackerId) =
     actions[TimeTracker]
+      .handleCommand {
+        cmd: CreateTracker.type => TimerCreated(EventId())
+      }
       .handleCommand.manyEvents {
         cmd: CreateAndStartTracking =>
           List(
-            TimerCreated(EventId(), cmd.id),
+            TimerCreated(EventId()),
             // the event handler for TimerStarter depends on a created Tracker
             // and therefore can't be defined in this 'Actions'
             // behavior is available in next transition
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId(), cmd.id)
+            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
           )
       }
       .handleEvent {

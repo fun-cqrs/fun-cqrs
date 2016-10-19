@@ -3,7 +3,7 @@ package lottery.app
 import akka.actor.ActorSystem
 import io.funcqrs.akka.EventsSourceProvider
 import io.funcqrs.akka.backend.AkkaBackend
-import io.funcqrs.backend.{ Backend, Query, QueryByTag }
+import io.funcqrs.backend.{ Backend, Query, QueryByTag, QuerySelectAll }
 import io.funcqrs.config.Api._
 import io.funcqrs.test.backend.InMemoryBackend
 import lottery.domain.model.Lottery
