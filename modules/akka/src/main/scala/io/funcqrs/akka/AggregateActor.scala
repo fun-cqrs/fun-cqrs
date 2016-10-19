@@ -216,6 +216,9 @@ class AggregateActor[A <: AggregateLike](
           origSender ! events
         }
       }
+    } else {
+      // if empty, we don't persist, but we send an empty list back to sender
+      origSender ! events
     }
 
     changeState(Available)
