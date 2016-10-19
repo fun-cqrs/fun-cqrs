@@ -2,16 +2,16 @@ package io.funcqrs.akka
 
 import akka.actor.ActorSystem
 import akka.actor.Status.Failure
-import akka.testkit.{ ImplicitSender, TestKit }
+import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol._
-import io.funcqrs.akka.TestModel.{ User, UserId }
+import io.funcqrs.akka.TestModel.{User, UserId}
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
-import io.funcqrs.{ AggregateId, CommandException, DomainCommand }
+import io.funcqrs.{AggregateId, CommandException, DomainCommand, MissingCommandHandlerException}
 import org.scalatest._
 
 import scala.concurrent.duration._
@@ -106,15 +106,14 @@ class AggregateManagerTest(val actorSys: ActorSystem) extends TestKit(actorSys)
     }
 
     aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "creating user") {
-      case Failure(exp: CommandException) =>
-        exp.getMessage contains "CreateUser(John Doe,30) for aggregate UserId"
+    expectMsgPF(hint = "creating user twice") {
+      case Failure(exp: MissingCommandHandlerException) =>
+        exp.getMessage contains "No command handlers defined for command: CreateUser(John Doe,30))"
     }
   }
 
-  it should "reject commands is aggregate is 'deleted'" in {
+  it should "reject commands if aggregate is 'deleted'" in {
 
-    // no generated id so we can check error message
     val userId = UserId.generate()
     aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
     expectMsgPF(hint = "creating user") {

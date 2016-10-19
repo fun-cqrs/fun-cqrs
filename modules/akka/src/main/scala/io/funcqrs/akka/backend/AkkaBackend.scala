@@ -3,7 +3,6 @@ package io.funcqrs.akka.backend
 import akka.actor.{ ActorRef, ActorSystem, Props }
 import akka.pattern._
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
 import io.funcqrs.AggregateLike
 import io.funcqrs.akka._
 import io.funcqrs.backend._
@@ -21,7 +20,10 @@ trait AkkaBackend extends Backend[Future] {
   val actorSystem: ActorSystem
 
   /** Parent actor for all projections! */
-  lazy private val projectionMonitorActorRef = actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), "projectionMonitor")
+  lazy private val projectionMonitorActorRef = {
+    val name = this.getClass.getSimpleName +  "-projection-monitor"
+    actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), name)
+  }
 
   private var aggregates: concurrent.Map[ClassTag[_], ActorRef] = concurrent.TrieMap()
 

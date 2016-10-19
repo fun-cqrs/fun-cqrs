@@ -51,10 +51,10 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       lottery ? Run
 
       // assert that expected events were produced
-      expectEventType[LotteryCreated]
-      expectEvent { case ParticipantAdded("John", _) => () }
-      expectEvent { case ParticipantAdded("Paul", _) => () }
-      expectEventType[WinnerSelected]
+      expectEvent[LotteryCreated]
+      expectEventPF { case ParticipantAdded("John", _) => () }
+      expectEventPF { case ParticipantAdded("Paul", _) => () }
+      expectEvent[WinnerSelected]
 
       // check the view projection
       val view = repo.find(id).success.value

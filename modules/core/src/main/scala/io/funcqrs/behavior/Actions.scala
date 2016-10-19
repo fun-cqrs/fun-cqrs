@@ -1,7 +1,7 @@
 package io.funcqrs.behavior
 
 import io.funcqrs.interpreters._
-import io.funcqrs.{ AggregateAliases, AggregateLike, CommandException, MissingEventHandlerException }
+import io.funcqrs._
 
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -33,9 +33,15 @@ case class Actions[A <: AggregateLike](
   def onCommand(cmd: Command): CommandHandlerInvoker[Command, Event] = {
     if (allHandlers.isDefinedAt(cmd))
       allHandlers(cmd)
-    else
+    else {
+      val cmdHandler: PartialFunction[Command, Try[Events]] = {
+        case _ =>
+          val msg = s"No command handlers defined for command: $cmd"
+          Failure(new MissingCommandHandlerException(msg))
+      }
       // return a fallback invoker if not define
-      fallbackInvoker(s"Invalid command $cmd")
+      TryCommandHandlerInvoker(cmdHandler)
+    }
   }
 
   /**
@@ -49,17 +55,6 @@ case class Actions[A <: AggregateLike](
       eventHandlers(evt)
     else
       throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
-  }
-
-  /**
-   * Build a TryCommandHandlerInvoker that will always return an Failure
-   * Used internally to handle unknown commands
-   */
-  def fallbackInvoker(msg: String): CommandHandlerInvoker[Command, Event] = {
-    val cmdHandler: PartialFunction[Command, Try[Events]] = {
-      case cmd => Failure(new CommandException(msg))
-    }
-    TryCommandHandlerInvoker(cmdHandler)
   }
 
   /**
