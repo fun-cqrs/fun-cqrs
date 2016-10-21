@@ -1,6 +1,6 @@
 package io.funcqrs.akka.backend
 
-import akka.actor.{ ActorRef, ActorSystem, Props }
+import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import io.funcqrs.AggregateLike
@@ -21,7 +21,14 @@ trait AkkaBackend extends Backend[Future] {
 
   /** Parent actor for all projections! */
   lazy private val projectionMonitorActorRef = {
-    val name = this.getClass.getSimpleName +  "-projection-monitor"
+    val className = this.getClass.getSimpleName
+
+    val adjustedName =
+      if(ActorPath.isValidPathElement(className)) className
+      else "anonymous"
+
+    val name = adjustedName +  "-projection-monitor"
+
     actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), name)
   }
 
