@@ -11,7 +11,7 @@ class TagWriteEventAdapter extends WriteEventAdapter {
     event match {
       // all lottery events get tagged with lottery tag!
       case evt: LotteryProtocol.LotteryEvent => Tagged(evt, Set(Lottery.tag.value))
-      case evt => evt
+      case evt                               => evt
     }
   }
 }

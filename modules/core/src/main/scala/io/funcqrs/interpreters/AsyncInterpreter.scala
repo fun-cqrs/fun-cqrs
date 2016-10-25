@@ -9,18 +9,18 @@ import scala.util.Try
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * An Interpreter with F[_] bounded to [[Future]].
- *
- * All command handling are interpreted to [[Future]] of Events.
- *
- * @param behavior - a Aggregate [[Behavior]]
- * @tparam A - an Aggregate type
- */
+  * An Interpreter with F[_] bounded to [[Future]].
+  *
+  * All command handling are interpreted to [[Future]] of Events.
+  *
+  * @param behavior - a Aggregate [[Behavior]]
+  * @tparam A - an Aggregate type
+  */
 class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
 
   protected def interpret: InterpreterFunction = {
-    case (cmd, IdCommandHandlerInvoker(handler)) => Future.successful(handler(cmd))
-    case (cmd, TryCommandHandlerInvoker(handler)) => Future.fromTry(handler(cmd))
+    case (cmd, IdCommandHandlerInvoker(handler))     => Future.successful(handler(cmd))
+    case (cmd, TryCommandHandlerInvoker(handler))    => Future.fromTry(handler(cmd))
     case (cmd, FutureCommandHandlerInvoker(handler)) => handler(cmd)
   }
 

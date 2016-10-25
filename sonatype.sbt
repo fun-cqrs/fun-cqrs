@@ -1,11 +1,9 @@
-
 sonatypeProfileName := "io.strongtyped"
 
 credentials ++= (for {
   username <- Option(System.getenv().get("SONATYPE_USERNAME"))
   password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
 } yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq
-
 
 pomExtra in Global := {
   <url>https://github.com/strongtyped/fun-cqrs</url>
@@ -29,11 +27,10 @@ pomExtra in Global := {
   </developers>
 }
 
-
-publishTo in Global  := {
+publishTo in Global := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value)
     Some("snapshots" at nexus + "content/repositories/snapshots")
   else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }

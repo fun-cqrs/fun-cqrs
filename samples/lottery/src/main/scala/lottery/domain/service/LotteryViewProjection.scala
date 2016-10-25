@@ -18,9 +18,11 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
 
     case e: LotteryUpdateEvent =>
       Future.successful {
-        repo.updateById(e.lotteryId) { lot =>
-          updateFunc(lot, e)
-        }.map(_ => ())
+        repo
+          .updateById(e.lotteryId) { lot =>
+            updateFunc(lot, e)
+          }
+          .map(_ => ())
       }
   }
 

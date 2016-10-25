@@ -19,12 +19,11 @@ object AggregateManager {
 }
 
 /**
- * Base aggregate manager.
- * Handles communication between client and aggregate.
- * It is also capable of aggregates creation and removal.
- */
-trait AggregateManager extends Actor
-    with ActorLogging with AggregateAliases with AggregateMessageExtractors {
+  * Base aggregate manager.
+  * Handles communication between client and aggregate.
+  * It is also capable of aggregates creation and removal.
+  */
+trait AggregateManager extends Actor with ActorLogging with AggregateAliases with AggregateMessageExtractors {
 
   import scala.collection.immutable._
 
@@ -40,16 +39,16 @@ trait AggregateManager extends Actor
 
   class AggregateCell(val aggregateId: Id, val actorRef: ActorRef) {
 
-    private var _terminating: Boolean = false
+    private var _terminating: Boolean                       = false
     private var _lastReceiveMsgTime: Option[OffsetDateTime] = None
-    private var _undeliveredMessages: List[PendingMessage] = Nil
+    private var _undeliveredMessages: List[PendingMessage]  = Nil
 
-    def isActive = !_terminating
-    def markAsTerminating() = _terminating = true
+    def isActive               = !_terminating
+    def markAsTerminating()    = _terminating = true
     def hasUndeliveredMessages = _undeliveredMessages.nonEmpty
 
     def undeliveredMessages = _undeliveredMessages.reverse
-    def undeliveredCount = _undeliveredMessages.size
+    def undeliveredCount    = _undeliveredMessages.size
 
     def forward(message: Any): Unit = {
       if (_terminating) {
@@ -77,12 +76,12 @@ trait AggregateManager extends Actor
   override def receive: Receive = {
 
     case IdAndCommand(id, cmd) => processMessageForAggregate(id, cmd)
-    case GetState(GoodId(id)) => processMessageForAggregate(id, AggregateActor.StateRequest(sender()))
-    case Exists(GoodId(id)) => processMessageForAggregate(id, AggregateActor.Exists(sender()))
+    case GetState(GoodId(id))  => processMessageForAggregate(id, AggregateActor.StateRequest(sender()))
+    case Exists(GoodId(id))    => processMessageForAggregate(id, AggregateActor.Exists(sender()))
 
-    case Terminated(actor) => handleTermination(actor)
+    case Terminated(actor)   => handleTermination(actor)
     case GetState(BadId(id)) => badAggregateId(id)
-    case Exists(BadId(id)) => badAggregateId(id)
+    case Exists(BadId(id))   => badAggregateId(id)
 
     case cmd: Command =>
       log.error(
@@ -114,7 +113,6 @@ trait AggregateManager extends Actor
     val oldCellOpt = aggregateCells.find(_.actorRef == actorRef)
 
     oldCellOpt.foreach { oldCell =>
-
       // remove old cell from list
       aggregateCells = aggregateCells.filterNot(_.aggregateId == oldCell.aggregateId)
 
@@ -132,18 +130,16 @@ trait AggregateManager extends Actor
   }
 
   /**
-   * Processes aggregate message.
-   * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
-   *
-   */
+    * Processes aggregate message.
+    * Creates an aggregate (if not already created) and handles commands caching while aggregate is being killed.
+    *
+    */
   private def processMessageForAggregate(aggregateId: Id, message: Any) = {
     findOrCreate(aggregateId) forward message
   }
 
   def findOrCreate(aggregateId: Id): AggregateCell = {
-    aggregateCells
-      .find(_.aggregateId == aggregateId)
-      .getOrElse(create(aggregateId))
+    aggregateCells.find(_.aggregateId == aggregateId).getOrElse(create(aggregateId))
   }
 
   protected def create(id: Id): AggregateCell = {
@@ -163,17 +159,15 @@ trait AggregateManager extends Actor
   }
 
   /**
-   * Build Props for a new Aggregate Actor with the passed Id
-   */
+    * Build Props for a new Aggregate Actor with the passed Id
+    */
   def aggregateActorProps(id: Id): Props = {
     AggregateActor.props[Aggregate](id, behavior(id), context.self.path.name)
   }
 
   private def applyPassivationStrategy() =
-
     passivationStrategy match {
       case x: SelectionBasedPassivationStrategySupport =>
-
         val currentlyActive = aggregateCells.collect {
           case cell if cell.isActive => cell.actorRef
         }
@@ -202,8 +196,7 @@ trait AggregateManager extends Actor
   }
 }
 
-class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A])
-    extends AggregateManager {
+class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) extends AggregateManager {
 
   type Aggregate = A
 

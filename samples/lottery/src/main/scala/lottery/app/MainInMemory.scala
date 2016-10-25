@@ -28,7 +28,7 @@ object MainInMemory extends App {
 
   viewResult match {
     case Success(res) => println(s" => result: $res")
-    case Failure(ex) => println(s"FAILED: ${ex.getMessage}")
+    case Failure(ex)  => println(s"FAILED: ${ex.getMessage}")
   }
 
 }

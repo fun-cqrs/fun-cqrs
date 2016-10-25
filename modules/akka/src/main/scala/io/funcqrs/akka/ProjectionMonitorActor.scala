@@ -15,8 +15,8 @@ import io.funcqrs.EventWithCommandId
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
 /**
- * Parent actor for all ProjectionActors
- */
+  * Parent actor for all ProjectionActors
+  */
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
@@ -28,7 +28,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
   private val eventBus = new LookupClassification with ActorEventBus {
 
     type Classifier = CommandIdWithProjectionName
-    type Event = EventWithProjectionName
+    type Event      = EventWithProjectionName
 
     protected def mapSize(): Int = 8
 
@@ -69,11 +69,11 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     val supervisorProps =
       BackoffSupervisor.props(
         childProps = props,
-        childName = s"${name}-supervised",
+        childName  = s"${name}-supervised",
         // wait at least 10 seconds to restart
         minBackoff = 10.seconds, // TODO: move to config
         // wait at most 5 minutes to restart
-        maxBackoff = 5.minutes, // TODO: move to config
+        maxBackoff   = 5.minutes, // TODO: move to config
         randomFactor = 0.0 // TODO: move to config
       )
 
@@ -96,7 +96,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     // TODO this could be moved to property file eventually
     val shutdownEventsMonitorAfter = 10.seconds
-    val monitor = context.actorOf(eventsMonitor(commandId, projectionName, shutdownEventsMonitorAfter), monitorName)
+    val monitor                    = context.actorOf(eventsMonitor(commandId, projectionName, shutdownEventsMonitorAfter), monitorName)
 
     // subscribe for events having `commandId` and coming from projection named with `projectionName`
     eventBus.subscribe(monitor, (commandId, projectionName))
@@ -117,8 +117,8 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     import EventsMonitorActor._
 
     var replyActor: Option[ActorRef] = None
-    var eventsToWaitFor = Seq[DomainEvent]()
-    var eventsReceived = Seq[DomainEvent]()
+    var eventsToWaitFor              = Seq[DomainEvent]()
+    var eventsReceived               = Seq[DomainEvent]()
 
     //initialisation
     context.setReceiveTimeout(timeout)
@@ -127,7 +127,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
       case Subscribe(events) =>
         log.debug("received subscription for events {}", events)
         eventsToWaitFor = events
-        replyActor = Some(sender())
+        replyActor      = Some(sender())
         tryComplete()
 
       case evt: DomainEvent =>
@@ -182,4 +182,3 @@ object EventsMonitorActor {
   case class RemoveMe(actorRef: ActorRef)
 
 }
-

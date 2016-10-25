@@ -17,7 +17,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
       extracted match {
         case Success(value) => Some(value)
-        case Failure(exp) => None
+        case Failure(exp)   => None
       }
     }
   }
@@ -27,7 +27,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
     def unapply(aggregateId: Aggregate#Id): Option[Aggregate#Id] = {
       Try(aggregateId) match {
         case Success(id) => Some(id)
-        case _ => None
+        case _           => None
       }
     }
   }
@@ -37,7 +37,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
     def unapply(aggregateId: Aggregate#Id): Option[AggregateId] = {
       Try(aggregateId) match {
         case Success(id) => None
-        case _ => Some(aggregateId)
+        case _           => Some(aggregateId)
       }
     }
   }

@@ -6,8 +6,8 @@ import java.time.OffsetDateTime
 case class LotteryView(
     name: String,
     participants: List[LotteryView.Participant] = List(),
-    winner: Option[String] = None,
-    runDate: Option[OffsetDateTime] = None,
+    winner: Option[String]                      = None,
+    runDate: Option[OffsetDateTime]             = None,
     id: LotteryId
 ) {
 

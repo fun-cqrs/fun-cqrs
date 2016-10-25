@@ -14,13 +14,15 @@ class AggregateActor[A <: AggregateLike](
     identifier: A#Id,
     interpreter: AsyncInterpreter[A],
     aggregateType: String
-) extends AggregateAliases with PersistentActor with ActorLogging {
+) extends AggregateAliases
+    with PersistentActor
+    with ActorLogging {
 
   type Aggregate = A
 
   /**
-   * state of Aggregate Root
-   */
+    * state of Aggregate Root
+    */
   sealed trait ActorState
 
   case object Available extends ActorState
@@ -28,8 +30,8 @@ class AggregateActor[A <: AggregateLike](
   case object Busy extends ActorState
 
   /**
-   * Specifies how many events should be processed before new snapshot is taken.
-   */
+    * Specifies how many events should be processed before new snapshot is taken.
+    */
   val eventsPerSnapshot =
     aggregateConfig(aggregateType).getInt("events-per-snapshot", 200)
 
@@ -49,15 +51,15 @@ class AggregateActor[A <: AggregateLike](
   private var currentSnapshotSequenceNr: Option[Long] = None
 
   /**
-   * Recovery handler that receives persisted events during recovery. If a state snapshot
-   * has been captured and saved, this handler will receive a [[SnapshotOffer]] message
-   * followed by events that are younger than the offered snapshot.
-   *
-   * This handler must not have side-effects other than changing persistent actor state i.e. it
-   * should not perform actions that may fail, such as interacting with external services,
-   * for example.
-   *
-   */
+    * Recovery handler that receives persisted events during recovery. If a state snapshot
+    * has been captured and saved, this handler will receive a [[SnapshotOffer]] message
+    * followed by events that are younger than the offered snapshot.
+    *
+    * This handler must not have side-effects other than changing persistent actor state i.e. it
+    * should not perform actions that may fail, such as interacting with external services,
+    * for example.
+    *
+    */
   override val receiveRecover: Receive = {
 
     case SnapshotOffer(metadata, aggregate: Aggregate @unchecked) =>
@@ -83,7 +85,7 @@ class AggregateActor[A <: AggregateLike](
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
         val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
-        val origSender = sender()
+        val origSender     = sender()
 
         eventualEvents map {
           case (events, nextState) => Successful(events, nextState, origSender)
@@ -104,9 +106,9 @@ class AggregateActor[A <: AggregateLike](
 
     val busyReceive: Receive = {
 
-      case AggregateActor.StateRequest(requester) => sendState(requester)
+      case AggregateActor.StateRequest(requester)    => sendState(requester)
       case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
-      case failedCmd: FailedCommand => onFailure(failedCmd)
+      case failedCmd: FailedCommand                  => onFailure(failedCmd)
 
       case cmd: Command =>
         log.debug("received {} while processing another command", cmd)
@@ -124,9 +126,9 @@ class AggregateActor[A <: AggregateLike](
 
   protected def defaultReceive: Receive = {
     case AggregateActor.StateRequest(requester) => sendState(requester)
-    case AggregateActor.Exists(requester) => requester ! aggregateState.isInitialized
-    case AggregateActor.KillAggregate => context.stop(self)
-    case x: SaveSnapshotSuccess =>
+    case AggregateActor.Exists(requester)       => requester ! aggregateState.isInitialized
+    case AggregateActor.KillAggregate           => context.stop(self)
+    case x: SaveSnapshotSuccess                 =>
       // delete the previous snapshot now that we know we have a newer snapshot
       currentSnapshotSequenceNr.foreach { seqNr =>
         deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
@@ -135,10 +137,10 @@ class AggregateActor[A <: AggregateLike](
   }
 
   /**
-   * send a message containing the aggregate's state back to the requester
-   *
-   * @param replyTo actor to send message to
-   */
+    * send a message containing the aggregate's state back to the requester
+    *
+    * @param replyTo actor to send message to
+    */
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
       case Initialized(aggregate) =>
@@ -158,11 +160,11 @@ class AggregateActor[A <: AggregateLike](
   }
 
   /**
-   * restore the lifecycle and state of the aggregate from a snapshot
-   *
-   * @param metadata  snapshot metadata
-   * @param aggregate the aggregate
-   */
+    * restore the lifecycle and state of the aggregate from a snapshot
+    *
+    * @param metadata  snapshot metadata
+    * @param aggregate the aggregate
+    */
   protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
     log.debug("restoring data for aggregate {}", aggregate.id)
 
@@ -192,7 +194,6 @@ class AggregateActor[A <: AggregateLike](
       var eventsCount = events.size
 
       persistAll(events) { _ =>
-
         eventsCount -= 1
         eventsSinceLastSnapshot += 1
 
@@ -226,13 +227,13 @@ class AggregateActor[A <: AggregateLike](
   }
 
   /**
-   * This method should be used as a callback handler for persist() method.
-   * It will:
-   * - apply the event on the aggregate effectively changing its state
-   * - check if a snapshot needs to be saved.
-   *
-   * @param evt DomainEvent that has been persisted
-   */
+    * This method should be used as a callback handler for persist() method.
+    * It will:
+    * - apply the event on the aggregate effectively changing its state
+    * - check if a snapshot needs to be saved.
+    *
+    * @param evt DomainEvent that has been persisted
+    */
   protected def afterEventPersisted(evt: Event): Unit = {
 
     eventsSinceLastSnapshot += 1
@@ -249,8 +250,8 @@ class AggregateActor[A <: AggregateLike](
   }
 
   /**
-   * Internal representation of a completed update command.
-   */
+    * Internal representation of a completed update command.
+    */
   private case class Successful(events: Events, nextState: State[Aggregate], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
@@ -260,9 +261,9 @@ class AggregateActor[A <: AggregateLike](
 object AggregateActor {
 
   /**
-   * We don't want the aggregate to be killed if it hasn't fully restored yet,
-   * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
-   */
+    * We don't want the aggregate to be killed if it hasn't fully restored yet,
+    * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
+    */
   case object KillAggregate
 
   case class StateRequest(requester: ActorRef)
@@ -275,6 +276,7 @@ object AggregateActor {
 }
 
 /**
- * Exceptions extending this trait will not get logged by FunCqrs as errors.
- */
-trait DomainException { self: Throwable => }
+  * Exceptions extending this trait will not get logged by FunCqrs as errors.
+  */
+trait DomainException { self: Throwable =>
+}

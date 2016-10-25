@@ -11,25 +11,25 @@ import scala.util.{ Failure, Try }
 
 case class Actions[A <: AggregateLike](
     cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
-    rejectCmdInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
-    eventHandlers: EventHandler[A#Event, A] = PartialFunction.empty
+    rejectCmdInvokers: CommandToInvoker[A#Command, A#Event]  = PartialFunction.empty,
+    eventHandlers: EventHandler[A#Event, A]                  = PartialFunction.empty
 ) extends AggregateAliases {
 
   type Aggregate = A
 
   /**
-   * All command handlers together.
-   * First reject handlers, then normal command handlers
-   */
+    * All command handlers together.
+    * First reject handlers, then normal command handlers
+    */
   private val allHandlers = rejectCmdInvokers orElse cmdHandlerInvokers
 
   /**
-   * Returns a [[CommandHandlerInvoker]] for the passed [[Command]]. Invokers are delayed execution
-   * of `Command Handlers` and abstract over the Functor that will be returned when handling the command.
-   *
-   * Internally, this method calls the declared `Command Handlers`.
-   *
-   */
+    * Returns a [[CommandHandlerInvoker]] for the passed [[Command]]. Invokers are delayed execution
+    * of `Command Handlers` and abstract over the Functor that will be returned when handling the command.
+    *
+    * Internally, this method calls the declared `Command Handlers`.
+    *
+    */
   def onCommand(cmd: Command): CommandHandlerInvoker[Command, Event] = {
     if (allHandlers.isDefinedAt(cmd))
       allHandlers(cmd)
@@ -45,11 +45,11 @@ case class Actions[A <: AggregateLike](
   }
 
   /**
-   * Applies the passed [[Event]] producing a new instance of [[Aggregate]].
-   * Internally, this method calls the declared `Event Handlers`.
-   *
-   * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
-   */
+    * Applies the passed [[Event]] producing a new instance of [[Aggregate]].
+    * Internally, this method calls the declared `Event Handlers`.
+    *
+    * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
+    */
   def onEvent(evt: Event): Aggregate = {
     if (eventHandlers.isDefinedAt(evt))
       eventHandlers(evt)
@@ -58,27 +58,27 @@ case class Actions[A <: AggregateLike](
   }
 
   /**
-   * Concatenate `this` Actions with `that` Actions
-   */
+    * Concatenate `this` Actions with `that` Actions
+    */
   def ++(that: Actions[A]) = {
     this.copy(
       cmdHandlerInvokers = this.cmdHandlerInvokers orElse that.cmdHandlerInvokers,
-      rejectCmdInvokers = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
-      eventHandlers = this.eventHandlers orElse that.eventHandlers
+      rejectCmdInvokers  = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
+      eventHandlers      = this.eventHandlers orElse that.eventHandlers
     )
   }
 
   /**
-   * Declares a guard clause that reject commands that fulfill a given condition.
-   *
-   * A guard clause is a `Command Handler` as it handles a incoming command,
-   * but instead of producing [[Event]], it returns a [[Throwable]] to signalize an error condition.
-   *
-   * Guard clauses command handlers have precedence over handlers producing [[Event]]s.
-   *
-   * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
-   * @return - return a [[Actions]].
-   */
+    * Declares a guard clause that reject commands that fulfill a given condition.
+    *
+    * A guard clause is a `Command Handler` as it handles a incoming command,
+    * but instead of producing [[Event]], it returns a [[Throwable]] to signalize an error condition.
+    *
+    * Guard clauses command handlers have precedence over handlers producing [[Event]]s.
+    *
+    * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
+    * @return - return a [[Actions]].
+    */
   def reject(cmdHandler: PartialFunction[A#Command, Throwable]): Actions[Aggregate] = {
 
     val invokerPF: CommandToInvoker[A#Command, A#Event] = {
@@ -101,13 +101,16 @@ case class Actions[A <: AggregateLike](
     handleCommand[C, E, immutable.Seq](handlerWithSeq)
   }
 
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[E])(implicit ivk: InvokerDirective[F]): Actions[Aggregate] =
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[E])(
+      implicit ivk: InvokerDirective[F]): Actions[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(implicit ivk: InvokerSeqDirective[F]): Actions[Aggregate] =
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(
+      implicit ivk: InvokerSeqDirective[F]): Actions[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(implicit ivk: InvokerListDirective[F]): Actions[Aggregate] =
+  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(
+      implicit ivk: InvokerListDirective[F]): Actions[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
   private def addInvoker[C <: Command: ClassTag, E <: Event](invoker: CommandHandlerInvoker[C, E]): Actions[Aggregate] = {
@@ -124,11 +127,12 @@ case class Actions[A <: AggregateLike](
   }
 
   /**
-   */
+    */
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
 
   case class IdentityManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Identity] {
+
     /** Declares a `Command Handler` that produces a Seq[[Event]] */
     @deprecated("Obsolete, use handleCommand instead", "0.4.7")
     def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): Actions[Aggregate] = {
@@ -168,12 +172,11 @@ case class Actions[A <: AggregateLike](
   }
 
   /**
-   * Declares an event handler
-   *
-   * @param eventHandler - the event handler function
-   * @return an Actions for A
-   */
-
+    * Declares an event handler
+    *
+    * @param eventHandler - the event handler function
+    * @return an Actions for A
+    */
   def handleEvent[E <: Event: ClassTag](eventHandler: E => A): Actions[Aggregate] = {
 
     object EvtExtractor extends ClassTagExtractor[E]

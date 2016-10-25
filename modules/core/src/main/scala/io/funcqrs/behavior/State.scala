@@ -13,7 +13,7 @@ case class Uninitialized[A <: AggregateLike](aggregateId: A#Id) extends State[A]
 }
 
 case class Initialized[A <: AggregateLike](aggregate: A) extends State[A] {
-  val aggregateId = aggregate.id
+  val aggregateId            = aggregate.id
   val isInitialized: Boolean = true
 
   override def toString: String = {
