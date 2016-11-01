@@ -96,9 +96,11 @@ abstract class ProjectionActor(
         // save offset of last processed event
         // event will be processed twice if saveCurrentOffset fails
         // therefore Projections should be idempotent or fail-safe
-        saveCurrentOffset(offset).map { _ =>
-          ProjectionActor.OffsetPersisted(offset)
-        }.pipeTo(self)
+        saveCurrentOffset(offset)
+          .map { _ =>
+            ProjectionActor.OffsetPersisted(offset)
+          }
+          .pipeTo(self)
 
       case OnNext(any) =>
         log.warning("Received something that is not a DomainEvent! {} - [{}]", any, self.path.name)
