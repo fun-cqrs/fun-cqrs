@@ -1,0 +1,25 @@
+options:
+  - title: Introduction
+    url: index.html
+
+  - title: Getting Started
+    url: docs/getting-started.html
+
+  - title: Aggregates
+    url: docs/aggregates.html    
+
+  - title: Projections
+    url: docs/projections.html        
+
+  - title: Testing
+    url: docs/testing.html        
+
+  - title: Akka Backend
+    url: docs/akka-backend.html        
+
+  - title: Extensions
+    url: docs/extensions.html        
+
+
+  - title: Advanced Topics
+    url: docs/advanced.html           
