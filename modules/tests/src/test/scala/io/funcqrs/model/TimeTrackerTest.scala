@@ -28,7 +28,7 @@ class TimeTrackerTest extends FlatSpec with Matchers {
 
       tracker ! CreateTracker
 
-      expectEventType[TimerCreated]
+      expectEvent[TimerCreated]
 
       tracker.state().isIdle shouldBe true
     }
@@ -39,8 +39,8 @@ class TimeTrackerTest extends FlatSpec with Matchers {
       val tracker = trackerRef()
       tracker ! CreateAndStartTracking("foo")
 
-      expectEventType[TimerCreated]
-      expectEventType[TimerStarted]
+      expectEvent[TimerCreated]
+      expectEvent[TimerStarted]
 
       tracker.state().isBusy shouldBe true
     }
@@ -52,10 +52,10 @@ class TimeTrackerTest extends FlatSpec with Matchers {
       tracker ! CreateAndStartTracking("foo")
       tracker ! ReplaceTask("bar")
 
-      expectEventType[TimerCreated]
-      expectEventType[TimerStarted]
-      expectEventType[TimerStopped]
-      expectEventType[TimerStarted]
+      expectEvent[TimerCreated]
+      expectEvent[TimerStarted]
+      expectEvent[TimerStopped]
+      expectEvent[TimerStarted]
 
       tracker.state().isBusy shouldBe true
       tracker.state().previousTasks should have size 1
@@ -68,8 +68,8 @@ class TimeTrackerTest extends FlatSpec with Matchers {
       tracker ! CreateTracker
       tracker ! ReplaceTask("foo")
 
-      expectEventType[TimerCreated]
-      expectEventType[TimerStarted]
+      expectEvent[TimerCreated]
+      expectEvent[TimerStarted]
 
       tracker.state().isBusy shouldBe true
       tracker.state().previousTasks should have size 0

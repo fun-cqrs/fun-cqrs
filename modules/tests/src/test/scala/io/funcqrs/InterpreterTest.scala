@@ -39,7 +39,7 @@ class InterpreterTest extends FunSuite with Matchers {
       .handleCommand {
         cmd: CreateTracker.type => TimerCreated(EventId())
       }
-      .handleCommand.manyEvents {
+      .handleCommand {
         cmd: CreateAndStartTracking =>
           List(
             TimerCreated(EventId()),

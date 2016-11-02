@@ -53,7 +53,7 @@ trait InMemoryTestSupport {
   }
 
   private def lastReceivedEvent(): DomainEvent = {
-    assert(receivedEvents.isEmpty, "No events on queue")
+    assert(receivedEvents.nonEmpty, "No events on queue")
     receivedEvents.front
   }
 
