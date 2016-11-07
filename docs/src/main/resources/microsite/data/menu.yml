@@ -8,18 +8,17 @@ options:
   - title: Aggregates
     url: docs/aggregates.html    
 
+  - title: In-Memory Backend
+    url: docs/in-memory-backend.html    
+
+  - title: Command Side Tests
+    url: docs/command-side-tests.html      
+
   - title: Projections
     url: docs/projections.html        
 
-  - title: Testing
-    url: docs/testing.html        
+  - title: Query Side Tests
+    url: docs/query-side-tests.html        
 
   - title: Akka Backend
     url: docs/akka-backend.html        
-
-  - title: Extensions
-    url: docs/extensions.html        
-
-
-  - title: Advanced Topics
-    url: docs/advanced.html           

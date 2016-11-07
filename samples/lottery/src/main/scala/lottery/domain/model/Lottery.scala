@@ -79,7 +79,7 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
         cmd: AddParticipant => ParticipantAdded(cmd.name, id)
       }
       .handleEvent {
-        evt: ParticipantAdded => copy(participants = participants :+ evt.name)
+        evt: ParticipantAdded => copy(participants = evt.name :: participants)
       }
 
   /**
@@ -100,7 +100,7 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
       .handleEvent {
         evt: ParticipantRemoved =>
           val newParticipants = participants.filter(_ != evt.name)
-          // if last participant is removed, transition to EmptyLottery
+          // NOTE: if last participant is removed, transition back to EmptyLottery
           if (newParticipants.isEmpty)
             EmptyLottery(id)
           else
@@ -159,7 +159,7 @@ object LotteryProtocol extends ProtocolLike {
   // Commands ============================================================
   sealed trait LotteryCommand extends ProtocolCommand
   // Creation Command
-  case class CreateLottery(name: String) extends LotteryCommand
+  case object CreateLottery extends LotteryCommand
 
   // Update Commands
   case class AddParticipant(name: String) extends LotteryCommand
@@ -176,7 +176,7 @@ object LotteryProtocol extends ProtocolLike {
   }
 
   // Creation Event
-  case class LotteryCreated(name: String, lotteryId: LotteryId) extends LotteryEvent
+  case class LotteryCreated(lotteryId: LotteryId) extends LotteryEvent
   // Update Events
   sealed trait LotteryUpdateEvent extends LotteryEvent
   case class ParticipantAdded(name: String, lotteryId: LotteryId) extends LotteryUpdateEvent
@@ -193,10 +193,11 @@ object Lottery {
   // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
 
-  def createLottery(lotteryId: LotteryId) =
+  // defines seed command and event handlers
+  def factory(lotteryId: LotteryId) =
     actions[Lottery]
       .handleCommand {
-        cmd: CreateLottery => LotteryCreated(cmd.name, lotteryId)
+        cmd: CreateLottery.type => LotteryCreated(lotteryId)
       }
       .handleEvent {
         evt: LotteryCreated => EmptyLottery(id = lotteryId)
@@ -204,7 +205,7 @@ object Lottery {
 
   def behavior(lotteryId: LotteryId): Behavior[Lottery] =
     Behavior {
-      createLottery(lotteryId)
+      factory(lotteryId)
     } {
       case lottery: EmptyLottery =>
         lottery.canNotRunWithoutParticipants ++
