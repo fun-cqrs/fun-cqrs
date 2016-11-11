@@ -4,8 +4,8 @@ import BuildSettings._
 lazy val micrositeSettings = Seq(
   micrositeName := "Fun.CQRS",
   micrositeDescription := "Scala CQRS/ES library ",
-  micrositeBaseUrl := "fun-cqrs",
-  micrositeDocumentationUrl := "/fun-cqrs/docs/",
+  micrositeBaseUrl := "",
+  micrositeDocumentationUrl := "/docs/",
   micrositeGithubOwner := "strongtyped",
   micrositeGithubRepo := "fun-cqrs",
   micrositeAuthor := "Strong[Typed]",

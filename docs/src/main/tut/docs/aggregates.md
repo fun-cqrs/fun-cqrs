@@ -4,15 +4,13 @@ title: Aggregates
 ---
 
 
-
-## The Lottery Aggregate
+# The Lottery Aggregate
 
 A **Lottery** is an aggregate with three possible **states** modeled as an **Algebraic Data Type**: `EmptyLottery`, `NonEmptyLottery` and `FinishedLottery`.
 
-A **Lottery** aggregate has the following requirements:
-
-#### Initial State 
 A User can create a new lottery game which is initiated as an `EmptyLottery`
+
+A **Lottery** aggregate has the following requirements and sum types:
 
 #### EmptyLottery
   - A User can add the first lottery participants  
