@@ -16,9 +16,9 @@ Last, we will plug the code we wrote with the `AkkaBackend` and run it in a `mai
 During this tutorial we will cover many aspects of **Fun.CQRS**, but we won't go deep into the details. The goal is to get you started by building a first application. Links to more detailed documentation will be provided along the tutorial. 
 
 
-1. [Aggregates - Command Side](aggregates.html)
-2. [Configuring the `InMemoryBackend`](in-memory-backend.html)
-3. [Command Side Tests](command-side-tests.html)
-4. [Projection - Query Side](projections.html)
-5. [Query Side Tests](query-side-tests.html)
-6. [Configuring the `AkkaBackend`](akka-backend.html)
+1. [Aggregates - Command Side](aggregates.html) 
+2. [Configuring the `InMemoryBackend`](in-memory-backend.html) (todo)
+3. [Command Side Tests](command-side-tests.html) (todo)
+4. [Projection - Query Side](projections.html) (todo)
+5. [Query Side Tests](query-side-tests.html) (todo)
+6. [Configuring the `AkkaBackend`](akka-backend.html) (todo)
