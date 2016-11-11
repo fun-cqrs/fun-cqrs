@@ -1,0 +1,383 @@
+<html><head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><title>Fun.CQRS</title><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Scala CQRS/ES library " /><meta name="author" content="Strong[Typed]" /><meta name="og:image" content="/fun-cqrs/img/poster.png" /><meta name="og:title" content="Fun.CQRS" /><meta name="og:site_name" content="Fun.CQRS" /><meta name="og:url" content="http://www.strongtyped.io" /><meta name="og:type" content="website" /><meta name="og:description" content="Scala CQRS/ES library " /><meta name="twitter:image" content="/fun-cqrs/img/poster.png" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:site" content="" /><link rel="icon" type="image/png" href="/fun-cqrs/img/favicon.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/color-brewer.min.css" /><link rel="stylesheet" href="/fun-cqrs/css/style.css" /><link rel="stylesheet" href="/fun-cqrs/css/palette.css" /><link rel="stylesheet" href="/fun-cqrs/css/override.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/fun-cqrs/" class="brand"><div class="brand-wrapper" style="background:url('/fun-cqrs/img/sidebar_brand.png') no-repeat"><span>Fun.CQRS</span></div></a></li> <li><a href="/fun-cqrs/index.html" class="">Introduction</a></li> <li><a href="/fun-cqrs/docs/getting-started.html" class="">Getting Started</a></li> <li><a href="/fun-cqrs/docs/aggregates.html" class=" active ">Aggregates</a></li> <li><a href="/fun-cqrs/docs/in-memory-backend.html" class="">In-Memory Backend</a></li> <li><a href="/fun-cqrs/docs/command-side-tests.html" class="">Command Side Tests</a></li> <li><a href="/fun-cqrs/docs/projections.html" class="">Projections</a></li> <li><a href="/fun-cqrs/docs/query-side-tests.html" class="">Query Side Tests</a></li> <li><a href="/fun-cqrs/docs/akka-backend.html" class="">Akka Backend</a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li class="hidden-xs"><a href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-eye"></i><span>WATCH<span id="eyes" class="label label-default">--</span></span></a></li><li class="hidden-xs"><a href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-star-o"></i><span>STARS<span id="stars" class="label label-default">--</span></span></a></li><li><a href="#" onclick="shareSiteTwitter('Fun.CQRS Scala CQRS/ES library ');"><i class="fa fa-twitter"></i></a></li><li><a href="#" onclick="shareSiteFacebook('Fun.CQRS Scala CQRS/ES library ');"><i class="fa fa-facebook"></i></a></li><li><a href="#" onclick="shareSiteGoogle();"><i class="fa fa-google-plus"></i></a></li></ul></div></div></div></div><div id="content" data-github-owner="strongtyped" data-github-repo="fun-cqrs"><div class="content-wrapper"><section><h2 id="the-lottery-aggregate">The Lottery Aggregate</h2>
+
+<p>A <strong>Lottery</strong> is an aggregate with three possible <strong>states</strong> modeled as an <strong>Algebraic Data Type</strong>: <code class="highlighter-rouge">EmptyLottery</code>, <code class="highlighter-rouge">NonEmptyLottery</code> and <code class="highlighter-rouge">FinishedLottery</code>.</p>
+
+<p>A <strong>Lottery</strong> aggregate has the following requirements:</p>
+
+<h4 id="initial-state">Initial State</h4>
+<p>A User can create a new lottery game which is initiated as an <code class="highlighter-rouge">EmptyLottery</code></p>
+
+<h4 id="emptylottery">EmptyLottery</h4>
+<ul>
+  <li>A User can add the first lottery participants<br />
+After which it transitions to <code class="highlighter-rouge">NonEmptyLottery</code></li>
+</ul>
+
+<h4 id="nonemptylottery">NonEmptyLottery</h4>
+<ul>
+  <li>
+    <p>A User can add more participants<br />
+<strong>pre-condition</strong>: a participant can only be added once and therefore <code class="highlighter-rouge">AddParticipant</code> command must be rejected if participant have already subscribed.</p>
+  </li>
+  <li>
+    <p>A User can remove one or more participants<br />
+In case the last participant is removed, the <code class="highlighter-rouge">Lottery</code> becomes an <code class="highlighter-rouge">EmptyLottery</code></p>
+  </li>
+  <li>
+    <p>A User can run the lottery which will select a winner<br />
+After which it transitions to <code class="highlighter-rouge">FinishedLottery</code> state.</p>
+  </li>
+</ul>
+
+<h4 id="finishedlottery">FinishedLottery</h4>
+
+<p>A <code class="highlighter-rouge">FinishedLottery</code> have reached its end-of-life and it must reject any new <code class="highlighter-rouge">Commands</code></p>
+
+<h3 id="aggregateid-and-protocol">AggregateId and Protocol</h3>
+
+<p>Before we start coding the Lottery aggregate we must define an <code class="highlighter-rouge">AggregateId</code> for it and it’s <code class="highlighter-rouge">Protocol</code> (that we will fill latter).</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.AggregateId</span>
+
+<span class="cm">/** Defines the a type-safe ID for Lottery Aggregate */</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">LotteryId</span><span class="o">(</span><span class="n">value</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AggregateId</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.ProtocolLike</span>
+<span class="k">import</span> <span class="nn">java.time.OffsetDateTime</span>
+
+<span class="cm">/** Defines the Lottery Protocol, 
+   all Commands it may receive and Events it may emit */</span>
+<span class="k">object</span> <span class="nc">LotteryProtocol</span> <span class="k">extends</span> <span class="nc">ProtocolLike</span> <span class="o">{</span>
+  
+  <span class="c1">// commands
+</span>  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">LotteryCommand</span> <span class="k">extends</span> <span class="nc">ProtocolCommand</span>
+  <span class="k">case</span> <span class="k">object</span> <span class="nc">CreateLottery</span> <span class="k">extends</span> <span class="nc">LotteryCommand</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">AddParticipant</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryCommand</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">RemoveParticipant</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryCommand</span>
+  <span class="k">case</span> <span class="k">object</span> <span class="nc">RemoveAllParticipants</span> <span class="k">extends</span> <span class="nc">LotteryCommand</span>
+  <span class="k">case</span> <span class="k">object</span> <span class="nc">Run</span> <span class="k">extends</span> <span class="nc">LotteryCommand</span>  
+  
+  <span class="c1">// events
+</span>  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">LotteryEvent</span> <span class="k">extends</span> <span class="nc">ProtocolEvent</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span>
+  <span class="o">}</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">LotteryCreated</span><span class="o">(</span><span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryEvent</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">LotteryUpdateEvent</span> <span class="k">extends</span> <span class="nc">LotteryEvent</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">ParticipantAdded</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryUpdateEvent</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">ParticipantRemoved</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryUpdateEvent</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">WinnerSelected</span><span class="o">(</span><span class="n">winner</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">date</span><span class="k">:</span> <span class="kt">OffsetDateTime</span><span class="o">,</span> <span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">LotteryUpdateEvent</span>  
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>And finally the <code class="highlighter-rouge">Lottery</code> base trait and its variants.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.AggregateLike</span>
+
+<span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Lottery</span> <span class="k">extends</span> <span class="nc">AggregateLike</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">Id</span>       <span class="o">=</span> <span class="nc">LotteryId</span>
+  <span class="k">type</span> <span class="kt">Protocol</span> <span class="o">=</span> <span class="nc">LotteryProtocol</span><span class="o">.</span><span class="k">type</span>
+<span class="o">}</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">EmptyLottery</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">FinishedLottery</span><span class="o">(</span><span class="n">winner</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span>
+</code></pre>
+</div>
+
+<h3 id="aggregate-behavior">Aggregate Behavior</h3>
+
+<p>Next we must define how the <strong>Seed Event</strong> is generated. By <strong>Seed Event</strong> we understand the event that will generate the first instance of a given <strong>Aggregate</strong>. Since <code class="highlighter-rouge">Events</code> are generated from <code class="highlighter-rouge">Commands</code> we can consider that there is also a <strong>Seed Command</strong>, the one that will generate the <strong>Seed Event</strong>.</p>
+
+<p>In analogy with a classical OOP modeling, the <strong>Seed Command</strong> is the equivalent of constructor validator that checks if the passed data is valid to build the object instance while the <strong>Seed Event</strong> is the reification of the constructor parameters. Once we have the <strong>Seed Event</strong> we can safely build the <strong>Aggregate</strong> instance.</p>
+
+<p>A <code class="highlighter-rouge">Behavior</code> is defined as two main functions:</p>
+
+<ul>
+  <li>
+    <p>The first function we call the <code class="highlighter-rouge">seedFunction</code> or <code class="highlighter-rouge">factory</code> and is defined as:<br />
+<code class="highlighter-rouge">() =&gt; Actions[A]</code>. Where <code class="highlighter-rouge">A</code> is the Aggregate type. This function express the fact that we don’t have yet an <code class="highlighter-rouge">Aggregate</code>. We have nothing <code class="highlighter-rouge">()</code> and we return a <code class="highlighter-rouge">Actions[A]</code>.</p>
+  </li>
+  <li>
+    <p>The second function is a <code class="highlighter-rouge">PartialFunction[A, Actions[A]]</code> and is used once we do have an <code class="highlighter-rouge">Aggregate</code> instance.</p>
+  </li>
+</ul>
+
+<p>We will start by defining the <code class="highlighter-rouge">factory</code> function and an almost empty <code class="highlighter-rouge">Behavior</code>.
+By convention we define it in the <code class="highlighter-rouge">Aggregate</code> companion object.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.behavior._</span>
+<span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+
+<span class="k">object</span> <span class="nc">Lottery</span> <span class="o">{</span>
+      
+  <span class="k">def</span> <span class="n">behavior</span><span class="o">(</span><span class="n">lotteryId</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behavior</span> <span class="o">{</span>
+      <span class="c1">// () =&gt; Actions[Lottery]
+</span>      <span class="c1">// defines seed command and event handlers
+</span>      <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span> 
+        <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span> 
+          <span class="n">cmd</span><span class="k">:</span> <span class="kt">CreateLottery.</span><span class="k">type</span> <span class="o">=&gt;</span> <span class="nc">LotteryCreated</span><span class="o">(</span><span class="n">lotteryId</span><span class="o">)</span>
+        <span class="o">}</span>
+        <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span> 
+          <span class="n">evt</span><span class="k">:</span> <span class="kt">LotteryCreated</span> <span class="o">=&gt;</span> <span class="nc">EmptyLottery</span><span class="o">(</span><span class="n">id</span> <span class="k">=</span> <span class="n">lotteryId</span><span class="o">)</span>
+        <span class="o">}</span>
+    <span class="o">}</span> <span class="o">{</span>
+      <span class="c1">// PartialFunction[Lottery, Actions[Lottery]]
+</span>      <span class="c1">// once we have an aggregate we can define actions for each of its variants
+</span>      <span class="c1">// for the moment we let them all empty
+</span>      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">EmptyLottery</span>    <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">NonEmptyLottery</span> <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">FinishedLottery</span> <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+    <span class="o">}</span>      
+<span class="o">}</span>      
+</code></pre>
+</div>
+
+<p>As expected, the <strong>Seed Command</strong> generates one single <code class="highlighter-rouge">Event</code>, which is our <strong>Seed Event</strong>. The <code class="highlighter-rouge">Event Handler</code> defined for it will instantiate the <code class="highlighter-rouge">Lottery</code> aggregate as an <code class="highlighter-rouge">EmptyLottery</code>.</p>
+
+<p>The second function block is defined, but the <code class="highlighter-rouge">Actions</code> are empty.</p>
+
+<p>The <code class="highlighter-rouge">Behavior</code> as defined here is not very useful as we can only instantiate the an <code class="highlighter-rouge">EmptyLottery</code>.</p>
+
+<h3 id="emptylottery-actions">EmptyLottery Actions</h3>
+<p>To further implement our aggregate, we will define the applicable <code class="highlighter-rouge">Command Handlers</code> and <code class="highlighter-rouge">Event Handlers</code> for an <code class="highlighter-rouge">EmptyLottery</code>.</p>
+
+<p>From the already defined <code class="highlighter-rouge">Commands</code> and <code class="highlighter-rouge">Events</code> there are a couple that are clearly not applicable, for example: 
+Does it make sense to <code class="highlighter-rouge">Run</code> a <code class="highlighter-rouge">Lottery</code> without any participants? And does it make sense to <code class="highlighter-rouge">RemoveParticipant</code> from an <code class="highlighter-rouge">EmptyLottery</code>? Obviously not, therefore we will only define the possible <code class="highlighter-rouge">Actions</code> the the context of an <code class="highlighter-rouge">EmptyLottery</code>.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">EmptyLottery</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+
+  <span class="k">def</span> <span class="n">acceptParticipants</span> <span class="k">=</span>
+    <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span>
+        <span class="n">cmd</span><span class="k">:</span> <span class="kt">AddParticipant</span> <span class="o">=&gt;</span> <span class="nc">ParticipantAdded</span><span class="o">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span>
+        <span class="n">evt</span><span class="k">:</span> <span class="kt">ParticipantAdded</span> <span class="o">=&gt;</span>
+          <span class="c1">// NOTE: that as soon we have a participant, the Lottery transitions to NonEmptyLottery
+</span>          <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">evt</span><span class="o">.</span><span class="n">name</span><span class="o">),</span> <span class="n">id</span> <span class="k">=</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p><strong>The updated Behavior PartialFunction</strong></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="nc">Behavior</span> <span class="o">{</span>
+ <span class="c1">// omitted for brevity
+</span><span class="o">}</span> <span class="o">{</span>
+  <span class="c1">// PartialFunction[Lottery, Actions[Lottery]]
+</span>  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">EmptyLottery</span>    <span class="o">=&gt;</span> <span class="n">lottery</span><span class="o">.</span><span class="n">acceptParticipants</span>
+  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">NonEmptyLottery</span> <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">FinishedLottery</span> <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+<span class="o">}</span>    
+</code></pre>
+</div>
+
+<h3 id="nonemptylottery-actions">NonEmptyLottery Actions</h3>
+
+<p>The <code class="highlighter-rouge">NonEmptyLottery</code> is the main variant. It handles all possible <code class="highlighter-rouge">Commands</code> and <code class="highlighter-rouge">Events</code>. The <code class="highlighter-rouge">Actions</code> are defined in separated blocks each representing one logical set of <code class="highlighter-rouge">handlers</code>. Later they are all concatenated together to form one single <code class="highlighter-rouge">Action</code>.</p>
+
+<p>We will show each block separately so we can comment which of them, but keep in mind that all the actions in this example are defined inside <code class="highlighter-rouge">NonEmptyLottery</code>.</p>
+
+<hr />
+<p>#### Rejecting Double Booking</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+<span class="k">import</span> <span class="nn">io.funcqrs.CommandException</span>
+
+<span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="cm">/** Action: reject double booking. Can't add the same participant twice */</span>
+  <span class="k">def</span> <span class="n">rejectDoubleBooking</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">action</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="o">.</span><span class="n">rejectCommand</span> <span class="o">{</span>
+        <span class="c1">// can't add participant twice
+</span>        <span class="k">case</span> <span class="n">cmd</span><span class="k">:</span> <span class="kt">AddParticipant</span> <span class="kt">if</span> <span class="kt">participants.contains</span><span class="o">(</span><span class="kt">name</span><span class="o">)</span> <span class="o">=&gt;</span>
+          <span class="k">new</span> <span class="nc">CommandException</span><span class="o">(</span><span class="n">s</span><span class="s">"Participant ${cmd.name} already added!"</span><span class="o">)</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>The above code fragment introduces a new kind of <code class="highlighter-rouge">Command Handler</code> called a <code class="highlighter-rouge">Guard</code>. A <code class="highlighter-rouge">Guard</code> is a <code class="highlighter-rouge">Command Handler</code> that will never emit <code class="highlighter-rouge">Events</code>, but will return an <code class="highlighter-rouge">Exception</code> instead. <code class="highlighter-rouge">Guard Command Handlers</code> are specially useful for situations where we can easily check if the command is valid or not.</p>
+
+<p>Contrary to a regular <code class="highlighter-rouge">Command Handler</code>, a <code class="highlighter-rouge">Guard</code> receives a <code class="highlighter-rouge">PartialFunction</code> and therefore we can implement the guard like we usually do when <code class="highlighter-rouge">Pattern Matching</code>.</p>
+
+<p>In case the guard condition holds, the command is rejected with a <code class="highlighter-rouge">CommandException</code>. You can return any exception here, but it’s recommend to use <code class="highlighter-rouge">io.funcqrs.CommandException</code> as no <a href="http://www.scala-lang.org/api/current/scala/util/control/NoStackTrace.html">stacktrace overhead</a>.</p>
+
+<p>Exceptions returned by <code class="highlighter-rouge">Guard</code> are only used to express errors and are never thrown (unless you choose for the <code class="highlighter-rouge">IdentityInterpreter</code>, <a href="in-memory-backend.html#identity-interpreter">read more</a>.</p>
+
+<hr />
+
+<h4 id="accept-participants">Accept Participants</h4>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="cm">/** Action: add a participant */</span>
+  <span class="k">def</span> <span class="n">acceptParticipants</span> <span class="k">=</span>
+    <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span>
+        <span class="n">cmd</span><span class="k">:</span> <span class="kt">AddParticipant</span> <span class="o">=&gt;</span> <span class="nc">ParticipantAdded</span><span class="o">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span>
+        <span class="n">evt</span><span class="k">:</span> <span class="kt">ParticipantAdded</span> <span class="o">=&gt;</span> <span class="n">copy</span><span class="o">(</span><span class="n">participants</span> <span class="k">=</span> <span class="n">evt</span><span class="o">.</span><span class="n">name</span> <span class="o">::</span> <span class="n">participants</span><span class="o">)</span>
+      <span class="o">}</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>Adding an new participants is straightforward and very similar to the definition in <code class="highlighter-rouge">EmptyLottery</code> except that the <code class="highlighter-rouge">Event Handler</code> updates the <code class="highlighter-rouge">List</code> of participants instead.</p>
+
+<p>The <code class="highlighter-rouge">Command Handler</code> is exactly the same and we could have code it elsewhere for better reuse, but for clarity sake we choose to repeat it here.</p>
+
+<hr />
+
+<h4 id="remove-participants">Remove Participants</h4>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="cm">/** Action: remove participants (single or all) */</span>
+  <span class="k">def</span> <span class="n">removeParticipants</span> <span class="k">=</span>
+    <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="c1">// removing participants (single or all) produce ParticipantRemoved events
+</span>      <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span>
+        <span class="n">cmd</span><span class="k">:</span> <span class="kt">RemoveParticipant</span> <span class="o">=&gt;</span> <span class="nc">ParticipantRemoved</span><span class="o">(</span><span class="n">cmd</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span>
+        <span class="c1">// will produce a List[ParticipantRemoved]
+</span>        <span class="n">cmd</span><span class="k">:</span> <span class="kt">RemoveAllParticipants.</span><span class="k">type</span> <span class="o">=&gt;</span>
+          <span class="k">this</span><span class="o">.</span><span class="n">participants</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span> <span class="n">name</span> <span class="k">=&gt;</span> <span class="nc">ParticipantRemoved</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span> <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span>
+        <span class="n">evt</span><span class="k">:</span> <span class="kt">ParticipantRemoved</span> <span class="o">=&gt;</span>
+          <span class="k">val</span> <span class="n">newParticipants</span> <span class="k">=</span> <span class="n">participants</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span> <span class="o">!=</span> <span class="n">evt</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+          <span class="c1">// NOTE: if last participant is removed, transition back to EmptyLottery
+</span>          <span class="k">if</span> <span class="o">(</span><span class="n">newParticipants</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+            <span class="nc">EmptyLottery</span><span class="o">(</span><span class="n">id</span><span class="o">)</span>
+          <span class="k">else</span>
+            <span class="n">copy</span><span class="o">(</span><span class="n">participants</span> <span class="k">=</span> <span class="n">newParticipants</span><span class="o">)</span>
+      <span class="o">}</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>The remove participants definition has two <code class="highlighter-rouge">Command Handlers</code>, but only one <code class="highlighter-rouge">Event Handler</code>. The reason for that is that both <code class="highlighter-rouge">Command Handlers</code> are emitting the same type of <code class="highlighter-rouge">Event</code>, <code class="highlighter-rouge">ParticipantRemoved</code> event. Therefore we only need to define one <code class="highlighter-rouge">Event Handler</code>.</p>
+
+<p>Also important is that we make sure that we transition back to an <code class="highlighter-rouge">EmptyLottery</code> in case we remove the last participant.</p>
+
+<hr />
+
+<h3 id="running-the-lottery">Running the Lottery</h3>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">LotteryProtocol._</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyLottery</span><span class="o">(</span><span class="n">participants</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+  <span class="o">...</span>        
+  <span class="cm">/** Action: run the lottery */</span>
+  <span class="k">def</span> <span class="n">runTheLottery</span> <span class="k">=</span>
+    <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span>
+        <span class="n">cmd</span><span class="k">:</span> <span class="kt">Run.</span><span class="k">type</span> <span class="o">=&gt;</span>
+          <span class="k">val</span> <span class="n">index</span> <span class="k">=</span> <span class="nc">Random</span><span class="o">.</span><span class="n">nextInt</span><span class="o">(</span><span class="n">participants</span><span class="o">.</span><span class="n">size</span><span class="o">)</span>
+          <span class="k">val</span> <span class="n">winner</span> <span class="k">=</span> <span class="n">participants</span><span class="o">(</span><span class="n">index</span><span class="o">)</span>
+          <span class="nc">WinnerSelected</span><span class="o">(</span><span class="n">winner</span><span class="o">,</span> <span class="nc">OffsetDateTime</span><span class="o">.</span><span class="n">now</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span>
+        <span class="c1">// transition to end state on winner selection
+</span>        <span class="n">evt</span><span class="k">:</span> <span class="kt">WinnerSelected</span> <span class="o">=&gt;</span> <span class="nc">FinishedLottery</span><span class="o">(</span><span class="n">evt</span><span class="o">.</span><span class="n">winner</span><span class="o">,</span> <span class="n">id</span><span class="o">)</span>
+      <span class="o">}</span>
+  <span class="o">...</span>    
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>Running the Lottery is also straightforward. An random participant is selected in the <code class="highlighter-rouge">Command Handler</code> and a single event is emitted. The <code class="highlighter-rouge">Event Handler</code> transition the Lottery to <code class="highlighter-rouge">FinishedLottery</code>.</p>
+
+<p>Note that <code class="highlighter-rouge">FinishLottery</code> does not have the list of participants anymore. Only the selected winner. The reason for that is that when modeling an <code class="highlighter-rouge">Aggregate</code> we should only preserve data needed for future <code class="highlighter-rouge">Command</code> validations. <code class="highlighter-rouge">Aggregates</code> are not queried and therefore should not hold useless data.</p>
+
+<hr />
+
+<h4 id="concatenating-actions">Concatenating Actions</h4>
+
+<p>Finally we can take all actions definitions from <code class="highlighter-rouge">NonEmptyLottery</code>, concatenate them all together and add it to the final <code class="highlighter-rouge">Behavior</code></p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="nc">Behavior</span> <span class="o">{</span>
+ <span class="c1">// omitted for brevity
+</span><span class="o">}</span> <span class="o">{</span>
+  <span class="c1">// PartialFunction[Lottery, Actions[Lottery]]
+</span>  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">EmptyLottery</span>    <span class="o">=&gt;</span> <span class="n">lottery</span><span class="o">.</span><span class="n">acceptParticipants</span>
+
+  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">NonEmptyLottery</span> <span class="o">=&gt;</span> 
+      <span class="c1">// actions can be concatenated using the ++ operator
+</span>      <span class="n">lottery</span><span class="o">.</span><span class="n">rejectDoubleBooking</span> <span class="o">++</span>
+        <span class="n">lottery</span><span class="o">.</span><span class="n">acceptParticipants</span> <span class="o">++</span>
+        <span class="n">lottery</span><span class="o">.</span><span class="n">removeParticipants</span> <span class="o">++</span>
+        <span class="n">lottery</span><span class="o">.</span><span class="n">runTheLottery</span>
+        
+  <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">FinishedLottery</span> <span class="o">=&gt;</span> <span class="nc">Actions</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+<span class="o">}</span>  
+</code></pre>
+</div>
+
+<h3 id="finishedlottery-action">FinishedLottery Action</h3>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">case</span> <span class="k">class</span> <span class="nc">FinishedLottery</span><span class="o">(</span><span class="n">winner</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">id</span><span class="k">:</span> <span class="kt">LotteryId</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Lottery</span> <span class="o">{</span>
+
+  <span class="cm">/** Action: reject all */</span>
+  <span class="k">def</span> <span class="n">rejectAllCommands</span> <span class="k">=</span>
+    <span class="n">action</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span>
+      <span class="o">.</span><span class="n">rejectCommand</span> <span class="o">{</span>
+        <span class="c1">// no command can be accepted after having selected a winner
+</span>        <span class="k">case</span> <span class="n">anyCommand</span>  <span class="k">=&gt;</span>
+          <span class="k">new</span> <span class="nc">LotteryHasAlreadyAWinner</span><span class="o">(</span><span class="n">s</span><span class="s">"Lottery has already a winner and the winner is $winner"</span><span class="o">)</span>
+      <span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<p>A <code class="highlighter-rouge">FinishedLottery</code> represent the final state and end-of-life for a <code class="highlighter-rouge">Lottery</code> game. It has only one <code class="highlighter-rouge">Guard</code> that reject all incoming commands.</p>
+
+<h3 id="final-behavior">Final Behavior</h3>
+
+<p>Finally, we have the total <code class="highlighter-rouge">Behavior</code> our <code class="highlighter-rouge">Lottery</code> aggregate. 
+We have defined the seed actions to initialize it and defined all possible actions of each of it’s variants.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>    <span class="nc">Behavior</span> <span class="o">{</span>
+      <span class="c1">// () =&gt; Actions[Lottery]
+</span>      <span class="c1">// defines seed command and event handlers
+</span>      <span class="n">actions</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">]</span> 
+        <span class="o">.</span><span class="n">handleCommand</span> <span class="o">{</span> 
+          <span class="n">cmd</span><span class="k">:</span> <span class="kt">CreateLottery.</span><span class="k">type</span> <span class="o">=&gt;</span> <span class="nc">LotteryCreated</span><span class="o">(</span><span class="n">lotteryId</span><span class="o">)</span>
+        <span class="o">}</span>
+        <span class="o">.</span><span class="n">handleEvent</span> <span class="o">{</span> 
+          <span class="n">evt</span><span class="k">:</span> <span class="kt">LotteryCreated</span> <span class="o">=&gt;</span> <span class="nc">EmptyLottery</span><span class="o">(</span><span class="n">id</span> <span class="k">=</span> <span class="n">lotteryId</span><span class="o">)</span>
+        <span class="o">}</span>
+    <span class="o">}</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">EmptyLottery</span> <span class="o">=&gt;</span>
+        <span class="n">lottery</span><span class="o">.</span><span class="n">canNotRunWithoutParticipants</span> <span class="o">++</span>
+          <span class="n">lottery</span><span class="o">.</span><span class="n">acceptParticipants</span>
+
+      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">NonEmptyLottery</span><span class="o">=&gt;</span>
+        <span class="n">lottery</span><span class="o">.</span><span class="n">rejectDoubleBooking</span> <span class="o">++</span>
+          <span class="n">lottery</span><span class="o">.</span><span class="n">acceptParticipants</span> <span class="o">++</span>
+          <span class="n">lottery</span><span class="o">.</span><span class="n">removeParticipants</span> <span class="o">++</span>
+          <span class="n">lottery</span><span class="o">.</span><span class="n">runTheLottery</span>
+
+      <span class="k">case</span> <span class="n">lottery</span><span class="k">:</span> <span class="kt">FinishedLottery</span> <span class="o">=&gt;</span> <span class="n">lottery</span><span class="o">.</span><span class="n">rejectAllCommands</span>
+    <span class="o">}</span>
+</code></pre>
+</div>
+
+<hr />
+<p>On the next chapter we learn how to configure the <code class="highlighter-rouge">InMemoryBackend</code> for testing.<br />
+<a href="in-memory-backend.html">Configuring the <code class="highlighter-rouge">InMemoryBackend</code></a></p>
+</section></div></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/highlight.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/languages/scala.min.js"></script><script src="/fun-cqrs/js/main.js"></script></body></html>
