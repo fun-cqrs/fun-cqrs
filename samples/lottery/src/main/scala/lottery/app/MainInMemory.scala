@@ -12,7 +12,7 @@ object MainInMemory extends App {
   //  val lotteryRef = AppContext.inMemoryBackend.aggregateRef[Lottery](id) //#<1>
   val lotteryRef = AppContext.inMemoryBackend.aggregateRef[Lottery](id) //#<1>
 
-  lotteryRef ! CreateLottery("Demo") // #<2>
+  lotteryRef ! CreateLottery // #<2>
 
   // add participants #<3>
   lotteryRef ! AddParticipant("John")
