@@ -18,7 +18,8 @@ https://github.com/strongtyped/fun-cqrs (development branch)
 Stable and released branch can be found at:  
 https://github.com/strongtyped/fun-cqrs/tree/master
 
-**Project artifact** +
+**Project artifact**  
+
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
   
