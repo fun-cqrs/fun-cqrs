@@ -375,5 +375,5 @@ We have defined the seed actions to initialize it and defined all possible actio
 ```
 
 ---
-On the next chapter we learn how to configure the `InMemoryBackend` for testing.  
-[Configuring the `InMemoryBackend`](in-memory-backend.html)
+On the next chapter we learn about **Fun.CQRS** backend architecture and how to configure the `InMemoryBackend` for testing.  
+[Fun.CQRS Backends](backends.html)

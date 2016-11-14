@@ -17,7 +17,7 @@ During this tutorial we will cover many aspects of **Fun.CQRS**, but we won't go
 
 
 1. [Aggregates - Command Side](aggregates.html) 
-2. [Configuring the `InMemoryBackend`](in-memory-backend.html) (todo)
+2. [Fun.CQRS Backends](backends.html)
 3. [Command Side Tests](command-side-tests.html) (todo)
 4. [Projection - Query Side](projections.html) (todo)
 5. [Query Side Tests](query-side-tests.html) (todo)
