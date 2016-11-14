@@ -1,0 +1,72 @@
+<html><head><meta charset="utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" /><title>Fun.CQRS</title><meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Scala CQRS/ES library " /><meta name="author" content="Strong[Typed]" /><meta name="og:image" content="/img/poster.png" /><meta name="og:title" content="Fun.CQRS" /><meta name="og:site_name" content="Fun.CQRS" /><meta name="og:url" content="http://www.strongtyped.io" /><meta name="og:type" content="website" /><meta name="og:description" content="Scala CQRS/ES library " /><meta name="twitter:image" content="/img/poster.png" /><meta name="twitter:card" content="summary_large_image" /><meta name="twitter:site" content="" /><link rel="icon" type="image/png" href="/img/favicon.png" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" /><link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" /><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/styles/color-brewer.min.css" /><link rel="stylesheet" href="/css/style.css" /><link rel="stylesheet" href="/css/palette.css" /><link rel="stylesheet" href="/css/override.css" /></head><body class="docs"><div id="wrapper"><div id="sidebar-wrapper"><ul id="sidebar" class="sidebar-nav"><li class="sidebar-brand"><a href="/" class="brand"><div class="brand-wrapper" style="background:url('/img/sidebar_brand.png') no-repeat"><span>Fun.CQRS</span></div></a></li> <li><a href="/index.html" class="">Introduction</a></li> <li><a href="/docs/getting-started.html" class="">Getting Started</a></li> <li><a href="/docs/aggregates.html" class="">Aggregates</a></li> <li><a href="/docs/backends.html" class=" active ">Backends</a></li> <li><a href="/docs/command-side-tests.html" class="">Command Side Tests (todo)</a></li> <li><a href="/docs/projections.html" class="">Projections (todo)</a></li> <li><a href="/docs/query-side-tests.html" class="">Query Side Tests (todo)</a></li> <li><a href="/docs/akka-backend.html" class="">Akka Backend (todo)</a></li></ul></div><div id="page-content-wrapper"><div class="nav"><div class="container-fluid"><div class="row"><div class="col-lg-12"><div class="action-menu pull-left clearfix"><a href="#menu-toggle" id="menu-toggle"><i class="fa fa-bars" aria-hidden="true"></i></a></div><ul class="pull-right"><li class="hidden-xs"><a href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-eye"></i><span>WATCH<span id="eyes" class="label label-default">--</span></span></a></li><li class="hidden-xs"><a href="https://github.com/strongtyped/fun-cqrs"><i class="fa fa-star-o"></i><span>STARS<span id="stars" class="label label-default">--</span></span></a></li><li><a href="#" onclick="shareSiteTwitter('Fun.CQRS Scala CQRS/ES library ');"><i class="fa fa-twitter"></i></a></li><li><a href="#" onclick="shareSiteFacebook('Fun.CQRS Scala CQRS/ES library ');"><i class="fa fa-facebook"></i></a></li><li><a href="#" onclick="shareSiteGoogle();"><i class="fa fa-google-plus"></i></a></li></ul></div></div></div></div><div id="content" data-github-owner="strongtyped" data-github-repo="fun-cqrs"><div class="content-wrapper"><section><h1 id="funcqrs-backends">Fun.CQRS Backends</h1>
+
+<p>On the <a href="aggregates.md">Aggregates</a> section we learned how to design an <code class="highlighter-rouge">Aggregate</code> in terms of <code class="highlighter-rouge">Command Handlers</code> and <code class="highlighter-rouge">Event Handlers</code>. However, we still don’t have the means to work with it.</p>
+
+<p>To understand the role of a backend we must first go back to the basic CQRS/ES operations that we are trying to abstract over. In <strong>CQRS/ES</strong> we can devise two basic functions:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="c1">// basic Command Handler
+</span><span class="o">(</span><span class="nc">State</span><span class="o">[</span><span class="kt">Aggregate</span><span class="o">],</span> <span class="nc">Command</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">F</span><span class="o">[</span><span class="kt">Events</span><span class="o">]</span>
+<span class="c1">// basic Event Handler
+</span><span class="o">(</span><span class="nc">State</span><span class="o">[</span><span class="kt">Aggregate</span><span class="o">],</span> <span class="nc">Event</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">State</span><span class="o">[</span><span class="kt">Aggregate</span><span class="o">]</span>
+</code></pre>
+</div>
+<blockquote>
+  <p>Note: in <strong>Fun.CQRS</strong> we don’t directly define functions like those. Instead we use the <strong>Behavior DSL</strong> that allow us to define them by concentrate only on the parts that are domain specific.</p>
+</blockquote>
+
+<p>The <code class="highlighter-rouge">Command Handler</code> receives the state of an <code class="highlighter-rouge">Aggregate</code> and a new <code class="highlighter-rouge">Command</code> and emits one or more <code class="highlighter-rouge">Events</code>. <code class="highlighter-rouge">Events</code> are wrapped on a <code class="highlighter-rouge">F[_]</code>, where <code class="highlighter-rouge">F[_]</code> can be any of: <code class="highlighter-rouge">Identity</code>, <code class="highlighter-rouge">Try</code>, <code class="highlighter-rouge">Future</code> and  <code class="highlighter-rouge">Option</code>.</p>
+
+<p>The <code class="highlighter-rouge">Event Handler</code> receives the state of an <code class="highlighter-rouge">Aggregate</code> and an <code class="highlighter-rouge">Event</code> and produces a new <code class="highlighter-rouge">Aggregate</code> state.</p>
+
+<p>Given those two functions, the role of the backend is:</p>
+
+<ol>
+  <li>Provide the current <code class="highlighter-rouge">State[Aggregate]</code></li>
+  <li>Understand how to deal with <code class="highlighter-rouge">F[_]</code> and “interpret” it</li>
+  <li>Persist the <code class="highlighter-rouge">Events</code> eventually emitted by the <code class="highlighter-rouge">Command Handler</code></li>
+  <li>Update the current <code class="highlighter-rouge">State[Aggregate]</code> by applying the emitted <code class="highlighter-rouge">Events</code> to it</li>
+</ol>
+
+<p>As such, a <strong>Fun.CQRS</strong> backend is where IO and persistence take place.</p>
+
+<p>A backend is also tight to a <code class="highlighter-rouge">F[_]</code> and will lift all possible incarnations of <code class="highlighter-rouge">F[_]</code> to its own <code class="highlighter-rouge">F[_]</code>. For instance, for the <code class="highlighter-rouge">AkkaBackend</code> <code class="highlighter-rouge">F</code> is as <code class="highlighter-rouge">Future</code>. If you define a <code class="highlighter-rouge">Command Handler</code> that returns a <code class="highlighter-rouge">Try</code> and use it with the <code class="highlighter-rouge">AkkaBackend</code>, you will get a <code class="highlighter-rouge">Future</code> instead.</p>
+
+<p>More over, a backend does not let you work directly with an <code class="highlighter-rouge">Aggregate</code>. The principle is pretty much inspired in <strong>Akka</strong>. You request an <code class="highlighter-rouge">AggregateRef</code>, you send <code class="highlighter-rouge">Commands</code> to it and you don’t manipulate the <code class="highlighter-rouge">Aggregate</code> directly.</p>
+
+<h2 id="configuration">Configuration</h2>
+
+<p>In orde to use an <code class="highlighter-rouge">Aggregate</code> we must first configure it on a <strong>Backend</strong>. This is done only once and is supposed to happen when bootstrapping the application.</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.backend.Backend</span>
+<span class="k">import</span> <span class="nn">io.funcqrs.config.Api._</span>
+
+<span class="k">object</span> <span class="nc">BackendConfig</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">configure</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]](</span><span class="n">backend</span><span class="k">:</span> <span class="kt">Backend</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span><span class="k">:</span> <span class="kt">backend.</span><span class="k">type</span> <span class="o">=</span> <span class="o">{</span>
+     <span class="n">backend</span><span class="o">.</span><span class="n">configure</span> <span class="o">{</span>
+      <span class="c1">// aggregate config - write model
+</span>      <span class="n">aggregate</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">](</span><span class="nc">Lottery</span><span class="o">.</span><span class="n">behavior</span><span class="o">)</span>
+    <span class="o">}</span>
+    <span class="n">backend</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</code></pre>
+</div>
+
+<h2 id="inmemorybackend">InMemoryBackend</h2>
+
+<p>For test purposes we provide a <code class="highlighter-rouge">InMemoryBackend</code> where <code class="highlighter-rouge">Events</code> and <code class="highlighter-rouge">Aggregate</code> state are ‘persisted’ in-memory.</p>
+
+<p>The <code class="highlighter-rouge">InMemoryBackend</code> defines <code class="highlighter-rouge">F[_]</code> as <code class="highlighter-rouge">Identity</code> (<a href="https://github.com/strongtyped/fun-cqrs/blob/develop/modules/core/src/main/scala/io/funcqrs/interpreters/package.scala">see</a>).</p>
+
+<p><code class="highlighter-rouge">Identity</code> can’t express an error condition and therefore it will block for <code class="highlighter-rouge">Command Handlers</code> returning <code class="highlighter-rouge">Futures</code> and it will throw exceptions for failed <code class="highlighter-rouge">Futures</code> and <code class="highlighter-rouge">Trys</code>.</p>
+
+<p>A usage example for the <code class="highlighter-rouge">InMemoryBackend</code> can be found on tutorial section on <a href="command-side-tests.html">Command Side Tests</a></p>
+
+<h2 id="akkabackend">AkkaBackend</h2>
+
+<p>The <code class="highlighter-rouge">AkkaBackend</code> is intended for production use. <code class="highlighter-rouge">Events</code> are persisted using <strong>akka-persistence</strong>.<br />
+The <code class="highlighter-rouge">AkkaBackend</code> defines <code class="highlighter-rouge">F[_]</code> as <code class="highlighter-rouge">Future</code>.</p>
+
+<p>Detailed documentation about the <code class="highlighter-rouge">AkkaBackend</code> can be found <a href="akkab-backend.html">here</a></p>
+
+</section></div></div></div></div><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/highlight.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.7.0/languages/scala.min.js"></script><script src="/js/main.js"></script></body></html>
