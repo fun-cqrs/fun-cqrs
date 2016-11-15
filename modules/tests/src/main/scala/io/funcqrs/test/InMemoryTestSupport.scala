@@ -1,5 +1,6 @@
 package io.funcqrs.test
 
+
 import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.test.backend.InMemoryBackend
 import io.funcqrs._
@@ -9,6 +10,8 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import io.funcqrs.config.api._
 import org.slf4j.LoggerFactory
+
+import scala.util.{Failure, Success, Try}
 
 trait InMemoryTestSupport {
 
@@ -52,70 +55,115 @@ trait InMemoryTestSupport {
     backend.aggregateRef[A](id)
   }
 
-  private def lastReceivedEvent(): DomainEvent = {
-    assert(receivedEvents.nonEmpty, "No events on queue")
+  private def oldestEvent(): DomainEvent = {
+    bufferShouldNoBeEmpty()
     receivedEvents.front
   }
 
+
+  private def bufferShouldNoBeEmpty() = {
+    assert(receivedEvents.nonEmpty, "No events on queue")
+  }
+
+
+
   /**
-    * Check if the last received event matches the passed [[PartialFunction]].
+    * Check only the type of the head of the test event buffer
     *
-    * Useful to verify the content of the event using extractors.
-    *
-    * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+    * @tparam E - the event type
+    * @throws AssertionError in Event Buffer head doesn't match passed Event
+    * @return E if head of event buffer is E
     */
+  def expectEvent[E <: DomainEvent: ClassTag]: E = {
+
+    val headOfBuffer = oldestEvent()
+    val expectedType = ClassTagImplicits[E].runtimeClass
+
+    assert(
+      headOfBuffer.getClass == expectedType,
+      s"Found: $headOfBuffer, expected of type ${expectedType.getSimpleName}"
+    )
+
+    // remove if assertion passes
+    receivedEvents.dequeue.asInstanceOf[E]
+  }
+
+  /**
+   * Check if the next event in buffer matches the passed [[PartialFunction]].
+   *
+   * Useful to verify the content of the event pattern matching.
+   *
+   * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+   */
   def expectEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
-    val lastReceived = lastReceivedEvent()
-    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event was: $lastReceived")
+    val lastReceived = oldestEvent()
+    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event was: $lastReceived")
     // remove if assertion is passes
     pf(receivedEvents.dequeue)
   }
 
   /**
-    * Check only the type of the head of the test event buffer
-    *
-    * @tparam E - the event type
-    */
-  def expectEvent[E <: DomainEvent: ClassTag]: E = {
-
-    val lastReceived = lastReceivedEvent()
-    val expectedType = ClassTagImplicits[E].runtimeClass
-
-    assert(
-      lastReceived.getClass == expectedType,
-      s"Last received event was: $lastReceived, expected of type ${expectedType.getSimpleName}"
-    )
-
-    // remove if assertion passes
-    receivedEvents.dequeue.asInstanceOf[E]
-  }
-
-  def expectEventExists[E <: DomainEvent: ClassTag](check: E => Boolean): E = {
-
-    val lastReceived = lastReceivedEvent()
-    val expectedType = ClassTagImplicits[E].runtimeClass
-
-    assert(
-      lastReceived.getClass == expectedType,
-      s"Last received event was: $lastReceived, expected of type ${expectedType.getSimpleName}"
-    )
-    assert(
-      check(lastReceived.asInstanceOf[E]),
-      s"Predicate doesn't hold for $lastReceived"
-    )
-
-    // remove if assertion passes
-    receivedEvents.dequeue.asInstanceOf[E]
+   * Search event buffer for `E` consuming all previous Events.
+   *
+   * @tparam E - the event type
+   * @throws AssertionError in case there is no matching Event on the buffer
+   * @return E if event buffer contains an Event of type E
+   */
+  def lookupExpectedEvent[E <: DomainEvent: ClassTag]: E = {
+    Try(expectEvent[E]) match {
+      case Success(event) => event
+      case Failure(ignore) =>
+        receivedEvents.dequeue()
+        lookupExpectedEvent[E]
+    }
   }
 
   /**
-    * Check only the type of the head of the test event buffer
-    *
-    * @tparam E - the event type
-    */
-  @deprecated(message = "Use expectEvent", since = "0.4.7")
-  def expectEventType[E <: DomainEvent: ClassTag](): E =
-    expectEvent[E]
+   * Search event buffer for an `Event` matching the passed [[PartialFunction]] consuming all previous Events.
+   *
+   * Useful to verify the content of the event pattern matching.
+   *
+   * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+   * @tparam E - the event type
+   * @throws AssertionError in case there is no matching Event on the buffer
+   * @return E if event buffer contains an Event of type E
+   */
+  def lookupExpectedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T =  {
+    Try(expectEventPF(pf)) match {
+      case Success(event) => event
+      case Failure(ignore) =>
+        receivedEvents.dequeue()
+        lookupExpectedEventPF(pf)
+    }
+  }
+
+
+
+  def lastReceivedEvent[E <: DomainEvent: ClassTag]: E = {
+
+    bufferShouldNoBeEmpty()
+
+    val lastReceived = receivedEvents.toList.last
+    val expectedType = ClassTagImplicits[E].runtimeClass
+
+    assert(
+      lastReceived.getClass == expectedType,
+      s"Last received event was: $lastReceived, expected of type ${expectedType.getSimpleName}"
+    )
+
+    lastReceived.asInstanceOf[E]
+  }
+
+  def lastReceivedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
+
+    bufferShouldNoBeEmpty()
+
+    val lastReceived = receivedEvents.toList.last
+
+    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event was: $lastReceived")
+    pf(lastReceived)
+  }
+
 
   /**
     * Check that the internal event buffer is empty meaning that there is no new
