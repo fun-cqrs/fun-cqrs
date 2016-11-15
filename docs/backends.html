@@ -35,22 +35,14 @@
 
 <h2 id="configuration">Configuration</h2>
 
-<p>In orde to use an <code class="highlighter-rouge">Aggregate</code> we must first configure it on a <strong>Backend</strong>. This is done only once and is supposed to happen when bootstrapping the application.</p>
+<p>In orde to use an <code class="highlighter-rouge">Aggregate</code> we must first configure it on a <strong>Backend</strong>. This is done only once and is supposed to happen when bootstrapping the application.
+(we see how to configure it on tutorial section: <a href="command-side-tests.html">Command Side Tests</a>)</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code><span class="k">import</span> <span class="nn">io.funcqrs.backend.Backend</span>
-<span class="k">import</span> <span class="nn">io.funcqrs.config.Api._</span>
+<p>Once the aggregate is configured we can ask the backend for instances of <code class="highlighter-rouge">AggregateRef</code> to work with.</p>
 
-<span class="k">object</span> <span class="nc">BackendConfig</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">configure</span><span class="o">[</span><span class="kt">F</span><span class="o">[</span><span class="k">_</span><span class="o">]](</span><span class="n">backend</span><span class="k">:</span> <span class="kt">Backend</span><span class="o">[</span><span class="kt">F</span><span class="o">])</span><span class="k">:</span> <span class="kt">backend.</span><span class="k">type</span> <span class="o">=</span> <span class="o">{</span>
-     <span class="n">backend</span><span class="o">.</span><span class="n">configure</span> <span class="o">{</span>
-      <span class="c1">// aggregate config - write model
-</span>      <span class="n">aggregate</span><span class="o">[</span><span class="kt">Lottery</span><span class="o">](</span><span class="nc">Lottery</span><span class="o">.</span><span class="n">behavior</span><span class="o">)</span>
-    <span class="o">}</span>
-    <span class="n">backend</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-</code></pre>
-</div>
+<p>Similar to Akka, we don’t work directly with an <code class="highlighter-rouge">Aggregate</code>, but with a reference to it. The <code class="highlighter-rouge">Aggregate</code> itself lives inside the backend and we send commands to each via an <code class="highlighter-rouge">ask</code> (?) and  <code class="highlighter-rouge">tell</code> (!). Again shameless inspired by Akka.</p>
+
+<p>The only difference is that an <code class="highlighter-rouge">AggregateRef</code> can only receive commands previously defined by its <code class="highlighter-rouge">Protocol</code> and will only emit <code class="highlighter-rouge">Events</code> from its <code class="highlighter-rouge">Protocol</code> as well. As such, an <code class="highlighter-rouge">AggregateRef</code> is typed on its <code class="highlighter-rouge">Protocol</code>.</p>
 
 <h2 id="inmemorybackend">InMemoryBackend</h2>
 
@@ -58,14 +50,17 @@
 
 <p>The <code class="highlighter-rouge">InMemoryBackend</code> defines <code class="highlighter-rouge">F[_]</code> as <code class="highlighter-rouge">Identity</code> (<a href="https://github.com/strongtyped/fun-cqrs/blob/develop/modules/core/src/main/scala/io/funcqrs/interpreters/package.scala">see</a>).</p>
 
-<p><code class="highlighter-rouge">Identity</code> can’t express an error condition and therefore it will block for <code class="highlighter-rouge">Command Handlers</code> returning <code class="highlighter-rouge">Futures</code> and it will throw exceptions for failed <code class="highlighter-rouge">Futures</code> and <code class="highlighter-rouge">Trys</code>.</p>
+<p><code class="highlighter-rouge">Identity</code> can NOT express an error condition and therefore it will block for <code class="highlighter-rouge">Command Handlers</code> returning <code class="highlighter-rouge">Futures</code> and it will throw exceptions for failed <code class="highlighter-rouge">Futures</code> and <code class="highlighter-rouge">Trys</code>.</p>
 
 <p>A usage example for the <code class="highlighter-rouge">InMemoryBackend</code> can be found on tutorial section on <a href="command-side-tests.html">Command Side Tests</a></p>
 
 <h2 id="akkabackend">AkkaBackend</h2>
 
-<p>The <code class="highlighter-rouge">AkkaBackend</code> is intended for production use. <code class="highlighter-rouge">Events</code> are persisted using <strong>akka-persistence</strong>.<br />
-The <code class="highlighter-rouge">AkkaBackend</code> defines <code class="highlighter-rouge">F[_]</code> as <code class="highlighter-rouge">Future</code>.</p>
+<p>The <code class="highlighter-rouge">AkkaBackend</code> is intended for production use and defines <code class="highlighter-rouge">F[_]</code> as <code class="highlighter-rouge">Future</code>.</p>
+
+<p>The <code class="highlighter-rouge">Aggregate</code> lives inside an <code class="highlighter-rouge">PersistentActor</code> and the backend guarantees that at most one instance (per <code class="highlighter-rouge">AggregateId</code>) is loaded in-memory.</p>
+
+<p><code class="highlighter-rouge">Events</code> are persisted using <strong>akka-persistence</strong>.</p>
 
 <p>Detailed documentation about the <code class="highlighter-rouge">AkkaBackend</code> can be found <a href="akkab-backend.html">here</a></p>
 
