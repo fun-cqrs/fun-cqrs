@@ -37,38 +37,31 @@ More over, a backend does not let you work directly with an `Aggregate`. The pri
 ## Configuration
 
 In orde to use an `Aggregate` we must first configure it on a **Backend**. This is done only once and is supposed to happen when bootstrapping the application.
+(we see how to configure it on tutorial section: [Command Side Tests](command-side-tests.html))
 
-```scala
-import io.funcqrs.backend.Backend
-import io.funcqrs.config.Api._
+Once the aggregate is configured we can ask the backend for instances of `AggregateRef` to work with. 
 
-object BackendConfig {
-  def configure[F[_]](backend: Backend[F]): backend.type = {
-     backend.configure {
-      // aggregate config - write model
-      aggregate[Lottery](Lottery.behavior)
-    }
-    backend
-  }
-}
-```
+Similar to Akka, we don't work directly with an `Aggregate`, but with a reference to it. The `Aggregate` itself lives inside the backend and we send commands to each via an `ask` (?) and  `tell` (!). Again shameless inspired by Akka. 
 
-
-
+The only difference is that an `AggregateRef` can only receive commands previously defined by its `Protocol` and will only emit `Events` from its `Protocol` as well. As such, an `AggregateRef` is typed on its `Protocol`.
+ 
 ## InMemoryBackend
 
 For test purposes we provide a `InMemoryBackend` where `Events` and `Aggregate` state are 'persisted' in-memory. 
 
-The `InMemoryBackend` defines `F[_]` as `Identity` ([see](https://github.com/strongtyped/fun-cqrs/blob/develop/modules/core/src/main/scala/io/funcqrs/interpreters/package.scala)).   
+The `InMemoryBackend` defines `F[_]` as `Identity` ([see](https://github.com/strongtyped/fun-cqrs/blob/develop/modules/core/src/main/scala/io/funcqrs/interpreters/package.scala)).  
 
-`Identity` can't express an error condition and therefore it will block for `Command Handlers` returning `Futures` and it will throw exceptions for failed `Futures` and `Trys`.
+`Identity` can NOT express an error condition and therefore it will block for `Command Handlers` returning `Futures` and it will throw exceptions for failed `Futures` and `Trys`.
 
 A usage example for the `InMemoryBackend` can be found on tutorial section on [Command Side Tests](command-side-tests.html)  
 
 ## AkkaBackend
 
-The `AkkaBackend` is intended for production use. `Events` are persisted using **akka-persistence**.  
-The `AkkaBackend` defines `F[_]` as `Future`.  
+The `AkkaBackend` is intended for production use and defines `F[_]` as `Future`.  
+
+The `Aggregate` lives inside an `PersistentActor` and the backend guarantees that at most one instance (per `AggregateId`) is loaded in-memory. 
+
+`Events` are persisted using **akka-persistence**.  
 
 Detailed documentation about the `AkkaBackend` can be found [here](akkab-backend.html)
 

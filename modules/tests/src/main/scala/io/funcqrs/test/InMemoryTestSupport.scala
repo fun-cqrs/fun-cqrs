@@ -123,7 +123,7 @@ trait InMemoryTestSupport {
     *
     * Works exactly the same as `expectNoMoreEvents`.
     *
-    * This method is generally used to verify that a command didn't emitted any event.
+    * This method is generally used to verify that a command didn't emit any event.
     */
   def expectNoEvent(): Unit =
     expectNoMoreEvents()
@@ -134,7 +134,7 @@ trait InMemoryTestSupport {
     *
     * Works exactly the same as `expectNoMoreEvents`.
     *
-    * This method is generally used to the end of a test case to verity that all events emitted
+    * This method is generally used at the end of a test case to verity that all events emitted
     * during the test were effectively consumed and that no unexpected event were emitted.
     */
   def expectNoMoreEvents(): Unit = {
