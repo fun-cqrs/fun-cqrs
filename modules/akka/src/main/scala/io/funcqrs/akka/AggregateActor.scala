@@ -90,7 +90,7 @@ class AggregateActor[A <: AggregateLike](
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
 
-        val eventualTimeout = (duration = commandTimeout, using = system.scheduler) {
+        val eventualTimeout = after(duration = commandTimeout, using = context.system.scheduler) {
           Future.failed(new TimeoutException(s"Timed out for command: $cmd"))
         }
         val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
