@@ -1,13 +1,15 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import _root_.akka.pattern.pipe
+import _root_.akka.pattern._
 import _root_.akka.persistence._
 import io.funcqrs._
 import io.funcqrs.akka.util.ConfigReader._
-import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
+import io.funcqrs.behavior.{Behavior, Initialized, State, Uninitialized}
 import io.funcqrs.interpreters.AsyncInterpreter
 
+import scala.concurrent.{Future, TimeoutException}
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
@@ -34,6 +36,9 @@ class AggregateActor[A <: AggregateLike](
     */
   val eventsPerSnapshot =
     aggregateConfig(aggregateType).getInt("events-per-snapshot", 200)
+
+  val commandTimeout =
+    aggregateConfig(aggregateType).getDuration("command-timeout", 5.seconds)
 
   import context.dispatcher
 
@@ -84,10 +89,17 @@ class AggregateActor[A <: AggregateLike](
 
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
+
+        val eventualTimeout = (duration = commandTimeout, using = system.scheduler) {
+          Future.failed(new TimeoutException(s"Timed out for command: $cmd"))
+        }
         val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
+
+        val eventWithTimeout = Future firstCompletedOf Seq(eventualEvents, eventualTimeout)
+        
         val origSender     = sender()
 
-        eventualEvents map {
+        eventWithTimeout map {
           case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
           case NonFatal(cause) => FailedCommand(cause, origSender)
