@@ -3,7 +3,9 @@ import BuildSettings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.12.0"
+
+crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.0")
 
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
@@ -24,8 +26,6 @@ lazy val root = Project(
   ) aggregate (
     funCqrs,
     funCqrsAkka,
-    funPlayJsonSupport,
-    funPlay25JsonSupport,
     funCqrsTestKit,
     lotteryApp
   )
@@ -50,39 +50,6 @@ lazy val funCqrsAkka = Project(
   ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
    .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
-
-
-
-// Play24 Json support ============================
-lazy val funPlayJsonSupport = Project(
-    id       = "fun-cqrs-play-json",
-    base     = file("modules/play-json"),
-    settings = defaultSettings
-  ).settings(libraryDependencies ++= mainDeps)
-   .settings(libraryDependencies += playJson)
-   .dependsOn(funCqrs % "compile->compile;test->test")
-//================================================
-
-
-
-// Play25 Json support ==========================
-lazy val funPlay25JsonSupport = {
-
-  //set source dir to source dir in commonPlayModule
-  val sourceDir = (baseDirectory in ThisBuild)(b => Seq(b / "modules/play-json/src/main/scala"))
-
-  Project(
-    id       = "fun-cqrs-play25-json",
-    base     = file("modules/play25-json"),
-    settings = defaultSettings
-  ).settings(libraryDependencies ++= mainDeps)
-   .settings(libraryDependencies += play25Json)
-   .settings(unmanagedSourceDirectories in Compile <<= sourceDir)
-   .dependsOn(funCqrs % "compile->compile;test->test")
-   
-}
-//================================================
-
 
 
 //Test kit =======================================
