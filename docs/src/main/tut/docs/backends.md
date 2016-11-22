@@ -30,7 +30,7 @@ Given those two functions, the role of the backend is:
 
 As such, a **Fun.CQRS** backend is where IO and persistence take place. 
 
-A backend is also tight to a `F[_]` and will lift all possible incarnations of `F[_]` to its own `F[_]`. For instance, for the `AkkaBackend` `F` is as `Future`. If you define a `Command Handler` that returns a `Try` and use it with the `AkkaBackend`, you will get a `Future` instead. 
+A backend is also tied to a `F[_]` and will lift all possible incarnations of `F[_]` to its own `F[_]`. For instance, for the `AkkaBackend` `F` is as `Future`. If you define a `Command Handler` that returns a `Try` and use it with the `AkkaBackend`, you will get a `Future` instead. 
 
 More over, a backend does not let you work directly with an `Aggregate`. The principle is pretty much inspired in **Akka**. You request an `AggregateRef`, you send `Commands` to it and you don't manipulate the `Aggregate` directly.
 
