@@ -63,5 +63,5 @@ The `Aggregate` lives inside an `PersistentActor` and the backend guarantees tha
 
 `Events` are persisted using **akka-persistence**.  
 
-Detailed documentation about the `AkkaBackend` can be found [here](akkab-backend.html)
+Detailed documentation about the `AkkaBackend` can be found [here](akka-backend.html)
 
