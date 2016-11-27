@@ -57,7 +57,7 @@ lazy val funCqrsTestKit = Project(
     id       = "fun-cqrs-test-kit",
     base     = file("modules/tests"),
     settings = defaultSettings
-  ).settings(libraryDependencies ++= mainDeps)
+  ).settings(libraryDependencies ++= mainDeps ++ Seq(rxScala))
    .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
