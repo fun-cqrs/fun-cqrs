@@ -9,7 +9,7 @@ trait Projection {
 
   type HandleFailure = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
 
-  def name = this.getClass.getSimpleName
+  def name: String = this.getClass.getSimpleName
 
   def handleEvent: HandleEvent
 
