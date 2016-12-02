@@ -1,6 +1,7 @@
 target
 .idea
 .ensime
+.ensime_cache
 *.iml
 .DS_Store
 journal/
