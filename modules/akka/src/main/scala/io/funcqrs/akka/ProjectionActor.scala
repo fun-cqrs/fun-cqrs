@@ -1,5 +1,7 @@
 package io.funcqrs.akka
 
+import java.util.concurrent.TimeoutException
+
 import akka.actor._
 import akka.pattern._
 import akka.persistence.query.EventEnvelope
@@ -8,6 +10,7 @@ import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
+import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
 import io.funcqrs.{ DomainEvent, Projection }
 
@@ -31,10 +34,13 @@ abstract class ProjectionActor(
 
   private var stashSize                       = 0
   private var stillToProcessMessageCount: Int = 0
-  def isStashing = stashSize > 0
+  def isStashing: Boolean = stashSize > 0
 
   val maxDemand                        = 10
   private val watermarkRequestStrategy = WatermarkRequestStrategy(maxDemand)
+
+  private val projectionTimeout =
+    projectionConfig(projection.name).getDuration("async-projection-timeout", 5.seconds)
 
   protected def requestStrategy: RequestStrategy = new RequestStrategy {
     def requestDemand(remainingRequested: Int): Int = {
@@ -42,7 +48,6 @@ abstract class ProjectionActor(
         0
       } else {
         watermarkRequestStrategy.requestDemand(stillToProcessMessageCount)
-        //        maxDemand - stillToProcessMessageCount
       }
     }
   }
@@ -114,11 +119,19 @@ abstract class ProjectionActor(
     val receive: Receive = {
       case OnNextDomainEvent(evt, offset) =>
         log.debug("Received event {}", evt)
-        val eventFuture = projection.onEvent(evt)
 
-        eventFuture.map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+        val eventualTimeout =
+          after(duration = projectionTimeout, using = context.system.scheduler) {
+            Future.failed(new TimeoutException(s"Timed out projection ${projection.name} for event $evt"))
+          }
 
-        eventFuture.onFailure {
+        val projectionFuture = projection.onEvent(evt)
+
+        val projectionWithTimeout = Future firstCompletedOf Seq(projectionFuture, eventualTimeout)
+
+        projectionWithTimeout.map(_ => ProjectionActor.Done(evt)).pipeTo(self)
+
+        projectionWithTimeout.onFailure {
           case e =>
             log.warning(s"Error while running projection for event $evt in projection ${projection.name}")
             log.error(e, e.getMessage)
@@ -197,7 +210,7 @@ object ProjectionActorWithoutOffsetPersistence {
   def props(
       projection: Projection,
       sourceProvider: EventsSourceProvider
-  ) = {
+  ): Props = {
 
     Props(new ProjectionActorWithoutOffsetPersistence(projection, sourceProvider))
   }
@@ -226,7 +239,7 @@ object ProjectionActorWithOffsetManagedByAkkaPersistence {
       projection: Projection,
       sourceProvider: EventsSourceProvider,
       persistenceId: String
-  ) = {
+  ): Props = {
 
     Props(new ProjectionActorWithOffsetManagedByAkkaPersistence(projection, sourceProvider, persistenceId))
   }
@@ -254,7 +267,7 @@ object ProjectionActorWithCustomOffsetPersistence {
       projection: Projection,
       sourceProvider: EventsSourceProvider,
       customOffsetPersistence: CustomOffsetPersistenceStrategy
-  ) = {
+  ): Props = {
 
     Props(new ProjectionActorWithCustomOffsetPersistence(projection, sourceProvider, customOffsetPersistence))
   }

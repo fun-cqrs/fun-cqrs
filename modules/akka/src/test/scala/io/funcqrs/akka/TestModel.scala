@@ -8,9 +8,9 @@ import io.funcqrs.behavior._
 object TestModel {
 
   case class User(name: String, age: Int, id: UserId, deleted: Boolean = false) extends AggregateLike {
-    type Id = UserId
+    type Id       = UserId
     type Protocol = UserProtocol.type
-    def isDeleted = deleted
+    def isDeleted: Boolean = deleted
   }
 
   object User {
@@ -32,7 +32,7 @@ object TestModel {
         // format: on
       } {
         case user =>
-        // format: off
+          // format: off
         actions[User]          
           .rejectCommand {
             case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")

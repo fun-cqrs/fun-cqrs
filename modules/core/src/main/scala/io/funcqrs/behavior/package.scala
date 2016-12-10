@@ -18,12 +18,13 @@ package object behavior {
     */
   type EventHandler[E <: DomainEvent, A <: AggregateLike] = PartialFunction[E, A]
 
-  def actions[A <: AggregateLike] = Actions[A]()
+  def actions[A <: AggregateLike]: Actions[A] = Actions[A]()
 
-  def action[A <: AggregateLike] = Actions[A]()
+  def action[A <: AggregateLike]: Actions[A] = Actions[A]()
 
   def Behavior[A <: AggregateLike](onCreation: => Actions[A])(postCreation: BehaviorUnwrapped[A]): Behavior[A] = {
     case Uninitialized(_)                                              => onCreation
     case Initialized(aggregate) if postCreation.isDefinedAt(aggregate) => postCreation(aggregate)
   }
+
 }

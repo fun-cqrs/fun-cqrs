@@ -1,13 +1,15 @@
 package io.funcqrs.akka
 
 import _root_.akka.actor._
-import _root_.akka.pattern.pipe
+import _root_.akka.pattern._
 import _root_.akka.persistence._
 import io.funcqrs._
 import io.funcqrs.akka.util.ConfigReader._
 import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
 import io.funcqrs.interpreters.AsyncInterpreter
 
+import scala.concurrent.{ Future, TimeoutException }
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
 class AggregateActor[A <: AggregateLike](
@@ -32,22 +34,25 @@ class AggregateActor[A <: AggregateLike](
   /**
     * Specifies how many events should be processed before new snapshot is taken.
     */
-  val eventsPerSnapshot =
+  private val eventsPerSnapshot =
     aggregateConfig(aggregateType).getInt("events-per-snapshot", 200)
+
+  private val commandTimeout =
+    aggregateConfig(aggregateType).getDuration("async-command-timeout", 5.seconds)
 
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier
-  val persistenceId = identifier.value
+  val persistenceId: String = identifier.value
 
   /** The aggregate instance if initialized, Uninitialized otherwise */
   private var aggregateState: State[Aggregate] = Uninitialized(identifier)
 
   private var eventsSinceLastSnapshot = 0
 
-  // the sequence nr of the most recent successfull snapshot
-  // this is either the snapshot we recovered with, or the last confirmed successfull snapshot
-  // we will delete the snapshot with this sequencenr upon receiving confirmation that a new snapshot was taken
+  // the sequence nr of the most recent successful snapshot
+  // this is either the snapshot we recovered with, or the last confirmed successful snapshot
+  // we will delete the snapshot with this sequence nr upon receiving confirmation that a new snapshot was taken
   private var currentSnapshotSequenceNr: Option[Long] = None
 
   /**
@@ -84,10 +89,19 @@ class AggregateActor[A <: AggregateLike](
 
       case cmd: Command =>
         log.debug("Received cmd: {}", cmd)
-        val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
-        val origSender     = sender()
 
-        eventualEvents map {
+        val eventualTimeout =
+          after(duration = commandTimeout, using = context.system.scheduler) {
+            Future.failed(new TimeoutException(s"Async command took more than $commandTimeout to complete: $cmd"))
+          }
+
+        val eventualEvents = interpreter.applyCommand(aggregateState, cmd)
+
+        val eventWithTimeout = Future firstCompletedOf Seq(eventualEvents, eventualTimeout)
+
+        val origSender = sender()
+
+        eventWithTimeout map {
           case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
           case NonFatal(cause) => FailedCommand(cause, origSender)
@@ -113,6 +127,7 @@ class AggregateActor[A <: AggregateLike](
       case cmd: Command =>
         log.debug("received {} while processing another command", cmd)
         stash()
+
     }
 
     busyReceive orElse defaultReceive
@@ -134,6 +149,7 @@ class AggregateActor[A <: AggregateLike](
         deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
       }
       currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
+
   }
 
   /**
@@ -165,7 +181,7 @@ class AggregateActor[A <: AggregateLike](
     * @param metadata  snapshot metadata
     * @param aggregate the aggregate
     */
-  protected def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
+  private def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
     log.debug("restoring data for aggregate {}", aggregate.id)
 
     currentSnapshotSequenceNr = Some(metadata.sequenceNr)
@@ -191,14 +207,23 @@ class AggregateActor[A <: AggregateLike](
 
     if (events.nonEmpty) {
 
-      var eventsCount = events.size
+      var eventsCount = 0
 
+      // WATCH OUT!!!
+      // procedural, state full and hard to reason piece of code!! ;-)
       persistAll(events) { _ =>
-        eventsCount -= 1
+        eventsCount += 1
         eventsSinceLastSnapshot += 1
 
+        // are we on first event?
+        if (eventsCount == 1) {
+          // we can send feedback to user as soon
+          // as the first event comes in
+          origSender ! events
+        }
+
         // are we on last event?
-        if (eventsCount == 0) {
+        if (eventsCount == events.size) {
 
           // we only update the internal aggregate state once all events are persisted
           aggregateState = updatedState
@@ -213,8 +238,6 @@ class AggregateActor[A <: AggregateLike](
             }
             eventsSinceLastSnapshot = 0
           }
-          // send feedback to command sender
-          origSender ! events
         }
       }
     } else {
@@ -270,7 +293,7 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
-  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String) = {
+  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String): Props = {
     Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
   }
 }

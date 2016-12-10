@@ -10,8 +10,8 @@ import scala.util.Try
 
 case class ConfigReader(specificPath: String, globalPath: String, config: Config) {
 
-  val specificConfig = Try(config.getConfig(specificPath))
-  val globalConfig   = Try(config.getConfig(globalPath))
+  lazy val specificConfig = Try(config.getConfig(specificPath))
+  lazy val globalConfig   = Try(config.getConfig(globalPath))
 
   /**
     * Get a duration value.
@@ -64,10 +64,15 @@ case class ConfigReader(specificPath: String, globalPath: String, config: Config
 object ConfigReader {
   private lazy val config = ConfigFactory.load()
 
-  val configPathPrefix = "funcqrs.akka.aggregates"
+  private val aggregatePathPrefix  = "funcqrs.akka.aggregates"
+  private val projectionPathPrefix = "funcqrs.akka.projections"
 
-  def aggregateConfig[T](aggregateName: String): ConfigReader =
-    readerFor(configPathPrefix + "." + aggregateName, configPathPrefix)
+  def aggregateConfig[T](aggregateName: String): ConfigReader = {
+    readerFor(aggregatePathPrefix + "." + aggregateName, aggregatePathPrefix)
+  }
+
+  def projectionConfig[T](aggregateName: String): ConfigReader =
+    readerFor(projectionPathPrefix + "." + aggregateName, projectionPathPrefix)
 
   def readerFor(specific: String, global: String): ConfigReader =
     readerFor(specific, global, config)
