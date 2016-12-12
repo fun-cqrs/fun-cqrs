@@ -7,10 +7,11 @@ import io.funcqrs.interpreters.IdentityInterpreter
 import io.funcqrs.model.TimerTrackerProtocol._
 import io.funcqrs.model.{ BusyTracker, IdleTracker, TimeTracker, TrackerId }
 import org.scalatest.{ FunSuite, Matchers }
+
 /**
- * The intent of this test is not test a specific Interpreter, but to test the
- * [[io.funcqrs.interpreters.Interpreter]] common behavior
- */
+  * The intent of this test is not test a specific Interpreter, but to test the
+  * [[io.funcqrs.interpreters.Interpreter]] common behavior
+  */
 class InterpreterTest extends FunSuite with Matchers {
 
   val initialState = Uninitialized[TimeTracker](TrackerId.generate)
@@ -23,7 +24,7 @@ class InterpreterTest extends FunSuite with Matchers {
         factoryActions(TrackerId.generate)
       } {
         // missing behavior for IdleTracker
-        case _: BusyTracker => Actions.empty
+        case _: BusyTracker => ActionsDeprec.empty
       }
 
     val interpreter = IdentityInterpreter(behavior)
@@ -36,20 +37,19 @@ class InterpreterTest extends FunSuite with Matchers {
 
   def factoryActions(trackerId: TrackerId) =
     actions[TimeTracker]
-      .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId())
+      .handleCommand { cmd: CreateTracker.type =>
+        TimerCreated(EventId())
       }
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          List(
-            TimerCreated(EventId()),
-            // the event handler for TimerStarter depends on a created Tracker
-            // and therefore can't be defined in this 'Actions'
-            // behavior is available in next transition
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-          )
+      .handleCommand { cmd: CreateAndStartTracking =>
+        List(
+          TimerCreated(EventId()),
+          // the event handler for TimerStarter depends on a created Tracker
+          // and therefore can't be defined in this 'Actions'
+          // behavior is available in next transition
+          TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
+        )
       }
-      .handleEvent {
-        evt: TimerCreated => IdleTracker(trackerId)
+      .handleEvent { evt: TimerCreated =>
+        IdleTracker(trackerId)
       }
 }

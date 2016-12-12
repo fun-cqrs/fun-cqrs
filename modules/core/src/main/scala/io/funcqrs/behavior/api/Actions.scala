@@ -1,0 +1,112 @@
+package io.funcqrs.behavior.api
+
+import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
+import io.funcqrs.behavior.{ CommandHandlerInvoker, TryCommandHandlerInvoker }
+
+import scala.collection.immutable
+import scala.util.{ Failure, Try }
+
+case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
+                                     rejectCmdInvokers: CommandToInvoker[C, E],
+                                     evtHandlers: EventHandler[E, A]) {
+
+  type Aggregate = A
+  type Command   = C
+  type Event     = E
+  type Events    = immutable.Seq[Event]
+
+  /**
+    * All command handlers together.
+    * First reject handlers, then normal command handlers
+    */
+  private val allHandlers = rejectCmdInvokers orElse cmdInvokers
+
+  /**
+    * Returns a [[CommandHandlerInvoker]] for the passed [[Command]]. Invokers are delayed execution
+    * of `Command Handlers` and abstract over the Functor that will be returned when handling the command.
+    *
+    * Internally, this method calls the declared `Command Handlers`.
+    *
+    */
+  def onCommand(cmd: Command): CommandHandlerInvoker[Command, Event] = {
+    if (allHandlers.isDefinedAt(cmd))
+      allHandlers(cmd)
+    else {
+      val cmdHandler: PartialFunction[Command, Try[Events]] = {
+        case _ =>
+          val msg = s"No command handlers defined for command: $cmd"
+          Failure(new MissingCommandHandlerException(msg))
+      }
+      // return a fallback invoker if not define
+      TryCommandHandlerInvoker(cmdHandler)
+    }
+  }
+
+  /**
+    * Applies the passed [[Event]] producing a new instance of [[Aggregate]].
+    * Internally, this method calls the declared `Event Handlers`.
+    *
+    * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
+    */
+  def onEvent(evt: Event): Aggregate = {
+    if (evtHandlers.isDefinedAt(evt))
+      evtHandlers(evt)
+    else
+      throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
+  }
+
+  def handleCommand(cmdHandler: CommandToInvoker[C, E]): Actions[A, C, E] =
+    copy(cmdInvokers = cmdInvokers orElse cmdHandler)
+
+  def handleEvent(evtHandler: EventHandler[E, A]): Actions[A, C, E] =
+    copy(evtHandlers = evtHandlers orElse evtHandler)
+
+  /**
+    * Declares a guard clause that reject commands that fulfill a given condition.
+    *
+    * A guard clause is a `Command Handler` as it handles a incoming command,
+    * but instead of producing Event, it returns a [[Throwable]] to signalize an error condition.
+    *
+    * Guard clauses command handlers have precedence over handlers producing Events.
+    *
+    * @param cmdHandler - a PartialFunction from Command to [[Throwable]].
+    * @return - return a [[Actions]].
+    */
+  def reject(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = {
+
+    val invokerPF: CommandToInvoker[C, E] = {
+      case cmd if cmdHandler.isDefinedAt(cmd) =>
+        TryCommandHandlerInvoker(cmd => Failure(cmdHandler(cmd)))
+    }
+
+    this.copy(
+      rejectCmdInvokers = rejectCmdInvokers orElse invokerPF
+    )
+  }
+
+  /** Alias for reject */
+  def rejectCommand(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = reject(cmdHandler)
+
+  /**
+    * Concatenate `this` Actions with `that` Actions
+    */
+  def ++(that: Actions[A, C, E]) = {
+    // FIXME: bad type inference
+//    this.copy(
+//      cmdInvokers       = this.cmdInvokers orElse that.cmdInvokers,
+//      rejectCmdInvokers = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
+//      evtHandlers       = this.evtHandlers orElse that.evtHandlers
+//    )
+    this
+  }
+}
+
+object Actions {
+
+  def apply[A, C, E](): Actions[A, C, E] =
+    new Actions[A, C, E](
+      cmdInvokers       = PartialFunction.empty,
+      rejectCmdInvokers = PartialFunction.empty,
+      evtHandlers       = PartialFunction.empty
+    )
+}

@@ -1,16 +1,23 @@
 package io.funcqrs.backend
 
-import io.funcqrs.{ AggregateRef, AggregateLike }
+import io.funcqrs.AggregateRef
+import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 
 import scala.language.higherKinds
-import scala.reflect.ClassTag
 
 trait Backend[F[_]] {
 
-  def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): Backend[F]
+  /** Configure a Aggregate */
+  def configure[A, C, E, I](config: AggregateConfig[A, C, E, I]): Backend[F]
 
   def configure(config: ProjectionConfig): Backend[F]
 
-  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateRef[A, F]
+  class AggregateRefStage[A, I](implicit types: Types[A]) {
+    def apply(id: I): AggregateRef[A, F] = aggregateRefById[A, I](id)
+  }
+
+  def aggregateRef[A](implicit types: Types[A]) = new AggregateRefStage[A, types.Id]
+
+  protected def aggregateRefById[A, I](id: I, types: Types[A]): AggregateRef[A, F]
 }

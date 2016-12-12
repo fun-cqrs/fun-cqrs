@@ -9,7 +9,8 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
-case class Actions[A <: AggregateLike](
+@deprecated
+case class ActionsDeprec[A <: AggregateLike](
     cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
     rejectCmdInvokers: CommandToInvoker[A#Command, A#Event]  = PartialFunction.empty,
     eventHandlers: EventHandler[A#Event, A]                  = PartialFunction.empty
@@ -60,7 +61,7 @@ case class Actions[A <: AggregateLike](
   /**
     * Concatenate `this` Actions with `that` Actions
     */
-  def ++(that: Actions[A]) = {
+  def ++(that: ActionsDeprec[A]) = {
     this.copy(
       cmdHandlerInvokers = this.cmdHandlerInvokers orElse that.cmdHandlerInvokers,
       rejectCmdInvokers  = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
@@ -77,9 +78,9 @@ case class Actions[A <: AggregateLike](
     * Guard clauses command handlers have precedence over handlers producing [[Event]]s.
     *
     * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
-    * @return - return a [[Actions]].
+    * @return - return a [[ActionsDeprec]].
     */
-  def reject(cmdHandler: PartialFunction[A#Command, Throwable]): Actions[Aggregate] = {
+  def reject(cmdHandler: PartialFunction[A#Command, Throwable]): ActionsDeprec[Aggregate] = {
 
     val invokerPF: CommandToInvoker[A#Command, A#Event] = {
       case cmd if cmdHandler.isDefinedAt(cmd) =>
@@ -92,28 +93,28 @@ case class Actions[A <: AggregateLike](
   }
 
   /** Alias for reject */
-  def rejectCommand(cmdHandler: PartialFunction[Command, Throwable]): Actions[Aggregate] = reject(cmdHandler)
+  def rejectCommand(cmdHandler: PartialFunction[Command, Throwable]): ActionsDeprec[Aggregate] = reject(cmdHandler)
 
   /** Declares a `Command Handler` that produces one single [[Event]] */
-  def handleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): Actions[Aggregate] = {
+  def handleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): ActionsDeprec[Aggregate] = {
     // wrap single event in immutable.Seq
     val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
     handleCommand[C, E, immutable.Seq](handlerWithSeq)
   }
 
   def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[E])(
-      implicit ivk: InvokerDirective[F]): Actions[Aggregate] =
+      implicit ivk: InvokerDirective[F]): ActionsDeprec[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
   def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(
-      implicit ivk: InvokerSeqDirective[F]): Actions[Aggregate] =
+      implicit ivk: InvokerSeqDirective[F]): ActionsDeprec[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
   def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(
-      implicit ivk: InvokerListDirective[F]): Actions[Aggregate] =
+      implicit ivk: InvokerListDirective[F]): ActionsDeprec[Aggregate] =
     addInvoker(ivk.newInvoker(cmdHandler))
 
-  private def addInvoker[C <: Command: ClassTag, E <: Event](invoker: CommandHandlerInvoker[C, E]): Actions[Aggregate] = {
+  private def addInvoker[C <: Command: ClassTag, E <: Event](invoker: CommandHandlerInvoker[C, E]): ActionsDeprec[Aggregate] = {
 
     // TODO: we can better solve it with a Map[Class, Invoker]
     // as such we can detect if a duplicated key is added
@@ -131,42 +132,42 @@ case class Actions[A <: AggregateLike](
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
 
-  case class IdentityManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Identity] {
+  case class IdentityManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Identity] {
 
     /** Declares a `Command Handler` that produces a Seq[[Event]] */
     @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): Actions[Aggregate] = {
+    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): ActionsDeprec[Aggregate] = {
       handleCommand[C, E, immutable.Seq](cmdHandler)
     }
   }
 
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def tryToHandleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): Actions[Aggregate] = {
+  def tryToHandleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): ActionsDeprec[Aggregate] = {
     handleCommand[C, E, Try](cmdHandler)
   }
 
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def tryToHandleCommand: ManyEventsBinder[Try] = TryManyEventsBinder(this)
 
-  case class TryManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Try] {
+  case class TryManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Try] {
     @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Try[immutable.Seq[E]]): Actions[A] = {
+    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Try[immutable.Seq[E]]): ActionsDeprec[A] = {
       handleCommand[C, E, Try](cmdHandler)
     }
   }
 
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommandAsync[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): Actions[Aggregate] = {
+  def handleCommandAsync[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): ActionsDeprec[Aggregate] = {
     handleCommand[C, E, Future](cmdHandler)
   }
 
   @deprecated("Obsolete, use handleCommand instead", "0.4.7")
   def handleCommandAsync: ManyEventsBinder[Future] = FutureManyEventsBinder(this)
 
-  case class FutureManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Future] {
+  case class FutureManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Future] {
 
     @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Future[immutable.Seq[E]]): Actions[A] = {
+    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Future[immutable.Seq[E]]): ActionsDeprec[A] = {
       handleCommand[C, E, Future](cmdHandler)
     }
   }
@@ -177,7 +178,7 @@ case class Actions[A <: AggregateLike](
     * @param eventHandler - the event handler function
     * @return an Actions for A
     */
-  def handleEvent[E <: Event: ClassTag](eventHandler: E => A): Actions[Aggregate] = {
+  def handleEvent[E <: Event: ClassTag](eventHandler: E => A): ActionsDeprec[Aggregate] = {
 
     object EvtExtractor extends ClassTagExtractor[E]
 
@@ -188,16 +189,16 @@ case class Actions[A <: AggregateLike](
   }
 
   trait ManyEventsBinder[F[_]] {
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: C => F[immutable.Seq[E]]): Actions[Aggregate]
+    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: C => F[immutable.Seq[E]]): ActionsDeprec[Aggregate]
   }
 
   @deprecated(message = "Use handleCommandAsync instead", since = "0.3.1")
   def asyncHandler: ManyEventsBinder[Future] = handleCommandAsync
 }
 
-object Actions {
+object ActionsDeprec {
 
-  def apply[A <: AggregateLike]: Actions[A] = Actions[A]()
-  def empty[A <: AggregateLike]: Actions[A] = apply
+  def apply[A <: AggregateLike]: ActionsDeprec[A] = ActionsDeprec[A]()
+  def empty[A <: AggregateLike]: ActionsDeprec[A] = apply
 
 }

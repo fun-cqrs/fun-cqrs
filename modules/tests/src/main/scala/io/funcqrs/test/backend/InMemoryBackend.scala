@@ -16,14 +16,14 @@ import scala.concurrent.duration._
 
 class InMemoryBackend extends Backend[Identity] {
 
-  private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_]] = concurrent.TrieMap()
-  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_]]  = TrieMap()
+  private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_, _, _, _]] = concurrent.TrieMap()
+  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_, _, _]]     = TrieMap()
 
   private val eventStream: Subject[DomainEvent] = PublishSubject()
 
   private val stream: Stream[DomainEvent] = Stream()
 
-  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): InMemoryAggregateRef[A] = {
+  def aggregateRef[A: ClassTag, C, E, I](id: I): InMemoryAggregateRef[A] = {
 
     aggregates
       .getOrElseUpdate(

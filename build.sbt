@@ -15,7 +15,6 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-an
 
 scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
 
-
 // dependencies
 lazy val root = Project(
     id   = "fun-cqrs",
@@ -25,12 +24,10 @@ lazy val root = Project(
     )
   ) aggregate (
     funCqrs,
-    funCqrsAkka,
+//    funCqrsAkka,
     funCqrsTestKit,
     lotteryApp
   )
-
-
 
 // Core ==========================================
 lazy val funCqrs = Project(
@@ -40,25 +37,22 @@ lazy val funCqrs = Project(
 ).settings(libraryDependencies ++= mainDeps)
 //================================================
 
-
-
 // Akka integration ==============================
-lazy val funCqrsAkka = Project(
-    id       = "fun-cqrs-akka",
-    base     = file("modules/akka"),
-    settings = defaultSettings
-  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
-   .dependsOn (funCqrs % "compile->compile;test->test")
+//lazy val funCqrsAkka = Project(
+//    id       = "fun-cqrs-akka",
+//    base     = file("modules/akka"),
+//    settings = defaultSettings
+//  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
+//   .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
-
 
 //Test kit =======================================
 lazy val funCqrsTestKit = Project(
-    id       = "fun-cqrs-test-kit",
-    base     = file("modules/tests"),
-    settings = defaultSettings
-  ).settings(libraryDependencies ++= mainDeps ++ Seq(rxScala))
-   .dependsOn (funCqrs % "compile->compile;test->test")
+  id       = "fun-cqrs-test-kit",
+  base     = file("modules/tests"),
+  settings = defaultSettings
+).settings(libraryDependencies ++= mainDeps ++ Seq(rxScala))
+  .dependsOn(funCqrs % "compile->compile;test->test")
 //================================================
 
 // #####################################################
@@ -66,15 +60,14 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 
 lazy val lotteryApp = Project(
-  id        = "sample-lottery",
-  base      = file("samples/lottery"),
-  settings  = defaultSettings
+  id       = "sample-lottery",
+  base     = file("samples/lottery"),
+  settings = defaultSettings
 ).settings(libraryDependencies ++= sampleDeps)
- .settings(publishArtifact := false)
- .dependsOn(funCqrs)
- .dependsOn(funCqrsTestKit)
- .dependsOn(funCqrsAkka)
+  .settings(publishArtifact := false)
+  .dependsOn(funCqrs)
+  .dependsOn(funCqrsTestKit)
+//  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")
 addCommandAlias("runLotteryInMemory", "sample-lottery/runMain lottery.app.MainInMemory")
-
