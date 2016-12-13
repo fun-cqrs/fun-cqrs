@@ -3,9 +3,9 @@ import BuildSettings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
-scalaVersion in ThisBuild := "2.12.0"
+scalaVersion in ThisBuild := "2.11.8"
 
-crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.0")
+crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.1")
 
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
