@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 class InMemoryBackend extends Backend[Identity] {
 
   private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_]] = concurrent.TrieMap()
-  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_]] = TrieMap()
+  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_]]  = TrieMap()
 
   private val eventStream: Subject[DomainEvent] = PublishSubject()
 
@@ -25,14 +25,15 @@ class InMemoryBackend extends Backend[Identity] {
 
   def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): InMemoryAggregateRef[A] = {
 
-    aggregates.getOrElseUpdate(
-      id,
-      { // build new aggregateRef if not existent
-        val config = aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[AggregateConfig[A]]
-        val behavior = config.behavior(id)
-        new InMemoryAggregateRef(id, behavior)
-      }
-    ).asInstanceOf[InMemoryAggregateRef[A]]
+    aggregates
+      .getOrElseUpdate(
+        id, { // build new aggregateRef if not existent
+          val config   = aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[AggregateConfig[A]]
+          val behavior = config.behavior(id)
+          new InMemoryAggregateRef(id, behavior)
+        }
+      )
+      .asInstanceOf[InMemoryAggregateRef[A]]
   }
 
   def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): Backend[Identity] = {
@@ -45,22 +46,21 @@ class InMemoryBackend extends Backend[Identity] {
     // does the event match the query criteria?
     def matchQuery(evt: DomainEvent with MetadataFacet[_]): Boolean = {
       config.query match {
-        case QueryByTag(tag) => evt.tags.contains(tag)
+        case QueryByTag(tag)   => evt.tags.contains(tag)
         case QueryByTags(tags) => tags.subsetOf(evt.tags)
-        case QuerySelectAll => true
+        case QuerySelectAll    => true
       }
     }
 
     def matchQueryWithoutTagging(evt: DomainEvent): Boolean = {
       config.query match {
         case QuerySelectAll => true
-        case _ => false
+        case _              => false
       }
     }
 
     //noinspection MatchToPartialFunction
     eventStream.subscribe { evt: DomainEvent =>
-
       def sendToProjection(event: DomainEvent) = {
         // TODO: projections should be interpreted as well to avoid this
         Await.ready(config.projection.onEvent(evt), 10.seconds)
@@ -110,7 +110,7 @@ class InMemoryBackend extends Backend[Identity] {
     def state(): Identity[A] =
       aggregateState match {
         case Initialized(aggregate) => aggregate
-        case Uninitialized(_) => sys.error("Aggregate is not initialized")
+        case Uninitialized(_)       => sys.error("Aggregate is not initialized")
       }
 
     def exists(): Identity[Boolean] = aggregateState.isInitialized

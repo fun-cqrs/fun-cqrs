@@ -21,6 +21,7 @@ sealed trait TimeTracker extends AggregateLike {
     }
 
   def isIdle = !isBusy
+
 }
 
 case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Task] = List()) extends TimeTracker {
@@ -32,6 +33,7 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
   }
 
   def actionsWhenBusy =
+    // format: off
     actions[TimeTracker]
       .handleCommand {
         cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId())
@@ -49,6 +51,7 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
       .handleEvent {
         evt: TimerStopped => stop(evt.end)
       }
+    // format: on
 }
 
 case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extends TimeTracker {
@@ -61,6 +64,7 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
   }
 
   def actionsWhenIdle =
+    // format: off
     actions[TimeTracker]
       .handleCommand {
         cmd: StartTracking => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
@@ -71,6 +75,7 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
       .handleEvent {
         evt: TimerStarted => start(evt.title, evt.start)
       }
+    // format: on
 
 }
 
@@ -96,6 +101,7 @@ object TimeTracker {
   import TimerTrackerProtocol._
 
   def factoryActions(id: TrackerId) =
+    // format: off
     actions[TimeTracker]
       .handleCommand {
         cmd: CreateTracker.type => TimerCreated(EventId())
@@ -113,6 +119,7 @@ object TimeTracker {
       .handleEvent {
         evt: TimerCreated => IdleTracker(id)
       }
+    // format: on
 
   def behavior(id: TrackerId): Behavior[TimeTracker] =
     Behavior {

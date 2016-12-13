@@ -45,7 +45,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       val lottery = lotteryRef(id)
 
       // send all commands
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
       lottery ? Run
@@ -70,7 +70,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
       lottery ? Run
@@ -88,7 +88,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
 
       intercept[IllegalArgumentException] {
         lottery ? Run
@@ -103,7 +103,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
 
       intercept[IllegalArgumentException] {
@@ -119,7 +119,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
 
@@ -141,7 +141,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
       lottery ? Run
@@ -169,7 +169,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
       val lottery = lotteryRef(id)
 
-      lottery ? CreateLottery("TestLottery")
+      lottery ? CreateLottery
       lottery ? AddParticipant("John")
       lottery ? AddParticipant("Paul")
       lottery ? Run

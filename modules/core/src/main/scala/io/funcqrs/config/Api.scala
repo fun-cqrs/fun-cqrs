@@ -12,10 +12,9 @@ object Api {
 
     val fallback: Behavior[A] = {
       case anyOtherState =>
-        action[A]
-          .rejectCommand {
-            case anyCommand => new CommandException(s"No actions defined for current state: $anyOtherState")
-          }
+        action[A].rejectCommand {
+          case anyCommand => new CommandException(s"No actions defined for current state: $anyOtherState")
+        }
     }
     // enrich user defined behavior with a fallback
     // this will prevent MatchErrors if user fails to define an exhaustive match

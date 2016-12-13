@@ -8,19 +8,19 @@ import io.funcqrs.behavior._
 object TestModel {
 
   case class User(name: String, age: Int, id: UserId, deleted: Boolean = false) extends AggregateLike {
-    type Id = UserId
+    type Id       = UserId
     type Protocol = UserProtocol.type
-    def isDeleted = deleted
+    def isDeleted: Boolean = deleted
   }
 
   object User {
 
     import UserProtocol._
     def behavior(id: UserId): Behavior[User] = {
-
-      case Uninitialized(_) =>
+      Behavior {
+        // format: off
         actions[User]
-          .reject {
+          .rejectCommand {
             case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
           }
           .handleCommand {
@@ -29,10 +29,12 @@ object TestModel {
           .handleEvent {
             evt: UserCreated => User(evt.name, evt.age, id)
           }
-
-      case Initialized(user) =>
-        actions[User]
-          .reject {
+        // format: on
+      } {
+        case user =>
+          // format: off
+        actions[User]          
+          .rejectCommand {
             case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
           }
           .handleCommand {
@@ -47,7 +49,8 @@ object TestModel {
           .handleEvent {
             evt: UserDeleted.type => user.copy(deleted = true)
           }
-
+        // format: on
+      }
     }
   }
   case class UserId(value: String) extends AggregateId

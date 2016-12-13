@@ -4,10 +4,9 @@ import java.time.OffsetDateTime
 
 //tag::lottery-view[]
 case class LotteryView(
-    name: String,
     participants: List[LotteryView.Participant] = List(),
-    winner: Option[String] = None,
-    runDate: Option[OffsetDateTime] = None,
+    winner: Option[String]                      = None,
+    runDate: Option[OffsetDateTime]             = None,
     id: LotteryId
 ) {
 
@@ -16,7 +15,6 @@ case class LotteryView(
       participants.map(_.name).mkString(" | ")
     s"""
        |LotteryView
-       |  name: $name
        |  participants: $participantsString
        |  winner: ${winner.getOrElse("N/A")}
        |  runDate: ${runDate.map(_.toString).getOrElse("")}

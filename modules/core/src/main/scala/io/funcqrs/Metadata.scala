@@ -3,16 +3,16 @@ package io.funcqrs
 import java.time.OffsetDateTime
 
 /**
- * Holds Metadata information such as:
- * - aggregateId
- * - CommandId
- * - EventId
- * - event date
- * - tags
- *
- * Abstract type Id (subtype of AggregateID) must be defined,
- * as such Metadata's implementation are bounded to specific Aggregate types.
- */
+  * Holds Metadata information such as:
+  * - aggregateId
+  * - CommandId
+  * - EventId
+  * - event date
+  * - tags
+  *
+  * Abstract type Id (subtype of AggregateID) must be defined,
+  * as such Metadata's implementation are bounded to specific Aggregate types.
+  */
 trait Metadata {
 
   type Id <: AggregateId
@@ -25,24 +25,21 @@ trait Metadata {
   def tags: Set[Tag]
 }
 
-trait JavaTime {
-  self: Metadata =>
+trait JavaTime { self: Metadata =>
   type DateTime = OffsetDateTime
 }
 
 /**
- * Enriches [[DomainEvent]] with [[Metadata]] information.
- * @tparam M a Metadata subtype
- */
-trait MetadataFacet[M <: Metadata] {
-  this: DomainEvent =>
+  * Enriches [[DomainEvent]] with [[Metadata]] information.
+  * @tparam M a Metadata subtype
+  */
+trait MetadataFacet[M <: Metadata] { this: DomainEvent =>
 
   def metadata: M
 
-  final def id: EventId = metadata.eventId
-  final def aggregateId: M#Id = metadata.aggregateId
+  final def id: EventId          = metadata.eventId
+  final def aggregateId: M#Id    = metadata.aggregateId
   final def commandId: CommandId = metadata.commandId
-  final def date: M#DateTime = metadata.date
-  final def tags: Set[Tag] = metadata.tags
+  final def date: M#DateTime     = metadata.date
+  final def tags: Set[Tag]       = metadata.tags
 }
-

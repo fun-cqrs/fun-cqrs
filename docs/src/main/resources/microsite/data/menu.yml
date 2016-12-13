@@ -1,0 +1,24 @@
+options:
+  - title: Introduction
+    url: index.html
+
+  - title: Getting Started
+    url: docs/getting-started.html
+
+  - title: Aggregates
+    url: docs/aggregates.html    
+
+  - title: Backends
+    url: docs/backends.html        
+
+  - title: Command Side Tests (todo)
+    url: docs/command-side-tests.html      
+
+  - title: Projections (todo)
+    url: docs/projections.html        
+
+  - title: Query Side Tests (todo)
+    url: docs/query-side-tests.html        
+
+  - title: Akka Backend (todo)
+    url: docs/akka-backend.html        

@@ -14,13 +14,15 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
   def handleEvent: HandleEvent = {
 
     case e: LotteryCreated =>
-      Future.successful(repo.save(LotteryView(name = e.name, id = e.lotteryId)))
+      Future.successful(repo.save(LotteryView(id = e.lotteryId)))
 
     case e: LotteryUpdateEvent =>
       Future.successful {
-        repo.updateById(e.lotteryId) { lot =>
-          updateFunc(lot, e)
-        }.map(_ => ())
+        repo
+          .updateById(e.lotteryId) { lot =>
+            updateFunc(lot, e)
+          }
+          .map(_ => ())
       }
   }
 

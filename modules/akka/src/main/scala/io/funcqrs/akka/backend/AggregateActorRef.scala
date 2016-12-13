@@ -19,7 +19,8 @@ case class AggregateActorRef[A <: AggregateLike](
     aggregateManagerActor: ActorRef,
     projectionMonitor: ActorRef,
     timeoutDuration: FiniteDuration = 5.seconds
-) extends AsyncAggregateRef[A] with AggregateAliases {
+) extends AsyncAggregateRef[A]
+    with AggregateAliases {
 
   def askTimeout = Timeout(timeoutDuration)
 
@@ -69,7 +70,7 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
   val underlyingRef = aggregateRef
 
   // Delegation to underlying AsyncAggregateService
-  def state()(implicit timeout: Timeout, sender: ActorRef): Future[A] = underlyingRef.state()
+  def state()(implicit timeout: Timeout, sender: ActorRef): Future[A]        = underlyingRef.state()
   def exists()(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = underlyingRef.exists()
 
   def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateActorRef[A] =
@@ -86,16 +87,16 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
   }
 
   /**
-   * Watch for [[DomainEvent]]s originated from the passed [[DomainCommand]] until they are applied to the ReadModel.
-   *
-   * @param cmd - a [[DomainCommand]] to be sent
-   * @param sendCommandFunc - a function that will send the `cmd` to the Write Model.
-   * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
-   * @return - A Future with a [[Events]]. Future will complete succeffully iff the events originated from `cmd`
-   *         are effectively applied on the Read Model, otherwise a [[scala.util.Failure]] holding a [[ProjectionJoinException]]
-   *        is returned containing the Events and the Exception indicating the cause of the failure on the Read Model.
-   *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
-   */
+    * Watch for [[DomainEvent]]s originated from the passed [[DomainCommand]] until they are applied to the ReadModel.
+    *
+    * @param cmd - a [[DomainCommand]] to be sent
+    * @param sendCommandFunc - a function that will send the `cmd` to the Write Model.
+    * @param timeout - an implicit (or explicit) [[Timeout]] after which this call will return a failed Future
+    * @return - A Future with a [[Events]]. Future will complete succeffully iff the events originated from `cmd`
+    *         are effectively applied on the Read Model, otherwise a [[scala.util.Failure]] holding a [[ProjectionJoinException]]
+    *        is returned containing the Events and the Exception indicating the cause of the failure on the Read Model.
+    *         Returns a failed Future if `Command` is not valid in which case no Events are generated.
+    */
   private def watchEvents(cmd: Command with CommandIdFacet)(sendCommandFunc: => Future[Any])(implicit timeout: Timeout): Future[Events] = {
 
     // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
@@ -128,14 +129,15 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
     resultOnRead.recoverWith {
       // on failure, we send the events we got from the Write Model
       // together with the exception that made it fail (probably a timeout)
-      case NonFatal(e) => resultOnWrite.flatMap {
-        case (_, evts) => Future.failed(new ProjectionJoinException(evts, e))
-      }
+      case NonFatal(e) =>
+        resultOnWrite.flatMap {
+          case (_, evts) => Future.failed(new ProjectionJoinException(evts, e))
+        }
     }
   }
 
   class ProjectionJoinException(val evts: Events, cause: Throwable)
-    extends RuntimeException(s"Failed to join projection '$defaultView' for events $evts", cause)
+      extends RuntimeException(s"Failed to join projection '$defaultView' for events $evts", cause)
 
 }
 

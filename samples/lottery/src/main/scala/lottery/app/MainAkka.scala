@@ -11,7 +11,7 @@ object MainAkka extends App {
   //  val lotteryRef = AppContext.inMemoryBackend.aggregateRef[Lottery](id) //#<1>
   val lotteryRef = AppContext.akkaBackend.aggregateRef[Lottery](id) //#<1>
 
-  lotteryRef ! CreateLottery("Demo") // #<2>
+  lotteryRef ! CreateLottery // #<2>
 
   // add participants #<3>
   lotteryRef ! AddParticipant("John")
@@ -29,7 +29,7 @@ object MainAkka extends App {
 
   viewResult match {
     case Success(res) => println(s" => result: $res")
-    case Failure(ex) => println(s"FAILED: ${ex.getMessage}")
+    case Failure(ex)  => println(s"FAILED: ${ex.getMessage}")
   }
 
   AppContext.close

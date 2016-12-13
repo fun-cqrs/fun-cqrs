@@ -1,6 +1,6 @@
 package io.funcqrs.akka.backend
 
-import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
+import akka.actor.{ ActorPath, ActorRef, ActorSystem, Props }
 import akka.pattern._
 import akka.util.Timeout
 import io.funcqrs.AggregateLike
@@ -24,15 +24,15 @@ trait AkkaBackend extends Backend[Future] {
     val className = this.getClass.getSimpleName
 
     val adjustedName =
-      if(ActorPath.isValidPathElement(className)) className
+      if (ActorPath.isValidPathElement(className)) className
       else "anonymous"
 
-    val name = adjustedName +  "-projection-monitor"
+    val name = adjustedName + "-projection-monitor"
 
     actorSystem.actorOf(Props(classOf[ProjectionMonitorActor]), name)
   }
 
-  private var aggregates: concurrent.Map[ClassTag[_], ActorRef] = concurrent.TrieMap()
+  private val aggregates: concurrent.Map[ClassTag[_], ActorRef] = concurrent.TrieMap()
 
   def sourceProvider(query: Query): EventsSourceProvider
 
@@ -40,7 +40,7 @@ trait AkkaBackend extends Backend[Future] {
     val aggregateManager = aggregates(ClassTagImplicits[A])
 
     val aggregateName = aggregateManager.path.name
-    val askTimeout = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
+    val askTimeout    = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
 
     new AggregateActorRef[A](id, aggregateManager, projectionMonitorActorRef, askTimeout)
   }

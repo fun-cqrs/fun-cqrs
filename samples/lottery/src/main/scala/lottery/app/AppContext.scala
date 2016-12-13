@@ -36,20 +36,19 @@ object AppContext {
   def configure[F[_]](backend: Backend[F]): backend.type = {
 
     // tag::lottery-actor[]
-    backend
-      .configure {
-        // aggregate config - write model
-        aggregate[Lottery](Lottery.behavior) // #<4>
-      }
+    backend.configure {
+      // aggregate config - write model
+      aggregate[Lottery](Lottery.behavior) // #<4>
+    }
     // end::lottery-actor[]
 
     // tag::lottery-projection[]
     backend.configure {
       // projection config - read model
       projection(
-        query = QueryByTag(Lottery.tag), // #<1>
+        query      = QueryByTag(Lottery.tag), // #<1>
         projection = new LotteryViewProjection(lotteryViewRepo), // #<2>
-        name = "LotteryViewProjection" // #<3>
+        name       = "LotteryViewProjection" // #<3>
       ).withBackendOffsetPersistence() // #<4>
     }
     // end::lottery-projection[]

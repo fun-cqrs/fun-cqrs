@@ -23,9 +23,7 @@ object InvokerDirective {
     def newInvoker[C <: DomainCommand, E <: DomainEvent](cmdHandler: (C) => Option[E]): CommandHandlerInvoker[C, E] = {
 
       val handlerWithSeq: (C) => immutable.Seq[E] =
-        (cmd: C) => cmdHandler(cmd)
-          .map { immutable.Seq(_) }
-          .getOrElse { immutable.Seq() }
+        (cmd: C) => cmdHandler(cmd).map { immutable.Seq(_) }.getOrElse { immutable.Seq() }
 
       IdCommandHandlerInvoker(handlerWithSeq)
     }

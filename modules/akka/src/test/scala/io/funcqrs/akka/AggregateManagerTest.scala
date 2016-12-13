@@ -2,29 +2,32 @@ package io.funcqrs.akka
 
 import akka.actor.ActorSystem
 import akka.actor.Status.Failure
-import akka.testkit.{ImplicitSender, TestKit}
+import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol._
-import io.funcqrs.akka.TestModel.{User, UserId}
+import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
-import io.funcqrs.{AggregateId, CommandException, DomainCommand, MissingCommandHandlerException}
+import io.funcqrs.{ AggregateId, CommandException, DomainCommand, MissingCommandHandlerException }
 import org.scalatest._
 
 import scala.concurrent.duration._
 
-class AggregateManagerTest(val actorSys: ActorSystem) extends TestKit(actorSys)
+class AggregateManagerTest(val actorSys: ActorSystem)
+    extends TestKit(actorSys)
     with ImplicitSender
-    with Matchers with FlatSpecLike with BeforeAndAfterAll {
+    with Matchers
+    with FlatSpecLike
+    with BeforeAndAfterAll {
 
   implicit val timeout = Timeout(500.millis)
 
   def this() = this(ActorSystem("test", ConfigFactory.load("application.conf")))
 
-  val eventsSourceProvider = (query: Query) => ???
+  private val eventsSourceProvider = (query: Query) => ???
 
   lazy val backend = new AkkaBackend {
     override val actorSystem: ActorSystem = actorSys
@@ -35,7 +38,7 @@ class AggregateManagerTest(val actorSys: ActorSystem) extends TestKit(actorSys)
     TestKit.shutdownActorSystem(system)
   }
 
-  lazy val aggregateManager =
+  private lazy val aggregateManager =
     backend.actorOf {
       aggregate[User](User.behavior)
     }
