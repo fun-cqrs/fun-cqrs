@@ -3,9 +3,9 @@ import BuildSettings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
-scalaVersion in ThisBuild := "2.12.0"
+scalaVersion in ThisBuild := "2.11.8"
 
-crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.0")
+crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.1")
 
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
@@ -25,8 +25,8 @@ lazy val root = Project(
   ) aggregate (
     funCqrs,
 //    funCqrsAkka,
-    funCqrsTestKit,
-    lotteryApp
+    funCqrsTestKit
+//    lotteryApp
   )
 
 // Core ==========================================
@@ -59,14 +59,14 @@ lazy val funCqrsTestKit = Project(
 // #                     SAMPLES                      #
 // #####################################################
 
-lazy val lotteryApp = Project(
-  id       = "sample-lottery",
-  base     = file("samples/lottery"),
-  settings = defaultSettings
-).settings(libraryDependencies ++= sampleDeps)
-  .settings(publishArtifact := false)
-  .dependsOn(funCqrs)
-  .dependsOn(funCqrsTestKit)
+//lazy val lotteryApp = Project(
+//  id       = "sample-lottery",
+//  base     = file("samples/lottery"),
+//  settings = defaultSettings
+//).settings(libraryDependencies ++= sampleDeps)
+//  .settings(publishArtifact := false)
+//  .dependsOn(funCqrs)
+//  .dependsOn(funCqrsTestKit)
 //  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")

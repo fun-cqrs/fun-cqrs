@@ -1,23 +1,28 @@
 package io.funcqrs.backend
 
-import io.funcqrs.AggregateRef
+import java.util.NoSuchElementException
+
+import io.funcqrs.{ AggregateId, AggregateRef, ClassTagImplicits, MissingAggregateConfigurationException }
 import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 
-trait Backend[F[_]] {
+trait Backend[F[_]] extends AggregateFactory[F] {
 
   /** Configure a Aggregate */
-  def configure[A, C, E, I](config: AggregateConfig[A, C, E, I]): Backend[F]
+  def configure[A: ClassTag, C, E, I <: AggregateId](config: AggregateConfig[A, C, E, I]): Backend[F]
 
   def configure(config: ProjectionConfig): Backend[F]
 
-  class AggregateRefStage[A, I](implicit types: Types[A]) {
-    def apply(id: I): AggregateRef[A, F] = aggregateRefById[A, I](id)
+  protected def configLookup[A: ClassTag, C, E, I](lookup: => AggregateConfig[A, C, E, I]) = {
+    try {
+      lookup
+    } catch {
+      case _: NoSuchElementException =>
+        val cls = ClassTagImplicits[A]
+        throw new MissingAggregateConfigurationException(s"No configuration found for ${cls.runtimeClass.getSimpleName}")
+    }
   }
-
-  def aggregateRef[A](implicit types: Types[A]) = new AggregateRefStage[A, types.Id]
-
-  protected def aggregateRefById[A, I](id: I, types: Types[A]): AggregateRef[A, F]
 }

@@ -69,23 +69,26 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
     }
   }
 
-  def newFooProjection() = new Projection {
+  class FooProjection extends Projection {
     var result: Option[String] = None
 
     def handleEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
-        Future.successful()
+        Future.successful(())
     }
   }
+  def newFooProjection() = new FooProjection
 
-  def newBarProjection() = new Projection {
+  class BarProjection extends Projection {
     var result: Option[Int] = None
 
     def handleEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
-        Future.successful()
+        Future.successful(())
     }
   }
+
+  def newBarProjection() = new BarProjection
 }

@@ -9,7 +9,7 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
-@deprecated
+@deprecated(message = "Will be removed by Actions using Types", since = "1.0.0")
 case class ActionsDeprec[A <: AggregateLike](
     cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
     rejectCmdInvokers: CommandToInvoker[A#Command, A#Event]  = PartialFunction.empty,
@@ -128,51 +128,6 @@ case class ActionsDeprec[A <: AggregateLike](
   }
 
   /**
-    */
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
-
-  case class IdentityManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Identity] {
-
-    /** Declares a `Command Handler` that produces a Seq[[Event]] */
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): ActionsDeprec[Aggregate] = {
-      handleCommand[C, E, immutable.Seq](cmdHandler)
-    }
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def tryToHandleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): ActionsDeprec[Aggregate] = {
-    handleCommand[C, E, Try](cmdHandler)
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def tryToHandleCommand: ManyEventsBinder[Try] = TryManyEventsBinder(this)
-
-  case class TryManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Try] {
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Try[immutable.Seq[E]]): ActionsDeprec[A] = {
-      handleCommand[C, E, Try](cmdHandler)
-    }
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommandAsync[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): ActionsDeprec[Aggregate] = {
-    handleCommand[C, E, Future](cmdHandler)
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommandAsync: ManyEventsBinder[Future] = FutureManyEventsBinder(this)
-
-  case class FutureManyEventsBinder(behavior: ActionsDeprec[A]) extends ManyEventsBinder[Future] {
-
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Future[immutable.Seq[E]]): ActionsDeprec[A] = {
-      handleCommand[C, E, Future](cmdHandler)
-    }
-  }
-
-  /**
     * Declares an event handler
     *
     * @param eventHandler - the event handler function
@@ -187,13 +142,6 @@ case class ActionsDeprec[A <: AggregateLike](
     }
     this.copy(eventHandlers = eventHandlers orElse eventHandlerPF)
   }
-
-  trait ManyEventsBinder[F[_]] {
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: C => F[immutable.Seq[E]]): ActionsDeprec[Aggregate]
-  }
-
-  @deprecated(message = "Use handleCommandAsync instead", since = "0.3.1")
-  def asyncHandler: ManyEventsBinder[Future] = handleCommandAsync
 }
 
 object ActionsDeprec {

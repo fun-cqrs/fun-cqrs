@@ -16,11 +16,14 @@ import scala.util.Try
   *
   * This interpreter should be used for testing and / or for behaviors that preferably don't define any async operation.
   *
-  * @param behavior - a Aggregate [[Behavior]]
+  * @param behavior - a Aggregate Behavior
   * @param atMost - the maximum duration we are to wait before Futures timeout.
-  * @tparam A - an Aggregate type
+  * @tparam A - the Aggregate type
+  * @tparam C - the Command type
+  * @tparam E - the Event type
   */
-class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Identity] {
+class IdentityInterpreter[A, C, E](val behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds)
+    extends Interpreter[A, C, E, Identity] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => handler(cmd)
@@ -31,7 +34,7 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
   protected def fromTry[B](any: Try[B]): Identity[B] =
     any.get // yes, we force a 'get'. Nothing can be done if we can't handle an event
 
-  def applyCommand(state: State[A], cmd: Command): (Events, State[A]) = {
+  def applyCommand(state: Option[A], cmd: Command): (Events, Option[A]) = {
     val evts       = onCommand(state, cmd)
     val updatedAgg = onEvents(state, evts)
     (evts, updatedAgg)
@@ -39,5 +42,5 @@ class IdentityInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost:
 }
 
 object IdentityInterpreter {
-  def apply[A <: AggregateLike](behavior: Behavior[A], atMost: Duration = 5.seconds) = new IdentityInterpreter(behavior, atMost)
+  def apply[A, C, E](behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds) = new IdentityInterpreter(behavior, atMost)
 }
