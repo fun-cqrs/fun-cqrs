@@ -3,9 +3,9 @@ package io.funcqrs
 import java.time.OffsetDateTime
 
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.api.Actions
 import io.funcqrs.interpreters.IdentityInterpreter
-import io.funcqrs.model.TimerTrackerProtocol._
-import io.funcqrs.model.{ BusyTracker, IdleTracker, TimeTracker, TrackerId }
+import io.funcqrs.model._
 import org.scalatest.{ FunSuite, Matchers }
 
 /**
@@ -14,18 +14,18 @@ import org.scalatest.{ FunSuite, Matchers }
   */
 class InterpreterTest extends FunSuite with Matchers {
 
-  val initialState = Uninitialized[TimeTracker](TrackerId.generate)
+  val initialState: Option[TimeTracker] = None
 
   test("A interpreter will fail a Command if missing behavior for a given state") {
     // a bogus TimeTracker behavior
     // can't start timer due to missing case for Idle state
-    def behavior: Behavior[TimeTracker] =
-      Behavior {
-        factoryActions(TrackerId.generate)
-      } {
-        // missing behavior for IdleTracker
-        case _: BusyTracker => ActionsDeprec.empty
-      }
+    def behavior =
+      api.Behavior
+        .construct(constructionHandlers(TrackerId.generate))
+        .andThen {
+          // missing behavior for IdleTracker
+          case _: BusyTracker => Actions.empty
+        }
 
     val interpreter = IdentityInterpreter(behavior)
 
@@ -35,8 +35,8 @@ class InterpreterTest extends FunSuite with Matchers {
     }
   }
 
-  def factoryActions(trackerId: TrackerId) =
-    actions[TimeTracker]
+  def constructionHandlers(trackerId: TrackerId) =
+    TimeTracker.actions
       .handleCommand { cmd: CreateTracker.type =>
         TimerCreated(EventId())
       }

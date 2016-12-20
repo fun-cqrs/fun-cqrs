@@ -1,6 +1,6 @@
 package io.funcqrs.test
 
-import io.funcqrs.backend.QuerySelectAll
+import io.funcqrs.backend.{ AggregateFactory, QuerySelectAll }
 import io.funcqrs.test.backend.InMemoryBackend
 import io.funcqrs._
 import io.funcqrs.behavior.api.Types
@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
 
 import scala.util.{ Failure, Success, Try }
 
-trait InMemoryTestSupport {
+trait InMemoryTestSupport extends AggregateFactory[Identity] {
 
   val logger = LoggerFactory.getLogger("InMemoryTestSupport")
 
@@ -32,7 +32,7 @@ trait InMemoryTestSupport {
     def log(evt: DomainEvent) = logger.debug(s"received evt: $evt")
   }
 
-  private lazy val backend = {
+  lazy val backend = {
     val backend = new InMemoryBackend
     configure(backend)
 
@@ -52,8 +52,8 @@ trait InMemoryTestSupport {
     */
   def configure(backend: InMemoryBackend): Unit
 
-//  def aggregateRef[A, I](id: I)(implicit types: Types.Aux[A, I]): IdentityAggregateRef[A] = {
-//    backend.aggregateRef[A](id)
+//  protected def aggregateRefById[A, I <: AggregateId](id: I)(implicit types: Types.Aux[A, I], tag: ClassTag[A]): Ref[A] = {
+//    backend.aggregateRef[A](types, tag)(id)
 //  }
 
   private def oldestEvent(): DomainEvent = {

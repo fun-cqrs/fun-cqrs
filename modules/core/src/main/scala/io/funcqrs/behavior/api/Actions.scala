@@ -1,9 +1,12 @@
 package io.funcqrs.behavior.api
 
 import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
-import io.funcqrs.behavior.{ CommandHandlerInvoker, TryCommandHandlerInvoker }
+import io.funcqrs.interpreters.Identity
+import io.funcqrs.behavior._
 
 import scala.collection.immutable
+import scala.language.higherKinds
+import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
 case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
@@ -14,6 +17,8 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
   type Command   = C
   type Event     = E
   type Events    = immutable.Seq[Event]
+
+  type TypedActions = Actions[Aggregate, Command, Event]
 
   /**
     * All command handlers together.
@@ -55,11 +60,40 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
       throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
   }
 
-  def handleCommand(cmdHandler: CommandToInvoker[C, E]): Actions[A, C, E] =
-    copy(cmdInvokers = cmdInvokers orElse cmdHandler)
+  /** Declares a `Command Handler` that produces one single [[Event]] */
+  def handleCommand[CC <: Command: ClassTag, EE <: Event](cmdHandler: CC => Identity[EE]): TypedActions = {
+    // wrap single event in immutable.Seq
+    val handlerWithSeq: CC => Identity[immutable.Seq[EE]] = (cmd: CC) => immutable.Seq(cmdHandler(cmd))
+    handleCommand[CC, EE, immutable.Seq](handlerWithSeq)
+  }
 
-  def handleEvent(evtHandler: EventHandler[E, A]): Actions[A, C, E] =
-    copy(evtHandlers = evtHandlers orElse evtHandler)
+  def handleCommand[CC <: Command: ClassTag, EE <: Event, F[_]](cmdHandler: CC => F[EE])(implicit ivk: InvokerDirective[F]): TypedActions =
+    addInvoker(ivk.newInvoker(cmdHandler))
+
+//  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(
+//      implicit ivk: InvokerSeqDirective[F]): TypedActions =
+//    addInvoker(ivk.newInvoker(cmdHandler))
+//
+//  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(
+//      implicit ivk: InvokerListDirective[F]): TypedActions =
+//    addInvoker(ivk.newInvoker(cmdHandler))
+//
+
+  /**
+    * Declares an event handler
+    *
+    * @param eventHandler - the event handler function
+    * @return an Actions for A
+    */
+  def handleEvent[EE <: Event: ClassTag](eventHandler: EE => A): TypedActions = {
+
+    object EvtExtractor extends ClassTagExtractor[EE]
+
+    val eventHandlerPF: EventHandler[E, A] = {
+      case EvtExtractor(evt) => eventHandler(evt)
+    }
+    this.copy(evtHandlers = evtHandlers orElse eventHandlerPF)
+  }
 
   /**
     * Declares a guard clause that reject commands that fulfill a given condition.
@@ -99,6 +133,18 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
 //    )
     this
   }
+
+  private def addInvoker[CC <: Command: ClassTag, EE <: Event](invoker: CommandHandlerInvoker[CC, EE]): TypedActions = {
+
+    // as such we can detect if a duplicated key is added
+    object CmdExtractor extends ClassTagExtractor[CC]
+    // PF from Cmd to Invoker
+    val invokerPF: CommandToInvoker[CC, EE] = { case CmdExtractor(cmd) => invoker }
+    // add it
+    this.copy(
+      cmdInvokers = cmdInvokers orElse invokerPF.asInstanceOf[CommandToInvoker[Command, Event]]
+    )
+  }
 }
 
 object Actions {
@@ -109,4 +155,5 @@ object Actions {
       rejectCmdInvokers = PartialFunction.empty,
       evtHandlers       = PartialFunction.empty
     )
+  def empty[A, C, E]: Actions[A, C, E] = apply()
 }

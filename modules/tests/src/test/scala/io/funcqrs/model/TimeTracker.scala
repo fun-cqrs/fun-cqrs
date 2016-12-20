@@ -5,11 +5,9 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.api.Types
 
-sealed trait TimeTracker extends AggregateLike {
-
-  type Id = TrackerId
-  type Protocol = TimerTrackerProtocol.type
+sealed trait TimeTracker {
 
   def id: TrackerId
   def previousTasks: List[Task]
@@ -17,7 +15,7 @@ sealed trait TimeTracker extends AggregateLike {
   def isBusy =
     this match {
       case _: BusyTracker => true
-      case _ => false
+      case _              => false
     }
 
   def isIdle = !isBusy
@@ -26,15 +24,13 @@ sealed trait TimeTracker extends AggregateLike {
 
 case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Task] = List()) extends TimeTracker {
 
-  import TimerTrackerProtocol._
-
   def stop(end: OffsetDateTime): TimeTracker = {
     IdleTracker(id, previousTasks :+ currentTask)
   }
 
   def actionsWhenBusy =
     // format: off
-    actions[TimeTracker]
+    TimeTracker.actions
       .handleCommand {
         cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId())
       }
@@ -56,8 +52,6 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
 
 case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extends TimeTracker {
 
-  import TimerTrackerProtocol._
-
   def start(title: String, start: OffsetDateTime): TimeTracker = {
     val task = Task(title, start)
     BusyTracker(id, task, previousTasks)
@@ -65,7 +59,7 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
 
   def actionsWhenIdle =
     // format: off
-    actions[TimeTracker]
+    TimeTracker.actions
       .handleCommand {
         cmd: StartTracking => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
       }
@@ -83,26 +77,27 @@ case class Task(title: String, started: OffsetDateTime, stopped: Option[OffsetDa
   def isRunning = stopped.isEmpty
 }
 
-object TimerTrackerProtocol extends ProtocolLike {
+sealed trait TrackerCommand
+case object CreateTracker extends TrackerCommand
+final case class CreateAndStartTracking(taskTitle: String) extends TrackerCommand
+final case class StartTracking(title: String) extends TrackerCommand
+final case class ReplaceTask(title: String) extends TrackerCommand
+case object StopTracking extends TrackerCommand
 
-  case object CreateTracker extends ProtocolCommand
-  case class CreateAndStartTracking(taskTitle: String) extends ProtocolCommand
+sealed trait TrackerEvent
+final case class TimerCreated(id: EventId) extends TrackerEvent
+final case class TimerStarted(title: String, start: OffsetDateTime, id: EventId) extends TrackerEvent
+final case class TimerStopped(end: OffsetDateTime, id: EventId) extends TrackerEvent
 
-  case class StartTracking(title: String) extends ProtocolCommand
-  case class ReplaceTask(title: String) extends ProtocolCommand
-  case object StopTracking extends ProtocolCommand
+object TimeTracker extends Types[TimeTracker] {
 
-  case class TimerCreated(id: EventId) extends ProtocolEvent
-  case class TimerStarted(title: String, start: OffsetDateTime, id: EventId) extends ProtocolEvent
-  case class TimerStopped(end: OffsetDateTime, id: EventId) extends ProtocolEvent
-}
-object TimeTracker {
+  type Id      = TrackerId
+  type Command = TrackerCommand
+  type Event   = TrackerEvent
 
-  import TimerTrackerProtocol._
-
-  def factoryActions(id: TrackerId) =
+  def constructionHandlers(id: TrackerId) =
     // format: off
-    actions[TimeTracker]
+    actions
       .handleCommand {
         cmd: CreateTracker.type => TimerCreated(EventId())
       }
@@ -121,13 +116,13 @@ object TimeTracker {
       }
     // format: on
 
-  def behavior(id: TrackerId): Behavior[TimeTracker] =
-    Behavior {
-      factoryActions(id)
-    } {
-      case tracker: IdleTracker => tracker.actionsWhenIdle
-      case tracker: BusyTracker => tracker.actionsWhenBusy
-    }
+  def behavior(id: TrackerId) =
+    api.Behavior
+      .construct(constructionHandlers(id))
+      .andThen {
+        case tracker: IdleTracker => tracker.actionsWhenIdle
+        case tracker: BusyTracker => tracker.actionsWhenBusy
+      }
 
 }
 
@@ -135,4 +130,3 @@ case class TrackerId(value: String) extends AggregateId
 object TrackerId {
   def generate: TrackerId = TrackerId(UUID.randomUUID().toString)
 }
-

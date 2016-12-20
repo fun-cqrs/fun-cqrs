@@ -2,19 +2,17 @@ package io.funcqrs.test.backend
 
 import io.funcqrs._
 import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
-import io.funcqrs.behavior.api.Types
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.api.Types
+import io.funcqrs.behavior.api.Types.Aux
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
-import rx.lang.scala.Subject
-import rx.lang.scala.subjects.PublishSubject
-import scala.collection.immutable
 
+import scala.collection.concurrent
 import scala.collection.concurrent.TrieMap
-import scala.collection.{ concurrent, immutable }
-import scala.concurrent.{ Await, Future }
-import scala.reflect.ClassTag
+import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.reflect.ClassTag
 
 class InMemoryBackend extends Backend[Identity] {
 
@@ -25,9 +23,11 @@ class InMemoryBackend extends Backend[Identity] {
 
 //  private val stream: Stream[DomainEvent] = Stream()
 
-  protected def aggregateRefById[A, I <: AggregateId](
-      id: I)(implicit types: Types.Aux[A, I], tag: ClassTag[A]): InMemoryAggregateRef[A, types.Command, types.Event, types.Id] = {
-
+  // format: off
+  protected def aggregateRefById[A, I <: AggregateId](id: I)
+                                                   (implicit types: Types.Aux[A, I], tag: ClassTag[A])
+                                                    : InMemoryAggregateRef[A, types.Command, types.Event, types.Id] = {
+  // format: on
     type ConfigType = AggregateConfig[A, types.Command, types.Event, types.Id]
 
     aggregates

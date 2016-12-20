@@ -1,7 +1,6 @@
 package io.funcqrs.model
 
 import io.funcqrs.config.Api._
-import io.funcqrs.model.TimerTrackerProtocol._
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
 import org.scalatest.{ FlatSpec, Matchers }
@@ -14,11 +13,11 @@ class TimeTrackerTest extends FlatSpec with Matchers {
 
     def configure(backend: InMemoryBackend): Unit = {
       backend.configure {
-        aggregate[TimeTracker](TimeTracker.behavior)
+        aggregate(TimeTracker.behavior)
       }
     }
 
-    def trackerRef(id: TrackerId = TrackerId.generate) = aggregateRef[TimeTracker](id)
+    def trackerRef(id: TrackerId = TrackerId.generate) = backend.aggregateRef[TimeTracker].apply(id)
   }
 
   it should "create a tracker in idle state" in

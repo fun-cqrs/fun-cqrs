@@ -2,7 +2,7 @@ package io.funcqrs.backend
 
 import java.util.NoSuchElementException
 
-import io.funcqrs.{ AggregateId, AggregateRef, ClassTagImplicits, MissingAggregateConfigurationException }
+import io.funcqrs._
 import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 
