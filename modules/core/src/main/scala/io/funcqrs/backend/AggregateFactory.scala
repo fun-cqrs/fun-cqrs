@@ -1,7 +1,7 @@
 package io.funcqrs.backend
 
-import io.funcqrs.{ AggregateId, AggregateRef }
 import io.funcqrs.behavior.api.Types
+import io.funcqrs.{ AggregateId, AggregateRef }
 
 import scala.language.higherKinds
 import scala.reflect.ClassTag
@@ -13,9 +13,8 @@ trait AggregateFactory[F[_]] {
   def aggregateRef[A](implicit types: Types[A], tag: ClassTag[A]) = new WrapperHelper[A]
 
   protected class WrapperHelper[A](implicit types: Types[A], tag: ClassTag[A]) {
-    def apply(id: types.Id): AggregateRef[A, F] =
-      aggregateRefById(id)
+    def forId(id: types.Id): AggregateRef[A, F] = aggregateRefById(id)
   }
 
-  protected def aggregateRefById[A, I <: AggregateId](id: I)(implicit types: Types.Aux[A, I], tag: ClassTag[A]): Ref[A]
+  protected def aggregateRefById[A, I <: AggregateId](id: I)(implicit types: Types[A], tag: ClassTag[A]): Ref[A]
 }

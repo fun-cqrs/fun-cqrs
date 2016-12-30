@@ -17,7 +17,8 @@ class TimeTrackerTest extends FlatSpec with Matchers {
       }
     }
 
-    def trackerRef(id: TrackerId = TrackerId.generate) = backend.aggregateRef[TimeTracker].apply(id)
+    def trackerRef(id: TrackerId = TrackerId.generate) =
+      backend.aggregateRef[TimeTracker].forId(id)
   }
 
   it should "create a tracker in idle state" in

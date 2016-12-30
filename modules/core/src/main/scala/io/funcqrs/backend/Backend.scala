@@ -3,7 +3,6 @@ package io.funcqrs.backend
 import java.util.NoSuchElementException
 
 import io.funcqrs._
-import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 
 import scala.language.higherKinds

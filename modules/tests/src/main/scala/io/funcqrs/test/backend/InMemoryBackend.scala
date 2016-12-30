@@ -4,7 +4,6 @@ import io.funcqrs._
 import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
 import io.funcqrs.behavior._
 import io.funcqrs.behavior.api.Types
-import io.funcqrs.behavior.api.Types.Aux
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 
@@ -25,16 +24,16 @@ class InMemoryBackend extends Backend[Identity] {
 
   // format: off
   protected def aggregateRefById[A, I <: AggregateId](id: I)
-                                                   (implicit types: Types.Aux[A, I], tag: ClassTag[A])
+                                                     (implicit types: Types[A], tag: ClassTag[A])
                                                     : InMemoryAggregateRef[A, types.Command, types.Event, types.Id] = {
   // format: on
-    type ConfigType = AggregateConfig[A, types.Command, types.Event, types.Id]
+    type ConfigType = AggregateConfig[A, types.Command, types.Event, I]
 
     aggregates
       .getOrElseUpdate(
         id, { // build new aggregateRef if not existent
 
-          val config = configLookup[A, types.Command, types.Event, types.Id] {
+          val config = configLookup[A, types.Command, types.Event, I] {
             aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[ConfigType]
           }
 

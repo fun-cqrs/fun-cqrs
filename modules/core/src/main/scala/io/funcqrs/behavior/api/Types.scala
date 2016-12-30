@@ -18,8 +18,12 @@ trait Types[A] {
   implicit def self: this.type = this
 }
 
-object Types {
-  type Aux[A0, I0] = Types[A0] { type Id = I0 }
+trait LowPriorityTypesImplicit {
+//  implicit def types2Aux[A](implicit types: Types[A]): Types.Aux[A, types.Id] = types
+}
 
-  implicit def types2Aux[A](implicit types: Types[A]): Aux[A, types.Id] = types
+object Types extends LowPriorityTypesImplicit {
+
+//  type Aux[A0, I0] = Types[A0] { type Id = I0 }
+
 }
