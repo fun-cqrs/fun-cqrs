@@ -7,7 +7,7 @@ import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 
-import scala.collection.concurrent
+import scala.collection.{ concurrent, immutable }
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -23,8 +23,8 @@ class InMemoryBackend extends Backend[Identity] {
 //  private val stream: Stream[DomainEvent] = Stream()
 
   // format: off
-  protected def aggregateRefById[A, I <: AggregateId](id: I)
-                                                     (implicit types: Types[A], tag: ClassTag[A])
+  protected def aggregateRefById[A, I <: AggregateId](id: I)(types: Types.Aux[A, I])
+                                                     (implicit tag: ClassTag[A])
                                                     : InMemoryAggregateRef[A, types.Command, types.Event, types.Id] = {
   // format: on
     type ConfigType = AggregateConfig[A, types.Command, types.Event, I]
@@ -94,22 +94,17 @@ class InMemoryBackend extends Backend[Identity] {
 //    eventStream.onNext(evt)
 //  }
 
-  class InMemoryAggregateRef[A, C, E, I <: AggregateId](id: I, behavior: api.Behavior[A, C, E]) extends IdentityAggregateRef[A] { self =>
-
-    val types = new Types[A] {
-      type Id      = I
-      type Command = C
-      type Event   = E
-    }
+  class InMemoryAggregateRef[A, C, E, I <: AggregateId](id: I, behavior: api.Behavior[A, C, E]) extends IdentityAggregateRef[A, C, E] {
+    self =>
 
     private var aggregateState: Option[A] = None
 
     val interpreter = IdentityInterpreter(behavior)
 
-    def ask(cmd: types.Command): Identity[types.Events] =
+    def ask(cmd: C): Identity[immutable.Seq[E]] =
       handle(aggregateState, cmd)
 
-    def tell(cmd: types.Command): Unit = {
+    def tell(cmd: C): Unit = {
       ask(cmd)
       () // omit events
     }
@@ -126,19 +121,19 @@ class InMemoryBackend extends Backend[Identity] {
 
     def exists(): Identity[Boolean] = aggregateState.isDefined
 
-    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
+    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] = new AsyncAggregateRef[A, C, E] {
 
       val types = self.types
 
       def timeoutDuration: FiniteDuration = timeout
 
-      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withAskTimeout(timeout)
+      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] = self.withAskTimeout(timeout)
 
-      def tell(cmd: types.Command): Unit = self.tell(cmd)
+      def tell(cmd: C): Unit = self.tell(cmd)
 
-      def ask(cmd: types.Command): Future[types.Events] = Future.successful(self.ask(cmd))
+      def ask(cmd: C): Future[immutable.Seq[E]] = Future.successful(self.ask(cmd))
 
-      def state(): Future[types.Aggregate] = Future.successful(self.state())
+      def state(): Future[A] = Future.successful(self.state())
 
       def exists(): Future[Boolean] = Future.successful(self.exists())
     }

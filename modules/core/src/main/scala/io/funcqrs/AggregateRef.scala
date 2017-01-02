@@ -1,33 +1,31 @@
 package io.funcqrs
 
-import io.funcqrs.behavior.api.Types
 import io.funcqrs.interpreters.Identity
 
+import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
 import scala.language.higherKinds
 import scala.util.Try
 
-trait AggregateRef[A, F[_]] {
+trait AggregateRef[A, C, E, F[_]] {
 
-  val types: Types[A]
+  def ?(cmd: C): F[immutable.Seq[E]] = ask(cmd)
+  def ask(cmd: C): F[immutable.Seq[E]]
 
-  def ?(cmd: types.Command): F[types.Events] = ask(cmd)
-  def ask(cmd: types.Command): F[types.Events]
+  def !(cmd: C): Unit = tell(cmd)
+  def tell(cmd: C): Unit
 
-  def !(cmd: types.Command): Unit = tell(cmd)
-  def tell(cmd: types.Command): Unit
-
-  def state(): F[types.Aggregate]
+  def state(): F[A]
   def exists(): F[Boolean]
 
-  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future]
+  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future]
 }
 
-trait IdentityAggregateRef[A] extends AggregateRef[A, Identity]
+trait IdentityAggregateRef[A, C, E] extends AggregateRef[A, C, E, Identity]
 
-trait TryAggregateRef[A] extends AggregateRef[A, Try]
+trait TryAggregateRef[A, C, E] extends AggregateRef[A, C, E, Try]
 
-trait AsyncAggregateRef[A] extends AggregateRef[A, Future] {
+trait AsyncAggregateRef[A, C, E] extends AggregateRef[A, C, E, Future] {
   def timeoutDuration: FiniteDuration
 }

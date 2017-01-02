@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
 
 import scala.util.{ Failure, Success, Try }
 
-trait InMemoryTestSupport extends AggregateFactory[Identity] {
+trait InMemoryTestSupport {
 
   val logger = LoggerFactory.getLogger("InMemoryTestSupport")
 
@@ -51,10 +51,6 @@ trait InMemoryTestSupport extends AggregateFactory[Identity] {
     * for your tests
     */
   def configure(backend: InMemoryBackend): Unit
-
-//  protected def aggregateRefById[A, I <: AggregateId](id: I)(implicit types: Types.Aux[A, I], tag: ClassTag[A]): Ref[A] = {
-//    backend.aggregateRef[A](types, tag)(id)
-//  }
 
   private def oldestEvent(): DomainEvent = {
     bufferShouldNoBeEmpty()
