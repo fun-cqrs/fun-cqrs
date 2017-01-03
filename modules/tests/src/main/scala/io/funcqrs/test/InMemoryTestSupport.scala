@@ -10,26 +10,21 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import io.funcqrs.config.api._
 import io.funcqrs.interpreters.Identity
-import org.slf4j.LoggerFactory
 
 import scala.util.{ Failure, Success, Try }
 
 trait InMemoryTestSupport {
 
-  val logger = LoggerFactory.getLogger("InMemoryTestSupport")
-
   // internal queue with events. All events produced by the testing
   // will be added to this queue for later assertions
-  private val receivedEvents = mutable.Queue[DomainEvent]()
+  private lazy val receivedEvents = mutable.Queue[DomainEvent]()
 
-  private val internalProjection = new Projection {
+  private lazy val internalProjection = new Projection {
     def handleEvent: HandleEvent = {
       case evt =>
         receivedEvents += evt // send all events to queue
-        log(evt)
         Future.successful(())
     }
-    def log(evt: DomainEvent) = logger.debug(s"received evt: $evt")
   }
 
   lazy val backend = {
@@ -91,7 +86,7 @@ trait InMemoryTestSupport {
     */
   def expectEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
     val lastReceived = oldestEvent()
-    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event was: $lastReceived")
+    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event, was: $lastReceived")
     // remove if assertion is passes
     pf(receivedEvents.dequeue)
   }
@@ -152,7 +147,7 @@ trait InMemoryTestSupport {
 
     val lastReceived = receivedEvents.toList.last
 
-    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event was: $lastReceived")
+    assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event, was: $lastReceived")
     pf(lastReceived)
   }
 
