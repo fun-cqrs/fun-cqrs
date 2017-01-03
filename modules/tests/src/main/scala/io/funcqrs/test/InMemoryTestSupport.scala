@@ -1,6 +1,5 @@
 package io.funcqrs.test
 
-
 import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.test.backend.InMemoryBackend
 import io.funcqrs._
@@ -9,26 +8,21 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
 import io.funcqrs.config.api._
-import org.slf4j.LoggerFactory
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 trait InMemoryTestSupport {
 
-  val logger = LoggerFactory.getLogger("InMemoryTestSupport")
-
   // internal queue with events. All events produced by the testing
   // will be added to this queue for later assertions
-  private val receivedEvents = mutable.Queue[DomainEvent]()
+  private lazy val receivedEvents = mutable.Queue[DomainEvent]()
 
-  private val internalProjection = new Projection {
+  private lazy val internalProjection = new Projection {
     def handleEvent: HandleEvent = {
       case evt =>
         receivedEvents += evt // send all events to queue
-        log(evt)
         Future.successful(())
     }
-    def log(evt: DomainEvent) = logger.debug(s"received evt: $evt")
   }
 
   private lazy val backend = {
@@ -60,12 +54,9 @@ trait InMemoryTestSupport {
     receivedEvents.front
   }
 
-
   private def bufferShouldNoBeEmpty() = {
     assert(receivedEvents.nonEmpty, "No events on queue")
   }
-
-
 
   /**
     * Check only the type of the head of the test event buffer
@@ -89,12 +80,12 @@ trait InMemoryTestSupport {
   }
 
   /**
-   * Check if the next event in buffer matches the passed [[PartialFunction]].
-   *
-   * Useful to verify the content of the event pattern matching.
-   *
-   * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
-   */
+    * Check if the next event in buffer matches the passed [[PartialFunction]].
+    *
+    * Useful to verify the content of the event pattern matching.
+    *
+    * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+    */
   def expectEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
     val lastReceived = oldestEvent()
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event was: $lastReceived")
@@ -103,12 +94,12 @@ trait InMemoryTestSupport {
   }
 
   /**
-   * Search event buffer for `E` consuming all previous Events.
-   *
-   * @tparam E - the event type
-   * @throws AssertionError in case there is no matching Event on the buffer
-   * @return E if event buffer contains an Event of type E
-   */
+    * Search event buffer for `E` consuming all previous Events.
+    *
+    * @tparam E - the event type
+    * @throws AssertionError in case there is no matching Event on the buffer
+    * @return E if event buffer contains an Event of type E
+    */
   def lookupExpectedEvent[E <: DomainEvent: ClassTag]: E = {
     Try(expectEvent[E]) match {
       case Success(event) => event
@@ -119,16 +110,16 @@ trait InMemoryTestSupport {
   }
 
   /**
-   * Search event buffer for an `Event` matching the passed [[PartialFunction]] consuming all previous Events.
-   *
-   * Useful to verify the content of the event pattern matching.
-   *
-   * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
-   * @tparam E - the event type
-   * @throws AssertionError in case there is no matching Event on the buffer
-   * @return E if event buffer contains an Event of type E
-   */
-  def lookupExpectedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T =  {
+    * Search event buffer for an `Event` matching the passed [[PartialFunction]] consuming all previous Events.
+    *
+    * Useful to verify the content of the event pattern matching.
+    *
+    * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+    * @tparam E - the event type
+    * @throws AssertionError in case there is no matching Event on the buffer
+    * @return E if event buffer contains an Event of type E
+    */
+  def lookupExpectedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
     Try(expectEventPF(pf)) match {
       case Success(event) => event
       case Failure(ignore) =>
@@ -136,8 +127,6 @@ trait InMemoryTestSupport {
         lookupExpectedEventPF(pf)
     }
   }
-
-
 
   def lastReceivedEvent[E <: DomainEvent: ClassTag]: E = {
 
@@ -163,7 +152,6 @@ trait InMemoryTestSupport {
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event was: $lastReceived")
     pf(lastReceived)
   }
-
 
   /**
     * Check that the internal event buffer is empty meaning that there is no new
