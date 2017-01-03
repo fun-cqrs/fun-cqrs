@@ -1,28 +1,26 @@
 package io.funcqrs.test
 
-import io.funcqrs.backend.{ AggregateFactory, QuerySelectAll }
-import io.funcqrs.test.backend.InMemoryBackend
 import io.funcqrs._
-import io.funcqrs.behavior.api.Types
+import io.funcqrs.backend.QuerySelectAll
+import io.funcqrs.config.api._
+import io.funcqrs.projections.Projection
+import io.funcqrs.test.backend.InMemoryBackend
 
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.reflect.ClassTag
-import io.funcqrs.config.api._
-import io.funcqrs.interpreters.Identity
-
 import scala.util.{ Failure, Success, Try }
 
 trait InMemoryTestSupport {
 
   // internal queue with events. All events produced by the testing
   // will be added to this queue for later assertions
-  private lazy val receivedEvents = mutable.Queue[DomainEvent]()
+  private lazy val receivedEvents = mutable.Queue[AnyEvent]()
 
   private lazy val internalProjection = new Projection {
-    def handleEvent: HandleEvent = {
-      case evt =>
-        receivedEvents += evt // send all events to queue
+    def receiveEvent: ReceiveEvent = {
+      case envelop =>
+        receivedEvents += envelop.event // add all events to queue
         Future.successful(())
     }
   }
@@ -47,7 +45,7 @@ trait InMemoryTestSupport {
     */
   def configure(backend: InMemoryBackend): Unit
 
-  private def oldestEvent(): DomainEvent = {
+  private def oldestEvent(): AnyEvent = {
     bufferShouldNoBeEmpty()
     receivedEvents.front
   }
@@ -63,7 +61,7 @@ trait InMemoryTestSupport {
     * @throws AssertionError in Event Buffer head doesn't match passed Event
     * @return E if head of event buffer is E
     */
-  def expectEvent[E <: DomainEvent: ClassTag]: E = {
+  def expectEvent[E <: AnyEvent: ClassTag]: E = {
 
     val headOfBuffer = oldestEvent()
     val expectedType = ClassTagImplicits[E].runtimeClass
@@ -82,9 +80,9 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
+    * @param pf - a PartialFunction from [[AnyEvent]] to [[T]]
     */
-  def expectEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
+  def expectEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
     val lastReceived = oldestEvent()
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event, was: $lastReceived")
     // remove if assertion is passes
@@ -98,7 +96,7 @@ trait InMemoryTestSupport {
     * @throws AssertionError in case there is no matching Event on the buffer
     * @return E if event buffer contains an Event of type E
     */
-  def lookupExpectedEvent[E <: DomainEvent: ClassTag]: E = {
+  def lookupExpectedEvent[E <: AnyEvent: ClassTag]: E = {
     Try(expectEvent[E]) match {
       case Success(event) => event
       case Failure(ignore) =>
@@ -112,12 +110,11 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[DomainEvent]] to [[T]]
-    * @tparam E - the event type
+    * @param pf - a PartialFunction from [[AnyEvent]] to [[T]]
     * @throws AssertionError in case there is no matching Event on the buffer
     * @return E if event buffer contains an Event of type E
     */
-  def lookupExpectedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
+  def lookupExpectedEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
     Try(expectEventPF(pf)) match {
       case Success(event) => event
       case Failure(ignore) =>
@@ -126,7 +123,7 @@ trait InMemoryTestSupport {
     }
   }
 
-  def lastReceivedEvent[E <: DomainEvent: ClassTag]: E = {
+  def lastReceivedEvent[E <: AnyEvent: ClassTag]: E = {
 
     bufferShouldNoBeEmpty()
 
@@ -141,7 +138,7 @@ trait InMemoryTestSupport {
     lastReceived.asInstanceOf[E]
   }
 
-  def lastReceivedEventPF[E <: DomainEvent, T](pf: PartialFunction[DomainEvent, T]): T = {
+  def lastReceivedEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
 
     bufferShouldNoBeEmpty()
 
@@ -176,5 +173,5 @@ trait InMemoryTestSupport {
     assert(receivedEvents.isEmpty, s"Event queue not empty: $events")
   }
 
-  def events: List[DomainEvent] = receivedEvents.toList
+  def events: List[AnyEvent] = receivedEvents.toList
 }

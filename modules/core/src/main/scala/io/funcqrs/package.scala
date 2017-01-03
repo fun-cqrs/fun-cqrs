@@ -10,4 +10,6 @@ package object funcqrs {
   }
 
   type HandleEvent = PartialFunction[DomainEvent, Future[Unit]]
+
+  type AnyEvent = Any
 }

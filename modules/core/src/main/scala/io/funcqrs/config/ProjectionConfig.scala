@@ -1,9 +1,10 @@
 package io.funcqrs.config
 
-import io.funcqrs.Projection
+import io.funcqrs.AnyEvent
 import io.funcqrs.backend.Query
 
 import scala.concurrent.Future
+import io.funcqrs.projections.Projection
 
 case class ProjectionConfig(
     query: Query,
