@@ -6,7 +6,7 @@ import io.funcqrs.behavior._
 import io.funcqrs.behavior.api.Types
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
-import io.funcqrs.projections.EventEnvelop
+import io.funcqrs.projections.Envelop
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
 
@@ -49,10 +49,10 @@ class InMemoryBackend extends Backend[Identity] {
     this
   }
 
-  def configure(config: ProjectionConfig): Backend[Identity] = {
+  def configure[E](config: ProjectionConfig[E]): Backend[Identity] = {
 
     // does the event match the query criteria?
-    def matchQuery(evt: AnyEvent with MetadataFacet[_]): Boolean = {
+    def matchQuery(evt: E with MetadataFacet[_]): Boolean = {
       config.query match {
         case QueryByTag(tag)   => evt.tags.contains(tag)
         case QueryByTags(tags) => tags.subsetOf(evt.tags)
@@ -60,7 +60,7 @@ class InMemoryBackend extends Backend[Identity] {
       }
     }
 
-    def matchQueryWithoutTagging(evt: AnyEvent): Boolean = {
+    def matchQueryWithoutTagging(evt: E): Boolean = {
       config.query match {
         case QuerySelectAll => true
         case _              => false
@@ -69,16 +69,16 @@ class InMemoryBackend extends Backend[Identity] {
 
     eventStream.subscribe { evt: AnyEvent =>
       // send even to projections
-      def sendToProjection(event: AnyEvent) = {
+      def sendToProjection(event: E) = {
+        val envelop = Envelop(event, 1)
         // TODO: projections should be interpreted as well to avoid this
-        val envelop = EventEnvelop(evt, 1)
         Await.ready(config.projection.onEvent(envelop), 10.seconds)
         ()
       }
       evt match {
-        case evt: AnyEvent with MetadataFacet[_] if matchQuery(evt) =>
+        case evt: E with MetadataFacet[_] if matchQuery(evt) =>
           sendToProjection(evt)
-        case evt: AnyEvent if matchQueryWithoutTagging(evt) =>
+        case evt: E if matchQueryWithoutTagging(evt) =>
           sendToProjection(evt)
         case anyEvent =>
         // do nothing, don't send to projection

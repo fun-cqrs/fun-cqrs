@@ -11,13 +11,13 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Success, Try }
 
-trait InMemoryTestSupport {
+trait InMemoryTestSupport[E] {
 
   // internal queue with events. All events produced by the testing
   // will be added to this queue for later assertions
-  private lazy val receivedEvents = mutable.Queue[AnyEvent]()
+  private lazy val receivedEvents = mutable.Queue[E]()
 
-  private lazy val internalProjection = new Projection {
+  private lazy val internalProjection = new Projection[E] {
     def receiveEvent: ReceiveEvent = {
       case envelop =>
         receivedEvents += envelop.event // add all events to queue
@@ -45,7 +45,7 @@ trait InMemoryTestSupport {
     */
   def configure(backend: InMemoryBackend): Unit
 
-  private def oldestEvent(): AnyEvent = {
+  private def oldestEvent(): E = {
     bufferShouldNoBeEmpty()
     receivedEvents.front
   }
@@ -57,14 +57,14 @@ trait InMemoryTestSupport {
   /**
     * Check only the type of the head of the test event buffer
     *
-    * @tparam E - the event type
+    * @tparam EE - the event type
     * @throws AssertionError in Event Buffer head doesn't match passed Event
     * @return E if head of event buffer is E
     */
-  def expectEvent[E <: AnyEvent: ClassTag]: E = {
+  def expectEvent[EE: ClassTag](implicit ev: EE <:< E): EE = {
 
     val headOfBuffer = oldestEvent()
-    val expectedType = ClassTagImplicits[E].runtimeClass
+    val expectedType = ClassTagImplicits[EE].runtimeClass
 
     assert(
       headOfBuffer.getClass == expectedType,
@@ -72,7 +72,7 @@ trait InMemoryTestSupport {
     )
 
     // remove if assertion passes
-    receivedEvents.dequeue.asInstanceOf[E]
+    receivedEvents.dequeue.asInstanceOf[EE]
   }
 
   /**
@@ -80,9 +80,9 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[AnyEvent]] to [[T]]
+    * @param pf - a PartialFunction from [[E]] to [[T]]
     */
-  def expectEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
+  def expectEventPF[T](pf: PartialFunction[E, T]): T = {
     val lastReceived = oldestEvent()
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event, was: $lastReceived")
     // remove if assertion is passes
@@ -92,16 +92,16 @@ trait InMemoryTestSupport {
   /**
     * Search event buffer for `E` consuming all previous Events.
     *
-    * @tparam E - the event type
+    * @tparam EE - the event type
     * @throws AssertionError in case there is no matching Event on the buffer
     * @return E if event buffer contains an Event of type E
     */
-  def lookupExpectedEvent[E <: AnyEvent: ClassTag]: E = {
-    Try(expectEvent[E]) match {
+  def lookupExpectedEvent[EE: ClassTag](implicit ev: EE <:< E): EE = {
+    Try(expectEvent[EE]) match {
       case Success(event) => event
       case Failure(ignore) =>
         receivedEvents.dequeue()
-        lookupExpectedEvent[E]
+        lookupExpectedEvent[EE]
     }
   }
 
@@ -110,11 +110,11 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[AnyEvent]] to [[T]]
+    * @param pf - a PartialFunction from [[E]] to [[T]]
     * @throws AssertionError in case there is no matching Event on the buffer
     * @return E if event buffer contains an Event of type E
     */
-  def lookupExpectedEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
+  def lookupExpectedEventPF[T](pf: PartialFunction[E, T]): T = {
     Try(expectEventPF(pf)) match {
       case Success(event) => event
       case Failure(ignore) =>
@@ -123,22 +123,22 @@ trait InMemoryTestSupport {
     }
   }
 
-  def lastReceivedEvent[E <: AnyEvent: ClassTag]: E = {
+  def lastReceivedEvent[EE: ClassTag](implicit ev: EE <:< E): EE = {
 
     bufferShouldNoBeEmpty()
 
     val lastReceived = receivedEvents.toList.last
-    val expectedType = ClassTagImplicits[E].runtimeClass
+    val expectedType = ClassTagImplicits[EE].runtimeClass
 
     assert(
       lastReceived.getClass == expectedType,
       s"Last received event was: $lastReceived, expected of type ${expectedType.getSimpleName}"
     )
 
-    lastReceived.asInstanceOf[E]
+    lastReceived.asInstanceOf[EE]
   }
 
-  def lastReceivedEventPF[T](pf: PartialFunction[AnyEvent, T]): T = {
+  def lastReceivedEventPF[T](pf: PartialFunction[E, T]): T = {
 
     bufferShouldNoBeEmpty()
 
@@ -173,5 +173,5 @@ trait InMemoryTestSupport {
     assert(receivedEvents.isEmpty, s"Event queue not empty: $events")
   }
 
-  def events: List[AnyEvent] = receivedEvents.toList
+  def events: List[Any] = receivedEvents.toList
 }

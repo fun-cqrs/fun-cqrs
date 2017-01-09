@@ -1,5 +1,6 @@
-package io.funcqrs
+package io.funcqrs.projections
 
+import io.funcqrs.TestDomainEvent
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
 
@@ -23,7 +24,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
     val andThenProjection = fooProjection1 andThen fooProjection2
 
-    whenReady(andThenProjection.onEvent(FooEvent("abc"))) { _ =>
+    whenReady(andThenProjection.onEvent(Envelop(FooEvent("abc"), 1))) { _ =>
       fooProjection1.result.value shouldBe "abc"
       fooProjection2.result.value shouldBe "abc"
     }
@@ -36,7 +37,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
     val andThenProjection = fooProjection andThen barProjection
 
-    whenReady(andThenProjection.onEvent(BarEvent(10))) { _ =>
+    whenReady(andThenProjection.onEvent(Envelop(BarEvent(10), 1))) { _ =>
       fooProjection.result shouldBe None
       barProjection.result.value shouldBe 10
     }
@@ -50,7 +51,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     val andThenProjection = newFailingProjection() andThen barProjection
 
     // we must recover it in other to use with ScalaTest
-    val recovered = andThenProjection.onEvent(BarEvent(10)).recover { case _ => () }
+    val recovered = andThenProjection.onEvent(Envelop(BarEvent(10), 1)).recover { case _ => () }
 
     whenReady(recovered) { _ =>
       barProjection.result shouldBe None
@@ -64,33 +65,33 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     val andThenProjection = barProjection andThen newFailingProjection()
 
     // we must recover it in other to use with ScalaTest
-    val recovered = andThenProjection.onEvent(BarEvent(10)).recover { case _ => () }
+    val recovered = andThenProjection.onEvent(Envelop(BarEvent(10), 1)).recover { case _ => () }
 
     whenReady(recovered) { _ =>
       barProjection.result.value shouldBe 10
     }
   }
 
-  def newFailingProjection() = new Projection {
-    def handleEvent = {
+  def newFailingProjection() = new Projection[TestDomainEvent] {
+    def receiveEvent = {
       case evt => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
-  trait StatefulProjection[T] extends Projection {
+  trait StatefulProjection[T] extends Projection[TestDomainEvent] {
     var result: Option[T] = None
   }
   def newFooProjection() = new StatefulProjection[String] {
-    def handleEvent = {
-      case evt: FooEvent =>
+    def receiveEvent = {
+      case Envelop(evt: FooEvent, _) =>
         result = Some(evt.value)
         Future.successful(())
     }
   }
 
   def newBarProjection() = new StatefulProjection[Int] {
-    def handleEvent = {
-      case evt: BarEvent =>
+    def receiveEvent = {
+      case Envelop(evt: BarEvent, _) =>
         result = Some(evt.num)
         Future.successful(())
     }

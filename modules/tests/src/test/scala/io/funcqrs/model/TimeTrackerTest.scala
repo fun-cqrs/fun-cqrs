@@ -9,7 +9,7 @@ class TimeTrackerTest extends FlatSpec with Matchers {
 
   behavior of "TimerTracker"
 
-  class InMemoryTest extends InMemoryTestSupport {
+  class InMemoryTest extends InMemoryTestSupport[TrackerEvent] {
 
     def configure(backend: InMemoryBackend): Unit = {
       backend.configure {

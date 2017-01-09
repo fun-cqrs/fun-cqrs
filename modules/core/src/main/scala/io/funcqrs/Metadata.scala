@@ -31,7 +31,7 @@ trait JavaTime { self: Metadata =>
 
 /**
   * Enriches [[AnyEvent]] with [[Metadata]] information.
-  * TODO: should not be linked to DomainEvent and we should have a Facet only for tagging
+  * TODO: we should have a Facet only for tagging
   * @tparam M a Metadata subtype
   */
 trait MetadataFacet[M <: Metadata] { this: AnyEvent =>

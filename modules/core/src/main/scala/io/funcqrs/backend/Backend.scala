@@ -13,7 +13,7 @@ trait Backend[F[_]] extends AggregateFactory[F] {
   /** Configure a Aggregate */
   def configure[A: ClassTag, C, E, I <: AggregateId](config: AggregateConfig[A, C, E, I]): Backend[F]
 
-  def configure(config: ProjectionConfig): Backend[F]
+  def configure[E](config: ProjectionConfig[E]): Backend[F]
 
   protected def configLookup[A: ClassTag, C, E, I](lookup: => AggregateConfig[A, C, E, I]) = {
     try {

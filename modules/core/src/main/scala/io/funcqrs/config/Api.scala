@@ -29,11 +29,11 @@ object Api {
   }
 
   /** Initiates the configuration of a Projection */
-  def projection(query: Query, projection: Projection, name: String): ProjectionConfig = {
+  def projection[E](query: Query, projection: Projection[E], name: String): ProjectionConfig[E] = {
     ProjectionConfig(query, projection, name)
   }
 
-  def projection(query: Query, projection: Projection): ProjectionConfig = {
+  def projection[E](query: Query, projection: Projection[E]): ProjectionConfig[E] = {
     ProjectionConfig(query, projection, projection.name)
   }
 }
