@@ -22,7 +22,7 @@ import scala.util.{ Failure, Success, Try }
   * @tparam C - the Command type
   * @tparam E - the Event type
   */
-class TryInterpreter[A, C, E](val behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds) extends Interpreter[A, C, E, Try] {
+class TryInterpreter[A, C, E](val behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) extends Interpreter[A, C, E, Try] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => Try(handler(cmd))
@@ -41,5 +41,5 @@ class TryInterpreter[A, C, E](val behavior: api.Behavior[A, C, E], atMost: Durat
 }
 
 object TryInterpreter {
-  def apply[A, C, E](behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds) = new TryInterpreter(behavior, atMost)
+  def apply[A, C, E](behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) = new TryInterpreter(behavior, atMost)
 }

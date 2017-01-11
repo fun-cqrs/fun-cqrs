@@ -1,6 +1,6 @@
 package io.funcqrs.backend
 
-import io.funcqrs.behavior.api.Types
+import io.funcqrs.behavior.Types
 import io.funcqrs.{ AggregateId, AggregateRef }
 
 import scala.language.higherKinds

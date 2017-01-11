@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Success, Try }
 
-trait InMemoryTestSupport[E] {
+abstract class InMemoryTestSupport[E: ClassTag] {
 
   // internal queue with events. All events produced by the testing
   // will be added to this queue for later assertions
@@ -29,7 +29,7 @@ trait InMemoryTestSupport[E] {
     val backend = new InMemoryBackend
     configure(backend)
 
-    backend.configure {
+    backend.configure[E] {
       projection(
         query      = QuerySelectAll,
         projection = internalProjection,
@@ -174,4 +174,13 @@ trait InMemoryTestSupport[E] {
   }
 
   def events: List[Any] = receivedEvents.toList
+
+  /**
+    * Drop all Events.
+    * This method are useful to make sure there are no
+    * unconsumed event in the queue before starting a new test
+    *
+    * Useful when reusing the same test support on multiple test
+    */
+  def dropAllEvents() = receivedEvents.clear()
 }

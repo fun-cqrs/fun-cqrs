@@ -2,8 +2,7 @@ package io.funcqrs.test.backend
 
 import io.funcqrs._
 import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
-import io.funcqrs.behavior._
-import io.funcqrs.behavior.api.Types
+import io.funcqrs.behavior.{ Types, _ }
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import io.funcqrs.projections.Envelop
@@ -49,13 +48,13 @@ class InMemoryBackend extends Backend[Identity] {
     this
   }
 
-  def configure[E](config: ProjectionConfig[E]): Backend[Identity] = {
+  def configure[E: ClassTag](config: ProjectionConfig[E]): Backend[Identity] = {
 
     // does the event match the query criteria?
-    def matchQuery(evt: E with MetadataFacet[_]): Boolean = {
+    def matchQuery(_tags: Set[Tag]): Boolean = {
       config.query match {
-        case QueryByTag(tag)   => evt.tags.contains(tag)
-        case QueryByTags(tags) => tags.subsetOf(evt.tags)
+        case QueryByTag(tag)   => _tags.contains(tag)
+        case QueryByTags(tags) => tags.subsetOf(_tags)
         case QuerySelectAll    => true
       }
     }
@@ -67,22 +66,38 @@ class InMemoryBackend extends Backend[Identity] {
       }
     }
 
-    eventStream.subscribe { evt: AnyEvent =>
-      // send even to projections
-      def sendToProjection(event: E) = {
-        val envelop = Envelop(event, 1)
-        // TODO: projections should be interpreted as well to avoid this
-        Await.ready(config.projection.onEvent(envelop), 10.seconds)
-        ()
+    // send even to projections
+    def sendToProjection(event: E) = {
+      val envelop = Envelop(event, 1)
+      // TODO: projections should be interpreted as well to avoid this
+      Await.ready(config.projection.onEvent(envelop), 10.seconds)
+      ()
+    }
+
+    def matchEvent(event: E) = {
+
+      event match {
+        // can only match on Facet, not on E with MetadataFacet
+        case evt: MetadataFacet[_] if matchQuery(evt.tags) =>
+          sendToProjection(event)
+
+        case evt if matchQueryWithoutTagging(evt) =>
+          sendToProjection(event)
+
+        case _ => // otherwise do nothing
       }
-      evt match {
-        case evt: E with MetadataFacet[_] if matchQuery(evt) =>
-          sendToProjection(evt)
-        case evt: E if matchQueryWithoutTagging(evt) =>
-          sendToProjection(evt)
+    }
+
+    eventStream.subscribe { event: AnyEvent =>
+      event match {
+        // now we must go ugly with types
+        case evt if ClassTagImplicits[E].runtimeClass.isAssignableFrom(evt.getClass) =>
+          matchEvent(evt.asInstanceOf[E])
+
+        // otherwise do nothing, don't send to projection
         case anyEvent =>
-        // do nothing, don't send to projection
       }
+
     }
 
     this
@@ -94,8 +109,7 @@ class InMemoryBackend extends Backend[Identity] {
     }
   }
 
-  class InMemoryAggregateRef[A, C, E, I <: AggregateId](id: I, behavior: api.Behavior[A, C, E]) extends IdentityAggregateRef[A, C, E] {
-    self =>
+  class InMemoryAggregateRef[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E]) extends IdentityAggregateRef[A, C, E] { self =>
 
     private var aggregateState: Option[A] = None
 

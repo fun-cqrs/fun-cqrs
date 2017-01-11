@@ -1,8 +1,7 @@
-package io.funcqrs.behavior.api
+package io.funcqrs.behavior
 
-import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
 import io.funcqrs.interpreters.Identity
-import io.funcqrs.behavior._
+import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
 
 import scala.collection.immutable
 import scala.language.higherKinds
@@ -125,13 +124,11 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     * Concatenate `this` Actions with `that` Actions
     */
   def ++(that: Actions[A, C, E]) = {
-    // FIXME: bad type inference
-//    this.copy(
-//      cmdInvokers       = this.cmdInvokers orElse that.cmdInvokers,
-//      rejectCmdInvokers = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
-//      evtHandlers       = this.evtHandlers orElse that.evtHandlers
-//    )
-    this
+    Actions[A, C, E](
+      cmdInvokers       = this.cmdInvokers orElse that.cmdInvokers,
+      rejectCmdInvokers = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
+      evtHandlers       = this.evtHandlers orElse that.evtHandlers
+    )
   }
 
   private def addInvoker[CC <: Command: ClassTag, EE <: Event](invoker: CommandHandlerInvoker[CC, EE]): TypedActions = {

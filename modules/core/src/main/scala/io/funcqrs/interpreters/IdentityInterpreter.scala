@@ -22,8 +22,7 @@ import scala.util.Try
   * @tparam C - the Command type
   * @tparam E - the Event type
   */
-class IdentityInterpreter[A, C, E](val behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds)
-    extends Interpreter[A, C, E, Identity] {
+class IdentityInterpreter[A, C, E](val behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) extends Interpreter[A, C, E, Identity] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => handler(cmd)
@@ -42,5 +41,5 @@ class IdentityInterpreter[A, C, E](val behavior: api.Behavior[A, C, E], atMost: 
 }
 
 object IdentityInterpreter {
-  def apply[A, C, E](behavior: api.Behavior[A, C, E], atMost: Duration = 5.seconds) = new IdentityInterpreter(behavior, atMost)
+  def apply[A, C, E](behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) = new IdentityInterpreter(behavior, atMost)
 }

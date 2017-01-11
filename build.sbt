@@ -58,15 +58,14 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 // #                     SAMPLES                      #
 // #####################################################
-
-//lazy val lotteryApp = Project(
-//  id       = "sample-lottery",
-//  base     = file("samples/lottery"),
-//  settings = defaultSettings
-//).settings(libraryDependencies ++= sampleDeps)
-//  .settings(publishArtifact := false)
-//  .dependsOn(funCqrs)
-//  .dependsOn(funCqrsTestKit)
+lazy val lotteryApp = Project(
+  id       = "sample-lottery",
+  base     = file("samples/lottery"),
+  settings = defaultSettings
+).settings(libraryDependencies ++= sampleDeps)
+ .settings(publishArtifact := false)
+ .dependsOn(funCqrs)
+ .dependsOn(funCqrsTestKit)
 //  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")

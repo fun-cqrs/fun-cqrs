@@ -4,8 +4,7 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 import io.funcqrs._
-import io.funcqrs.behavior._
-import io.funcqrs.behavior.api.Types
+import io.funcqrs.behavior.{ Types, _ }
 
 sealed trait TimeTracker {
 
@@ -117,7 +116,7 @@ object TimeTracker extends Types[TimeTracker] {
     // format: on
 
   def behavior(id: TrackerId) =
-    api.Behavior
+    Behavior
       .construct(constructionHandlers(id))
       .andThen {
         case tracker: IdleTracker => tracker.actionsWhenIdle

@@ -1,8 +1,8 @@
 package io.funcqrs.config
 
+import io.funcqrs.CommandException
 import io.funcqrs.backend.Query
-import io.funcqrs.behavior.api._
-import io.funcqrs.{ AggregateLike, AnyEvent, CommandException }
+import io.funcqrs.behavior._
 import io.funcqrs.projections.Projection
 
 import scala.language.higherKinds

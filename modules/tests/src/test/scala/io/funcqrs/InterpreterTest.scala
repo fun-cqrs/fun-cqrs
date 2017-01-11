@@ -3,7 +3,6 @@ package io.funcqrs
 import java.time.OffsetDateTime
 
 import io.funcqrs.behavior._
-import io.funcqrs.behavior.api.Actions
 import io.funcqrs.interpreters.IdentityInterpreter
 import io.funcqrs.model._
 import org.scalatest.{ FunSuite, Matchers }
@@ -20,7 +19,7 @@ class InterpreterTest extends FunSuite with Matchers {
     // a bogus TimeTracker behavior
     // can't start timer due to missing case for Idle state
     def behavior =
-      api.Behavior
+      Behavior
         .construct(constructionHandlers(TrackerId.generate))
         .andThen {
           // missing behavior for IdleTracker

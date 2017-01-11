@@ -1,35 +1,37 @@
 package io.funcqrs
 
+import io.funcqrs.behavior.Actions
+
 package object behavior {
 
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  type Behavior[A <: AggregateLike] = PartialFunction[State[A], ActionsDeprec[A]]
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  type BehaviorUnwrapped[A <: AggregateLike] = PartialFunction[A, ActionsDeprec[A]]
+  type Behavior[A, C, E] = PartialFunction[Option[A], Actions[A, C, E]]
+
+  type AggregateToActions[A, C, E] = PartialFunction[A, Actions[A, C, E]]
 
   /**
-    * A CommandToInvoker is a PartialFunction from a DomainCommand to a CommandHandlerInvoker
+    * A CommandToInvoker is a PartialFunction from a Command to a CommandHandlerInvoker
     */
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  type CommandToInvoker[C <: DomainCommand, E <: DomainEvent] = PartialFunction[C, CommandHandlerInvoker[C, E]]
+  type CommandToInvoker[C, E] = PartialFunction[C, CommandHandlerInvoker[C, E]]
 
   /**
-    * An EventHandler is a PartialFunction from a DomainEvent to an Aggregate
+    * An EventHandler is a PartialFunction from an Event to an aggregate
     *
     * Typically it is used to construct or update an aggregate. In case of update, an Aggregate instance must be in scope.
     */
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  type EventHandler[E <: DomainEvent, A <: AggregateLike] = PartialFunction[E, A]
+  type EventHandler[E, A] = PartialFunction[E, A]
 
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  def actions[A <: AggregateLike]: ActionsDeprec[A] = ActionsDeprec[A]()
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  def action[A <: AggregateLike]: ActionsDeprec[A] = ActionsDeprec[A]()
+  class BehaviorStage[A, C, E](onCreation: => Actions[A, C, E]) {
 
-  @deprecated(message = "will be removed by something using Types", since = "1.0.0")
-  def Behavior[A <: AggregateLike](onCreation: => ActionsDeprec[A])(postCreation: BehaviorUnwrapped[A]): Behavior[A] = {
-    case Uninitialized(_)                                              => onCreation
-    case Initialized(aggregate) if postCreation.isDefinedAt(aggregate) => postCreation(aggregate)
+    def andThen(postCreation: AggregateToActions[A, C, E]): Behavior[A, C, E] = {
+      case None                                                   => onCreation
+      case Some(aggregate) if postCreation.isDefinedAt(aggregate) => postCreation(aggregate)
+    }
   }
 
+  object BehaviorBuilder {
+    def construct[A, C, E](onCreation: => Actions[A, C, E]) =
+      new BehaviorStage(onCreation)
+  }
+
+  def Behavior = BehaviorBuilder
 }

@@ -2,9 +2,10 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 import java.util.UUID
+
 import io.funcqrs._
-import io.funcqrs.behavior.api._
-import io.funcqrs.behavior.api.Types
+import io.funcqrs.behavior.Types
+import io.funcqrs.behavior._
 
 import scala.util.Random
 
@@ -31,15 +32,14 @@ case class EmptyLottery(id: LotteryId) extends Lottery {
     */
   def acceptParticipants =
     Lottery.actions
-      .handleCommand {
-        case AddParticipant(name) => ParticipantAdded(name, id)
+      .handleCommand { cmd: AddParticipant =>
+        ParticipantAdded(cmd.name, id)
       }
-      .handleEvent {
-        case ParticipantAdded(name, _) =>
-          NonEmptyLottery(
-            participants = List(name),
-            id           = id
-          )
+      .handleEvent { evt: ParticipantAdded =>
+        NonEmptyLottery(
+          participants = List(evt.name),
+          id           = id
+        )
       }
 }
 
@@ -67,11 +67,11 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
     */
   def acceptParticipants =
     Lottery.actions
-      .handleCommand {
-        case AddParticipant(name) => ParticipantAdded(name, id)
+      .handleCommand { cmd: AddParticipant =>
+        ParticipantAdded(cmd.name, id)
       }
-      .handleEvent {
-        case ParticipantAdded(name, _) => copy(participants = name :: participants)
+      .handleEvent { evt: ParticipantAdded =>
+        copy(participants = evt.name :: participants)
       }
 
   /**
@@ -81,24 +81,23 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
   def removeParticipants =
     Lottery.actions
     // removing participants (single or all) produce ParticipantRemoved events
-      .handleCommand {
-        case RemoveParticipant(name) => ParticipantRemoved(name, id)
+      .handleCommand { cmd: RemoveParticipant =>
+        ParticipantRemoved(cmd.name, id)
       }
       .handleCommand {
         // will produce a List[ParticipantRemoved]
-        case RemoveAllParticipants =>
+        cmd: RemoveAllParticipants.type =>
           this.participants.map { name =>
             ParticipantRemoved(name, id)
           }
       }
-      .handleEvent {
-        case ParticipantRemoved(name, _) =>
-          val newParticipants = participants.filter(_ != evt.name)
-          // NOTE: if last participant is removed, transition back to EmptyLottery
-          if (newParticipants.isEmpty)
-            EmptyLottery(id)
-          else
-            copy(participants = newParticipants)
+      .handleEvent { evt: ParticipantRemoved =>
+        val newParticipants = participants.filter(_ != evt.name)
+        // NOTE: if last participant is removed, transition back to EmptyLottery
+        if (newParticipants.isEmpty)
+          EmptyLottery(id)
+        else
+          copy(participants = newParticipants)
       }
 
   /**
@@ -106,16 +105,16 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
     * Only applicable if it has at least one participant
     */
   def runTheLottery =
-    actions[Lottery]
-      .handleCommand {
-        case Run =>
-          val index  = Random.nextInt(participants.size)
-          val winner = participants(index)
-          WinnerSelected(winner, OffsetDateTime.now, id)
+    Lottery.actions
+      .handleCommand { cmd: Run.type =>
+        val index  = Random.nextInt(participants.size)
+        val winner = participants(index)
+        WinnerSelected(winner, OffsetDateTime.now, id)
       }
       .handleEvent {
         // transition to end state on winner selection
-        case WinnerSelected(winner, _, _) => FinishedLottery(evt.winner, id)
+        evt: WinnerSelected =>
+          FinishedLottery(evt.winner, id)
       }
 }
 
@@ -126,7 +125,7 @@ case class FinishedLottery(winner: String, id: LotteryId) extends Lottery {
     * Applicable when a winner is selected. No new commands should be accepts.
     */
   def rejectAllCommands =
-    action[Lottery]
+    Lottery.actions
       .rejectCommand {
         // no command can be accepted after having selected a winner
         case anyCommand =>
@@ -146,34 +145,6 @@ object LotteryId {
   def generate(): LotteryId = LotteryId(UUID.randomUUID().toString)
 }
 
-/** Defines the Lottery Protocol, all Commands it may receive and Events it may emit */
-// Commands ============================================================
-sealed trait LotteryCommand
-// Creation Command
-case object CreateLottery extends LotteryCommand
-
-// Update Commands
-case class AddParticipant(name: String) extends LotteryCommand
-
-case class RemoveParticipant(name: String) extends LotteryCommand
-
-case object RemoveAllParticipants extends LotteryCommand
-
-case object Run extends LotteryCommand
-
-// Events ============================================================
-sealed trait LotteryEvent {
-  def lotteryId: LotteryId
-}
-
-// Creation Event
-case class LotteryCreated(lotteryId: LotteryId) extends LotteryEvent
-// Update Events
-sealed trait LotteryUpdateEvent extends LotteryEvent
-case class ParticipantAdded(name: String, lotteryId: LotteryId) extends LotteryUpdateEvent
-case class ParticipantRemoved(name: String, lotteryId: LotteryId) extends LotteryUpdateEvent
-case class WinnerSelected(winner: String, date: OffsetDateTime, lotteryId: LotteryId) extends LotteryUpdateEvent
-
 object Lottery extends Types[Lottery] {
 
   type Id      = LotteryId
@@ -183,17 +154,20 @@ object Lottery extends Types[Lottery] {
   // a tag for lottery, useful to query the event store later on
   val tag = Tags.aggregateTag("lottery")
 
-//  // defines seed command and event handlers
-  def constructionActions(lotteryId: LotteryId): Actions[Lottery, LotteryCommand, LotteryEvent] =
-    actions
-      .handleCommand { case CreateLottery => LotteryCreated(lotteryId) }
-      .handleEvent {
-        case evt: LotteryCreated => EmptyLottery(id = lotteryId)
-      }
-
   def behavior(lotteryId: LotteryId): Behavior[Lottery, LotteryCommand, LotteryEvent] =
     Behavior
-      .construct(constructionActions(lotteryId))
+    // defines how to construct a Lottery Aggregate
+      .construct {
+
+        actions
+          .handleCommand { cmd: CreateLottery.type =>
+            LotteryCreated(lotteryId)
+          }
+          .handleEvent { evt: LotteryCreated =>
+            EmptyLottery(id = lotteryId)
+          }
+      }
+      // defines how to update it
       .andThen {
         case lottery: EmptyLottery =>
           lottery.canNotRunWithoutParticipants ++

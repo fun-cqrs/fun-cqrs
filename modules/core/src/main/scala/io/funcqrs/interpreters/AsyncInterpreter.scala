@@ -17,7 +17,7 @@ import scala.util.Try
   * @tparam C - the Command type
   * @tparam E - the Event type
   */
-class AsyncInterpreter[A, C, E](val behavior: api.Behavior[A, C, E]) extends Interpreter[A, C, E, Future] {
+class AsyncInterpreter[A, C, E](val behavior: Behavior[A, C, E]) extends Interpreter[A, C, E, Future] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => Future.successful(handler(cmd))
@@ -35,5 +35,5 @@ class AsyncInterpreter[A, C, E](val behavior: api.Behavior[A, C, E]) extends Int
 }
 
 object AsyncInterpreter {
-  def apply[A, C, E](behavior: api.Behavior[A, C, E]) = new AsyncInterpreter(behavior)
+  def apply[A, C, E](behavior: Behavior[A, C, E]) = new AsyncInterpreter(behavior)
 }

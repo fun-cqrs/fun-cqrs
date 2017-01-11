@@ -1,4 +1,4 @@
-package io.funcqrs.behavior.api
+package io.funcqrs.behavior
 
 import io.funcqrs.AggregateId
 

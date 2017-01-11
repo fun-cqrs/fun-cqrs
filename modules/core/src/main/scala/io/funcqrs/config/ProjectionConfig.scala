@@ -1,6 +1,5 @@
 package io.funcqrs.config
 
-import io.funcqrs.AnyEvent
 import io.funcqrs.backend.Query
 
 import scala.concurrent.Future

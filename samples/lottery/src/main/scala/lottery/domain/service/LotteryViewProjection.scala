@@ -1,22 +1,22 @@
 package lottery.domain.service
 
 //tag::lottery-view-projection[]
-import io.funcqrs.Projection
+import io.funcqrs.projections._
 import io.funcqrs.HandleEvent
-import lottery.domain.model.LotteryProtocol._
+import lottery.domain.model._
 import lottery.domain.model.LotteryView
 import lottery.domain.model.LotteryView.Participant
 
 import scala.concurrent.Future
 
-class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
+class LotteryViewProjection(repo: LotteryViewRepo) extends Projection[LotteryEvent] {
 
-  def handleEvent: HandleEvent = {
+  def receiveEvent: ReceiveEvent = {
 
-    case e: LotteryCreated =>
+    case Envelop(e: LotteryCreated, _) =>
       Future.successful(repo.save(LotteryView(id = e.lotteryId)))
 
-    case e: LotteryUpdateEvent =>
+    case Envelop(e: LotteryUpdateEvent, _) =>
       Future.successful {
         repo
           .updateById(e.lotteryId) { lot =>

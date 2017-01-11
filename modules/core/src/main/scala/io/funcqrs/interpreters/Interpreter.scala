@@ -19,7 +19,7 @@ abstract class Interpreter[A, C, E, F[_]] {
   type Event     = E
   type Events    = immutable.Seq[E]
 
-  protected def behavior: api.Behavior[Aggregate, Command, Event]
+  protected def behavior: Behavior[Aggregate, Command, Event]
 
   type InterpreterFunction = PartialFunction[(Command, CommandHandlerInvoker[Command, Event]), F[Events]]
 

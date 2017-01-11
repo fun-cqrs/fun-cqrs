@@ -1,6 +1,6 @@
 package io.funcqrs.config
 
-import io.funcqrs.behavior.api.Behavior
+import io.funcqrs.behavior.Behavior
 
 case class AggregateConfig[A, C, E, I](
     name: Option[String],
