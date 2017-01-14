@@ -44,7 +44,7 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
           )
       }
       .handleEvent {
-        evt: TimerStopped => stop(evt.end)
+        case TimerStopped(end, _) => stop(end)
       }
     // format: on
 }
@@ -66,7 +66,7 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
         cmd: ReplaceTask => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
       }
       .handleEvent {
-        evt: TimerStarted => start(evt.title, evt.start)
+        case TimerStarted(title, startDate, _) => start(title, startDate)
       }
     // format: on
 
@@ -111,7 +111,7 @@ object TimeTracker extends Types[TimeTracker] {
           )
       }
       .handleEvent {
-        evt: TimerCreated => IdleTracker(id)
+        case TimerCreated(_) => IdleTracker(id)
       }
     // format: on
 

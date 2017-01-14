@@ -84,14 +84,8 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     * @param eventHandler - the event handler function
     * @return an Actions for A
     */
-  def handleEvent[EE <: Event: ClassTag](eventHandler: EE => A): TypedActions = {
-
-    object EvtExtractor extends ClassTagExtractor[EE]
-
-    val eventHandlerPF: EventHandler[E, A] = {
-      case EvtExtractor(evt) => eventHandler(evt)
-    }
-    this.copy(evtHandlers = evtHandlers orElse eventHandlerPF)
+  def handleEvent(eventHandler: EventHandler[E, A]): TypedActions = {
+    this.copy(evtHandlers = evtHandlers orElse eventHandler)
   }
 
   /**

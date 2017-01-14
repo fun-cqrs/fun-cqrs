@@ -48,7 +48,7 @@ class InterpreterTest extends FunSuite with Matchers {
           TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
         )
       }
-      .handleEvent { evt: TimerCreated =>
-        IdleTracker(trackerId)
+      .handleEvent {
+        case _: TimerCreated => IdleTracker(trackerId)
       }
 }

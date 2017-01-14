@@ -35,11 +35,12 @@ case class EmptyLottery(id: LotteryId) extends Lottery {
       .handleCommand { cmd: AddParticipant =>
         ParticipantAdded(cmd.name, id)
       }
-      .handleEvent { evt: ParticipantAdded =>
-        NonEmptyLottery(
-          participants = List(evt.name),
-          id           = id
-        )
+      .handleEvent {
+        case ParticipantAdded(name, _) =>
+          NonEmptyLottery(
+            participants = List(name),
+            id           = id
+          )
       }
 }
 
@@ -70,8 +71,9 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
       .handleCommand { cmd: AddParticipant =>
         ParticipantAdded(cmd.name, id)
       }
-      .handleEvent { evt: ParticipantAdded =>
-        copy(participants = evt.name :: participants)
+      .handleEvent {
+        case ParticipantAdded(name, _) =>
+          copy(participants = name :: participants)
       }
 
   /**
@@ -91,13 +93,14 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
             ParticipantRemoved(name, id)
           }
       }
-      .handleEvent { evt: ParticipantRemoved =>
-        val newParticipants = participants.filter(_ != evt.name)
-        // NOTE: if last participant is removed, transition back to EmptyLottery
-        if (newParticipants.isEmpty)
-          EmptyLottery(id)
-        else
-          copy(participants = newParticipants)
+      .handleEvent {
+        case ParticipantRemoved(name, _) =>
+          val newParticipants = participants.filter(_ != name)
+          // NOTE: if last participant is removed, transition back to EmptyLottery
+          if (newParticipants.isEmpty)
+            EmptyLottery(id)
+          else
+            copy(participants = newParticipants)
       }
 
   /**
@@ -113,8 +116,7 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
       }
       .handleEvent {
         // transition to end state on winner selection
-        evt: WinnerSelected =>
-          FinishedLottery(evt.winner, id)
+        case evt: WinnerSelected => FinishedLottery(evt.winner, id)
       }
 }
 
@@ -163,8 +165,8 @@ object Lottery extends Types[Lottery] {
           .handleCommand { cmd: CreateLottery.type =>
             LotteryCreated(lotteryId)
           }
-          .handleEvent { evt: LotteryCreated =>
-            EmptyLottery(id = lotteryId)
+          .handleEvent {
+            case _: LotteryCreated => EmptyLottery(id = lotteryId)
           }
       }
       // defines how to update it
