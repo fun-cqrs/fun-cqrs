@@ -30,19 +30,20 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
   def actionsWhenBusy =
     // format: off
     TimeTracker.actions
-      .handleCommand {
-        cmd: StopTracking.type => TimerStopped(OffsetDateTime.now(), EventId())
-      }
-      .handleCommand {
-        cmd: ReplaceTask =>
-          val now = OffsetDateTime.now()
-          List(
-            TimerStopped(now, EventId()),
-            // the event handler for TimerStarter is defined
-            // on the behavior case branch for idling TimeTracker
-            TimerStarted(cmd.title, now, EventId())
-          )
-      }
+//      .handleCommand {
+//        case  StopTracking => TimerStopped(OffsetDateTime.now(), EventId())
+//      }
+//      .handleCommand {
+//        case cmd: ReplaceTask =>
+//          val now = OffsetDateTime.now()
+//          List(
+//            TimerStopped(now, EventId()),
+//            // the event handler for TimerStarter is defined
+//            // on the behavior case branch for idling TimeTracker
+//            TimerStarted(cmd.title, now, EventId())
+//          )
+//          ???
+//      }
       .handleEvent {
         case TimerStopped(end, _) => stop(end)
       }
@@ -59,12 +60,12 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
   def actionsWhenIdle =
     // format: off
     TimeTracker.actions
-      .handleCommand {
-        cmd: StartTracking => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
-      }
-      .handleCommand {
-        cmd: ReplaceTask => TimerStarted(cmd.title, OffsetDateTime.now(), EventId())
-      }
+//      .handleCommand {
+//        case StartTracking(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
+//      }
+//      .handleCommand {
+//        case ReplaceTask(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
+//      }
       .handleEvent {
         case TimerStarted(title, startDate, _) => start(title, startDate)
       }
@@ -97,19 +98,20 @@ object TimeTracker extends Types[TimeTracker] {
   def constructionHandlers(id: TrackerId) =
     // format: off
     actions
-      .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId())
-      }
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          List(
-            TimerCreated(EventId()),
-            // the event handler for TimerStarter depends on a created Tracker
-            // and therefore can't be defined in this 'Actions'
-            // behavior is available in next transition
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-          )
-      }
+//      .handleCommand {
+//        case CreateTracker => TimerCreated(EventId())
+//      }
+//      .handleCommand {
+//        case CreateAndStartTracking(taskTitle) =>
+//          List(
+//            TimerCreated(EventId()),
+//            // the event handler for TimerStarter depends on a created Tracker
+//            // and therefore can't be defined in this 'Actions'
+//            // behavior is available in next transition
+//            TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+//          )
+//          ???
+//      }
       .handleEvent {
         case TimerCreated(_) => IdleTracker(id)
       }

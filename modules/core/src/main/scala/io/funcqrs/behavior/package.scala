@@ -1,6 +1,9 @@
 package io.funcqrs
 
+import scala.collection.immutable
 import io.funcqrs.behavior.Actions
+
+import scala.language.higherKinds
 
 package object behavior {
 
@@ -12,6 +15,10 @@ package object behavior {
     * A CommandToInvoker is a PartialFunction from a Command to a CommandHandlerInvoker
     */
   type CommandToInvoker[C, E] = PartialFunction[C, CommandHandlerInvoker[C, E]]
+
+  type CommandToOneEvent[C, E, F[_]] = PartialFunction[C, F[E]]
+
+  type CommandToManyEvents[C, E, F[_]] = PartialFunction[C, F[immutable.Seq[E]]]
 
   /**
     * An EventHandler is a PartialFunction from an Event to an aggregate

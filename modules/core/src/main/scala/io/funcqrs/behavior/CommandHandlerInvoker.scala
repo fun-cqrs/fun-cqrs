@@ -16,29 +16,29 @@ import scala.util.Try
   * Functor that will be returned when handling the command. Fun.CQRS provides three CommandHandlerInvoker implementations:
   * IdCommandHandlerInvoker (returns the Identity Functor), TryCommandHandlerInvoker and FutureCommandHandlerInvoker.
   */
-trait CommandHandlerInvoker[-C, E] {
+trait CommandHandlerInvoker[C, E] {
 
   type F[_]
 
-  def commandHandler: C => F[immutable.Seq[E]]
+  def commandHandler: CommandToManyEvents[C, E, F] // C => F[immutable.Seq[E]]
 
   def apply(cmd: C): F[immutable.Seq[E]] = commandHandler(cmd)
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Identity]] */
-case class IdCommandHandlerInvoker[C, E](commandHandler: C => Identity[immutable.Seq[E]]) extends CommandHandlerInvoker[C, E] {
+case class IdCommandHandlerInvoker[C, E](commandHandler: CommandToManyEvents[C, E, Identity]) extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Identity[_]
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Try]] */
-case class TryCommandHandlerInvoker[C, E](commandHandler: C => Try[immutable.Seq[E]]) extends CommandHandlerInvoker[C, E] {
+case class TryCommandHandlerInvoker[C, E](commandHandler: CommandToManyEvents[C, E, Try]) extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Try[_]
 }
 
 /** A CommandHandlerInvoker which F type member is defined as [[Future]] */
-case class FutureCommandHandlerInvoker[C, E](commandHandler: C => Future[immutable.Seq[E]]) extends CommandHandlerInvoker[C, E] {
+case class FutureCommandHandlerInvoker[C, E](commandHandler: CommandToManyEvents[C, E, Future]) extends CommandHandlerInvoker[C, E] {
 
   type F[_] = Future[_]
 }

@@ -3,7 +3,7 @@ package io.funcqrs
 import java.time.OffsetDateTime
 
 import io.funcqrs.behavior._
-import io.funcqrs.interpreters.IdentityInterpreter
+import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import io.funcqrs.model._
 import org.scalatest.{ FunSuite, Matchers }
 
@@ -36,17 +36,22 @@ class InterpreterTest extends FunSuite with Matchers {
 
   def constructionHandlers(trackerId: TrackerId) =
     TimeTracker.actions
-      .handleCommand { cmd: CreateTracker.type =>
-        TimerCreated(EventId())
+      .commandHandler {
+        OneEvent {
+          case CreateTracker => TimerCreated(EventId())
+        }
       }
-      .handleCommand { cmd: CreateAndStartTracking =>
-        List(
-          TimerCreated(EventId()),
-          // the event handler for TimerStarter depends on a created Tracker
-          // and therefore can't be defined in this 'Actions'
-          // behavior is available in next transition
-          TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-        )
+      .commandHandler {
+        ManyEvents {
+          case cmd: CreateAndStartTracking =>
+            List(
+              TimerCreated(EventId()),
+              // the event handler for TimerStarter depends on a created Tracker
+              // and therefore can't be defined in this 'Actions'
+              // behavior is available in next transition
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
+            )
+        }
       }
       .handleEvent {
         case _: TimerCreated => IdleTracker(trackerId)

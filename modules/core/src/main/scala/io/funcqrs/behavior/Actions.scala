@@ -36,7 +36,7 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     if (allHandlers.isDefinedAt(cmd))
       allHandlers(cmd)
     else {
-      val cmdHandler: PartialFunction[Command, Try[Events]] = {
+      val cmdHandler: CommandToManyEvents[C, E, Try] = {
         case _ =>
           val msg = s"No command handlers defined for command: $cmd"
           Failure(new MissingCommandHandlerException(msg))
@@ -59,24 +59,18 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
       throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
   }
 
-  /** Declares a `Command Handler` that produces one single [[Event]] */
-  def handleCommand[CC <: Command: ClassTag, EE <: Event](cmdHandler: CC => Identity[EE]): TypedActions = {
-    // wrap single event in immutable.Seq
-    val handlerWithSeq: CC => Identity[immutable.Seq[EE]] = (cmd: CC) => immutable.Seq(cmdHandler(cmd))
-    handleCommand[CC, EE, immutable.Seq](handlerWithSeq)
+  def commandHandler[F[_], G[_]](cmdHandler: CommandHandler[C, E, F, G]): TypedActions = {
+    addInvoker(cmdHandler.invoker)
   }
 
-  def handleCommand[CC <: Command: ClassTag, EE <: Event, F[_]](cmdHandler: CC => F[EE])(implicit ivk: InvokerDirective[F]): TypedActions =
-    addInvoker(ivk.newInvoker(cmdHandler))
+  private def addInvoker(invoker: CommandHandlerInvoker[C, E]): TypedActions = {
 
-//  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(
-//      implicit ivk: InvokerSeqDirective[F]): TypedActions =
-//    addInvoker(ivk.newInvoker(cmdHandler))
-//
-//  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(
-//      implicit ivk: InvokerListDirective[F]): TypedActions =
-//    addInvoker(ivk.newInvoker(cmdHandler))
-//
+    val invokerPF: CommandToInvoker[C, E] = {
+      case cmd if invoker.commandHandler.isDefinedAt(cmd) => invoker
+    }
+
+    this.copy(cmdInvokers = cmdInvokers orElse invokerPF)
+  }
 
   /**
     * Declares an event handler
@@ -91,7 +85,7 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
   /**
     * Declares a guard clause that reject commands that fulfill a given condition.
     *
-    * A guard clause is a `Command Handler` as it handles a incoming command,
+    * A guard clause is a `Command Handler` as it handles an incoming command,
     * but instead of producing Event, it returns a [[Throwable]] to signalize an error condition.
     *
     * Guard clauses command handlers have precedence over handlers producing Events.
@@ -101,9 +95,13 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     */
   def reject(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = {
 
+    val cmdHandlerSeq: CommandToManyEvents[C, E, Try] = {
+      case cmd => Failure(cmdHandler(cmd))
+    }
+    // return a fallback invoker if not define
+
     val invokerPF: CommandToInvoker[C, E] = {
-      case cmd if cmdHandler.isDefinedAt(cmd) =>
-        TryCommandHandlerInvoker(cmd => Failure(cmdHandler(cmd)))
+      case cmd if cmdHandler.isDefinedAt(cmd) => TryCommandHandlerInvoker(cmdHandlerSeq)
     }
 
     this.copy(
@@ -111,7 +109,7 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     )
   }
 
-  /** Alias for reject */
+  /** Alias to reject */
   def rejectCommand(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = reject(cmdHandler)
 
   /**
@@ -125,17 +123,6 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
     )
   }
 
-  private def addInvoker[CC <: Command: ClassTag, EE <: Event](invoker: CommandHandlerInvoker[CC, EE]): TypedActions = {
-
-    // as such we can detect if a duplicated key is added
-    object CmdExtractor extends ClassTagExtractor[CC]
-    // PF from Cmd to Invoker
-    val invokerPF: CommandToInvoker[CC, EE] = { case CmdExtractor(cmd) => invoker }
-    // add it
-    this.copy(
-      cmdInvokers = cmdInvokers orElse invokerPF.asInstanceOf[CommandToInvoker[Command, Event]]
-    )
-  }
 }
 
 object Actions {
