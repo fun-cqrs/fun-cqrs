@@ -18,7 +18,3 @@ trait Types[A] {
   implicit def self: this.type = this
 
 }
-
-object Types {
-  type Aux[A0, I0] = Types[A0] { type Id = I0 }
-}
