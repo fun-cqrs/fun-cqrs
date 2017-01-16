@@ -32,10 +32,12 @@ case class EmptyLottery(id: LotteryId) extends Lottery {
     */
   def acceptParticipants =
     Lottery.actions
-      .handleCommand { cmd: AddParticipant =>
-        ParticipantAdded(cmd.name, id)
+      .commandHandler {
+        OneEvent {
+          case AddParticipant(name) => ParticipantAdded(name, id)
+        }
       }
-      .handleEvent {
+      .eventHandler {
         case ParticipantAdded(name, _) =>
           NonEmptyLottery(
             participants = List(name),
@@ -68,12 +70,13 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
     */
   def acceptParticipants =
     Lottery.actions
-      .handleCommand { cmd: AddParticipant =>
-        ParticipantAdded(cmd.name, id)
+      .commandHandler {
+        OneEvent {
+          case AddParticipant(name) => ParticipantAdded(name, id)
+        }
       }
-      .handleEvent {
-        case ParticipantAdded(name, _) =>
-          copy(participants = name :: participants)
+      .eventHandler {
+        case ParticipantAdded(name, _) => copy(participants = name :: participants)
       }
 
   /**
@@ -83,17 +86,21 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
   def removeParticipants =
     Lottery.actions
     // removing participants (single or all) produce ParticipantRemoved events
-      .handleCommand { cmd: RemoveParticipant =>
-        ParticipantRemoved(cmd.name, id)
+      .commandHandler {
+        OneEvent {
+          case RemoveParticipant(name) => ParticipantRemoved(name, id)
+        }
       }
-      .handleCommand {
-        // will produce a List[ParticipantRemoved]
-        cmd: RemoveAllParticipants.type =>
-          this.participants.map { name =>
-            ParticipantRemoved(name, id)
-          }
+      .commandHandler {
+        ManyEvents {
+          // will produce a List[ParticipantRemoved]
+          case RemoveAllParticipants =>
+            this.participants.map { name =>
+              ParticipantRemoved(name, id)
+            }
+        }
       }
-      .handleEvent {
+      .eventHandler {
         case ParticipantRemoved(name, _) =>
           val newParticipants = participants.filter(_ != name)
           // NOTE: if last participant is removed, transition back to EmptyLottery
@@ -109,12 +116,15 @@ case class NonEmptyLottery(participants: List[String], id: LotteryId) extends Lo
     */
   def runTheLottery =
     Lottery.actions
-      .handleCommand { cmd: Run.type =>
-        val index  = Random.nextInt(participants.size)
-        val winner = participants(index)
-        WinnerSelected(winner, OffsetDateTime.now, id)
+      .commandHandler {
+        OneEvent {
+          case Run =>
+            val index  = Random.nextInt(participants.size)
+            val winner = participants(index)
+            WinnerSelected(winner, OffsetDateTime.now, id)
+        }
       }
-      .handleEvent {
+      .eventHandler {
         // transition to end state on winner selection
         case evt: WinnerSelected => FinishedLottery(evt.winner, id)
       }
@@ -162,10 +172,10 @@ object Lottery extends Types[Lottery] {
       .construct {
 
         actions
-          .handleCommand { cmd: CreateLottery.type =>
-            LotteryCreated(lotteryId)
+          .commandHandler {
+            OneEvent { case CreateLottery => LotteryCreated(lotteryId) }
           }
-          .handleEvent {
+          .eventHandler {
             case _: LotteryCreated => EmptyLottery(id = lotteryId)
           }
       }

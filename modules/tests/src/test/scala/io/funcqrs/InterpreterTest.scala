@@ -53,7 +53,7 @@ class InterpreterTest extends FunSuite with Matchers {
             )
         }
       }
-      .handleEvent {
+      .eventHandler {
         case _: TimerCreated => IdleTracker(trackerId)
       }
 }

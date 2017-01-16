@@ -28,26 +28,27 @@ case class BusyTracker(id: TrackerId, currentTask: Task, previousTasks: List[Tas
   }
 
   def actionsWhenBusy =
-    // format: off
     TimeTracker.actions
-//      .handleCommand {
-//        case  StopTracking => TimerStopped(OffsetDateTime.now(), EventId())
-//      }
-//      .handleCommand {
-//        case cmd: ReplaceTask =>
-//          val now = OffsetDateTime.now()
-//          List(
-//            TimerStopped(now, EventId()),
-//            // the event handler for TimerStarter is defined
-//            // on the behavior case branch for idling TimeTracker
-//            TimerStarted(cmd.title, now, EventId())
-//          )
-//          ???
-//      }
-      .handleEvent {
+      .commandHandler {
+        OneEvent {
+          case StopTracking => TimerStopped(OffsetDateTime.now(), EventId())
+        }
+      }
+      .commandHandler {
+        ManyEvents {
+          case cmd: ReplaceTask =>
+            val now = OffsetDateTime.now()
+            List(
+              TimerStopped(now, EventId()),
+              // the event handler for TimerStarter is defined
+              // on the behavior case branch for idling TimeTracker
+              TimerStarted(cmd.title, now, EventId())
+            )
+        }
+      }
+      .eventHandler {
         case TimerStopped(end, _) => stop(end)
       }
-    // format: on
 }
 
 case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extends TimeTracker {
@@ -58,23 +59,68 @@ case class IdleTracker(id: TrackerId, previousTasks: List[Task] = List()) extend
   }
 
   def actionsWhenIdle =
-    // format: off
     TimeTracker.actions
-//      .handleCommand {
-//        case StartTracking(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
-//      }
-//      .handleCommand {
-//        case ReplaceTask(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
-//      }
-      .handleEvent {
+      .commandHandler {
+        OneEvent {
+          case StartTracking(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
+        }
+      }
+      .commandHandler {
+        OneEvent {
+          case ReplaceTask(title) => TimerStarted(title, OffsetDateTime.now(), EventId())
+        }
+      }
+      .eventHandler {
         case TimerStarted(title, startDate, _) => start(title, startDate)
       }
-    // format: on
 
 }
 
 case class Task(title: String, started: OffsetDateTime, stopped: Option[OffsetDateTime] = None) {
   def isRunning = stopped.isEmpty
+}
+
+object TimeTracker extends Types[TimeTracker] {
+
+  type Id      = TrackerId
+  type Command = TrackerCommand
+  type Event   = TrackerEvent
+
+  def constructionHandlers(id: TrackerId) =
+    actions
+      .commandHandler {
+        OneEvent { case CreateTracker => TimerCreated(EventId()) }
+      }
+      .commandHandler {
+        ManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            List(
+              TimerCreated(EventId()),
+              // the event handler for TimerStarter depends on a created Tracker
+              // and therefore can't be defined in this 'Actions'
+              // behavior is available in next transition
+              TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+            )
+        }
+      }
+      .eventHandler {
+        case TimerCreated(_) => IdleTracker(id)
+      }
+
+  def behavior(id: TrackerId) =
+    Behavior
+      .construct(constructionHandlers(id))
+      .andThen {
+        case tracker: IdleTracker => tracker.actionsWhenIdle
+        case tracker: BusyTracker => tracker.actionsWhenBusy
+      }
+
+}
+
+case class TrackerId(value: String) extends AggregateId
+
+object TrackerId {
+  def generate: TrackerId = TrackerId(UUID.randomUUID().toString)
 }
 
 sealed trait TrackerCommand
@@ -88,46 +134,3 @@ sealed trait TrackerEvent
 final case class TimerCreated(id: EventId) extends TrackerEvent
 final case class TimerStarted(title: String, start: OffsetDateTime, id: EventId) extends TrackerEvent
 final case class TimerStopped(end: OffsetDateTime, id: EventId) extends TrackerEvent
-
-object TimeTracker extends Types[TimeTracker] {
-
-  type Id      = TrackerId
-  type Command = TrackerCommand
-  type Event   = TrackerEvent
-
-  def constructionHandlers(id: TrackerId) =
-    // format: off
-    actions
-//      .handleCommand {
-//        case CreateTracker => TimerCreated(EventId())
-//      }
-//      .handleCommand {
-//        case CreateAndStartTracking(taskTitle) =>
-//          List(
-//            TimerCreated(EventId()),
-//            // the event handler for TimerStarter depends on a created Tracker
-//            // and therefore can't be defined in this 'Actions'
-//            // behavior is available in next transition
-//            TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
-//          )
-//          ???
-//      }
-      .handleEvent {
-        case TimerCreated(_) => IdleTracker(id)
-      }
-    // format: on
-
-  def behavior(id: TrackerId) =
-    Behavior
-      .construct(constructionHandlers(id))
-      .andThen {
-        case tracker: IdleTracker => tracker.actionsWhenIdle
-        case tracker: BusyTracker => tracker.actionsWhenBusy
-      }
-
-}
-
-case class TrackerId(value: String) extends AggregateId
-object TrackerId {
-  def generate: TrackerId = TrackerId(UUID.randomUUID().toString)
-}

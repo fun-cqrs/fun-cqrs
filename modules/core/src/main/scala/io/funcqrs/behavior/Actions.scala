@@ -8,9 +8,9 @@ import scala.language.higherKinds
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
-case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
-                                     rejectCmdInvokers: CommandToInvoker[C, E],
-                                     evtHandlers: EventHandler[E, A]) {
+case class Actions[A, C, E] private (private val cmdInvokers: CommandToInvoker[C, E],
+                                     private val rejectCmdInvokers: CommandToInvoker[C, E],
+                                     private val evtHandlers: EventHandler[E, A]) {
 
   type Aggregate = A
   type Command   = C
@@ -75,11 +75,11 @@ case class Actions[A, C, E] private (cmdInvokers: CommandToInvoker[C, E],
   /**
     * Declares an event handler
     *
-    * @param eventHandler - the event handler function
+    * @param handler - the event handler function
     * @return an Actions for A
     */
-  def handleEvent(eventHandler: EventHandler[E, A]): TypedActions = {
-    this.copy(evtHandlers = evtHandlers orElse eventHandler)
+  def eventHandler(handler: EventHandler[E, A]): TypedActions = {
+    this.copy(evtHandlers = evtHandlers orElse handler)
   }
 
   /**
