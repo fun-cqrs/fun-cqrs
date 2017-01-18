@@ -24,9 +24,9 @@ lazy val root = Project(
     )
   ) aggregate (
     funCqrs,
-//    funCqrsAkka,
-    funCqrsTestKit
-//    lotteryApp
+    funCqrsAkka,
+    funCqrsTestKit,
+    lotteryApp
   )
 
 // Core ==========================================
@@ -38,12 +38,12 @@ lazy val funCqrs = Project(
 //================================================
 
 // Akka integration ==============================
-//lazy val funCqrsAkka = Project(
-//    id       = "fun-cqrs-akka",
-//    base     = file("modules/akka"),
-//    settings = defaultSettings
-//  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
-//   .dependsOn (funCqrs % "compile->compile;test->test")
+lazy val funCqrsAkka = Project(
+    id       = "fun-cqrs-akka",
+    base     = file("modules/akka"),
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
+   .dependsOn (funCqrs % "compile->compile;test->test")
 //================================================
 
 //Test kit =======================================

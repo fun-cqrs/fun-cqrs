@@ -172,9 +172,9 @@ object ProjectionMonitorActor {
 
 object EventsMonitorActor {
 
-  case class Subscribe(events: Seq[DomainEvent])
+  case class Subscribe(events: Seq[Any])
   object Subscribe {
-    def apply(event: DomainEvent): Subscribe = Subscribe(Seq(event))
+    def apply(event: Any): Subscribe = Subscribe(Seq(event))
   }
 
   case object Done

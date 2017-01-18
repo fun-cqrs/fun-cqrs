@@ -3,10 +3,12 @@ package io.funcqrs.akka.backend
 import _root_.akka.actor.{ Actor, ActorRef }
 import _root_.akka.util.Timeout
 import _root_.akka.pattern.{ ask => akkaAsk }
-import io.funcqrs.akka.AggregateManager.{ UntypedIdAndCommand, GetState, Exists }
+import io.funcqrs.akka.AggregateManager.{ Exists, GetState, UntypedIdAndCommand }
 import io.funcqrs.akka.EventsMonitorActor.Subscribe
 import io.funcqrs.akka.{ EventsMonitorActor, ProjectionMonitorActor }
 import io.funcqrs._
+import io.funcqrs.behavior.AggregateAliases
+
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -14,17 +16,23 @@ import scala.util.Try
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
 
-case class AggregateActorRef[A <: AggregateLike](
-    id: A#Id,
+case class AggregateActorRef[A, C, E, I](
+    id: I,
     aggregateManagerActor: ActorRef,
     projectionMonitor: ActorRef,
     timeoutDuration: FiniteDuration = 5.seconds
-) extends AsyncAggregateRef[A]
+) extends AsyncAggregateRef[A, C, E]
     with AggregateAliases {
+
+  type Aggregate        = A
+  override type Id      = I
+  override type Command = C
+  override type Event   = E
 
   def askTimeout = Timeout(timeoutDuration)
 
-  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = copy(timeoutDuration = timeout)
+  def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] =
+    copy(timeoutDuration = timeout)
 
   // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
   private val askableActorRef = akkaAsk(aggregateManagerActor)
@@ -53,13 +61,13 @@ case class AggregateActorRef[A <: AggregateLike](
     askableActorRef.ask(Exists(id))(askTimeout).mapTo[Boolean]
   }
 
-  def join(viewName: String): ViewBoundedAggregateActorRef[A] = {
-    new ViewBoundedAggregateActorRef[A](this, viewName, projectionMonitor)
+  def join(viewName: String): ViewBoundedAggregateActorRef[A, C, E, I] = {
+    new ViewBoundedAggregateActorRef[A, C, E, I](this, viewName, projectionMonitor)
   }
 }
 
-class ViewBoundedAggregateActorRef[A <: AggregateLike](
-    aggregateRef: AggregateActorRef[A],
+class ViewBoundedAggregateActorRef[A, C, E, I](
+    aggregateRef: AggregateActorRef[A, C, E, I],
     defaultView: String,
     projectionMonitorActorRef: ActorRef,
     eventsFilter: EventsFilter = All
@@ -73,10 +81,10 @@ class ViewBoundedAggregateActorRef[A <: AggregateLike](
   def state()(implicit timeout: Timeout, sender: ActorRef): Future[A]        = underlyingRef.state()
   def exists()(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = underlyingRef.exists()
 
-  def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateActorRef[A] =
+  def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateActorRef[A, C, E, I] =
     new ViewBoundedAggregateActorRef(underlyingRef, defaultView, projectionMonitorActorRef, eventsFilter)
 
-  def limit(count: Int): ViewBoundedAggregateActorRef[A] = withFilter(Limit(count))
+  def limit(count: Int): ViewBoundedAggregateActorRef[A, C, E, I] = withFilter(Limit(count))
 
   def ?(cmd: Command with CommandIdFacet)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Events] = ask(cmd)
 

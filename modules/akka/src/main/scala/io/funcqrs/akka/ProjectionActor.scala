@@ -10,16 +10,17 @@ import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
+import io.funcqrs.DomainEvent
 import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
-import io.funcqrs.{ DomainEvent, Projection }
+import io.funcqrs.projections.Projection
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-abstract class ProjectionActor(
-    projection: Projection,
+abstract class ProjectionActor[E](
+    projection: Projection[E],
     sourceProvider: EventsSourceProvider
 ) extends Actor
     with ActorLogging
@@ -80,12 +81,12 @@ abstract class ProjectionActor(
 
   override def receive: Receive = acceptingEvents
 
-  def runningProjection(currentEvent: DomainEvent, offset: Long): Receive = {
+  def runningProjection(currentEvent: E, offset: Long): Receive = {
 
     val receive: Receive = {
 
       // stash new events while busy with projection
-      case OnNextDomainEvent(_, _) => stashWithBackPressure()
+      case OnNextEvent(_, _) => stashWithBackPressure()
 
       // ready with projection, notify parent and start consuming events
       case ProjectionActor.Done(lastEvent) =>
@@ -117,7 +118,7 @@ abstract class ProjectionActor(
   def acceptingEvents: Receive = {
 
     val receive: Receive = {
-      case OnNextDomainEvent(evt, offset) =>
+      case OnNextEvent(evt, offset) =>
         log.debug("Received event {}", evt)
 
         val eventualTimeout =
@@ -160,7 +161,7 @@ abstract class ProjectionActor(
       context.stop(self)
   }
 
-  def waitingOffsetPersistence(currentEvent: DomainEvent): Receive = {
+  def waitingOffsetPersistence(currentEvent: E): Receive = {
 
     case ProjectionActor.OffsetPersisted(offset) =>
       unstashAllWithBackPressure()
@@ -176,12 +177,12 @@ abstract class ProjectionActor(
     case anyOther => stashWithBackPressure()
   }
 
-  object OnNextDomainEvent {
+  object OnNextEvent {
 
-    def unapply(onNext: OnNext): Option[(DomainEvent, Long)] = {
+    def unapply(onNext: OnNext): Option[(E, Long)] = {
       onNext.element match {
-        case EventEnvelope(offset, _, _, event: DomainEvent) => Option((event, offset))
-        case _                                               => None
+        case EventEnvelope(offset, _, _, event: E) => Option((event, offset))
+        case _                                     => None
       }
     }
   }
@@ -190,7 +191,7 @@ abstract class ProjectionActor(
 
 object ProjectionActor {
 
-  case class Done(evt: DomainEvent)
+  case class Done(evt: Any)
   case class OffsetPersisted(offset: Long)
 
 }
@@ -199,16 +200,16 @@ object ProjectionActor {
   * A ProjectionActor that never saves the offset
   * causing the event stream to be read from start on each app restart
   */
-class ProjectionActorWithoutOffsetPersistence(
-    projection: Projection,
+class ProjectionActorWithoutOffsetPersistence[E](
+    projection: Projection[E],
     sourceProvider: EventsSourceProvider
 ) extends ProjectionActor(projection, sourceProvider)
     with OffsetNotPersisted
 
 object ProjectionActorWithoutOffsetPersistence {
 
-  def props(
-      projection: Projection,
+  def props[E](
+      projection: Projection[E],
       sourceProvider: EventsSourceProvider
   ): Props = {
 
@@ -226,8 +227,8 @@ object ProjectionActorWithoutOffsetPersistence {
   * However, the drawback is that most (if not all) akka-persistence snapshot plugins will
   * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
   */
-class ProjectionActorWithOffsetManagedByAkkaPersistence(
-    projection: Projection,
+class ProjectionActorWithOffsetManagedByAkkaPersistence[E](
+    projection: Projection[E],
     sourceProvider: EventsSourceProvider,
     val persistenceId: String
 ) extends ProjectionActor(projection, sourceProvider)
@@ -235,8 +236,8 @@ class ProjectionActorWithOffsetManagedByAkkaPersistence(
 
 object ProjectionActorWithOffsetManagedByAkkaPersistence {
 
-  def props(
-      projection: Projection,
+  def props[E](
+      projection: Projection[E],
       sourceProvider: EventsSourceProvider,
       persistenceId: String
   ): Props = {
@@ -246,8 +247,8 @@ object ProjectionActorWithOffsetManagedByAkkaPersistence {
 }
 
 /** A ProjectionActor that saves the offset using a [[CustomOffsetPersistenceStrategy]] */
-class ProjectionActorWithCustomOffsetPersistence(
-    projection: Projection,
+class ProjectionActorWithCustomOffsetPersistence[E](
+    projection: Projection[E],
     sourceProvider: EventsSourceProvider,
     customOffsetPersistence: CustomOffsetPersistenceStrategy
 ) extends ProjectionActor(projection, sourceProvider)
@@ -263,8 +264,8 @@ class ProjectionActorWithCustomOffsetPersistence(
 
 object ProjectionActorWithCustomOffsetPersistence {
 
-  def props(
-      projection: Projection,
+  def props[E](
+      projection: Projection[E],
       sourceProvider: EventsSourceProvider,
       customOffsetPersistence: CustomOffsetPersistenceStrategy
   ): Props = {

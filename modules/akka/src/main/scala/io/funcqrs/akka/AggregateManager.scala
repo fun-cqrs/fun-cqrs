@@ -6,7 +6,7 @@ import _root_.akka.actor._
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
-import io.funcqrs.behavior.Behavior
+import io.funcqrs.behavior.{ AggregateAliases, Behavior }
 
 object AggregateManager {
 
@@ -23,11 +23,14 @@ object AggregateManager {
   * Handles communication between client and aggregate.
   * It is also capable of aggregates creation and removal.
   */
-trait AggregateManager extends Actor with ActorLogging with AggregateAliases with AggregateMessageExtractors {
+trait AggregateManager[A, C, E, I] extends Actor with ActorLogging with AggregateAliases with AggregateMessageExtractors {
 
   import scala.collection.immutable._
 
-  type Aggregate <: AggregateLike
+  type Aggregate        = A
+  override type Id      = I
+  override type Command = C
+  override type Event   = E
 
   case class PendingMessage(origSender: ActorRef, message: Any)
 
@@ -71,7 +74,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
     }
   }
 
-  def behavior(id: Aggregate#Id): Behavior[Aggregate]
+  def behavior(id: Id): Behavior[Aggregate, Command, Event]
 
   override def receive: Receive = {
 
@@ -196,18 +199,16 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
   }
 }
 
-class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) extends AggregateManager {
+class ConfigurableAggregateManager[A, C, E, I](behaviorCons: I => Behavior[A, C, E]) extends AggregateManager[A, C, E, I] {
 
-  type Aggregate = A
-
-  def behavior(id: Id): Behavior[Aggregate] = {
+  def behavior(id: I): Behavior[A, C, E] = {
     behaviorCons(id)
   }
 }
 
 object ConfigurableAggregateManager {
 
-  def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) = {
+  def props[A, C, E, I](behaviorCons: I => Behavior[A, C, E]) = {
     Props(new ConfigurableAggregateManager(behaviorCons))
   }
 }

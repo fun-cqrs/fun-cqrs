@@ -1,6 +1,7 @@
 package io.funcqrs.akka
 
-import io.funcqrs.{ AggregateAliases, AggregateId, AggregateLike }
+import io.funcqrs.AggregateId
+import io.funcqrs.behavior.AggregateAliases
 
 import scala.util.{ Failure, Success, Try }
 
@@ -24,7 +25,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
   object GoodId {
 
-    def unapply(aggregateId: Aggregate#Id): Option[Aggregate#Id] = {
+    def unapply(aggregateId: Id): Option[Id] = {
       Try(aggregateId) match {
         case Success(id) => Some(id)
         case _           => None
@@ -34,7 +35,7 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
   object BadId {
 
-    def unapply(aggregateId: Aggregate#Id): Option[AggregateId] = {
+    def unapply(aggregateId: Id): Option[AggregateId] = {
       Try(aggregateId) match {
         case Success(id) => None
         case _           => Some(aggregateId)

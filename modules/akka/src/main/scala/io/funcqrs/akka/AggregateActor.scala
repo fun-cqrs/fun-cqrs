@@ -5,22 +5,25 @@ import _root_.akka.pattern._
 import _root_.akka.persistence._
 import io.funcqrs._
 import io.funcqrs.akka.util.ConfigReader._
-import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
+import io.funcqrs.behavior._
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.{ Future, TimeoutException }
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: AggregateLike](
-    identifier: A#Id,
-    interpreter: AsyncInterpreter[A],
+class AggregateActor[A, C, E, I <: AggregateId](
+    identifier: I,
+    interpreter: AsyncInterpreter[A, C, E],
     aggregateType: String
 ) extends AggregateAliases
     with PersistentActor
     with ActorLogging {
 
   type Aggregate = A
+  type Id        = I
+  type Command   = C
+  type Event     = E
 
   /**
     * state of Aggregate Root
@@ -293,7 +296,7 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
-  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String): Props = {
+  def props[A, C, E, I](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
     Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
   }
 }
