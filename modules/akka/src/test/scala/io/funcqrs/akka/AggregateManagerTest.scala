@@ -2,16 +2,16 @@ package io.funcqrs.akka
 
 import akka.actor.ActorSystem
 import akka.actor.Status.Failure
-import akka.testkit.{ ImplicitSender, TestKit }
+import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.AggregateManager._
 import io.funcqrs.akka.TestModel.UserProtocol._
-import io.funcqrs.akka.TestModel.{ User, UserId }
+import io.funcqrs.akka.TestModel.{User, UserId}
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
-import io.funcqrs.{ AggregateId, CommandException, DomainCommand, MissingCommandHandlerException }
+import io.funcqrs._
 import org.scalatest._
 
 import scala.concurrent.duration._
@@ -148,6 +148,16 @@ class AggregateManagerTest(val actorSys: ActorSystem)
     expectMsgPF(hint = "sending bad command") {
       case Failure(exp: IllegalArgumentException) =>
         exp.getMessage shouldBe "Unknown message: UntypedIdAndCommand(UserId(test),BadCommand)"
+    }
+  }
+  
+  it should "fail with descriptive error getting aggregateRef for non-configured aggregate" in {
+    val freshBackend = new AkkaBackend {
+      override val actorSystem: ActorSystem = actorSys
+      def sourceProvider(query: Query): EventsSourceProvider = ???
+    }
+    assertThrows[MissingAggregateConfiguration] {
+      freshBackend.aggregateRef[Person](PersonId.generate)
     }
   }
 
