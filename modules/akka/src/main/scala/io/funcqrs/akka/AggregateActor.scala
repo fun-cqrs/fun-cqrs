@@ -193,12 +193,12 @@ class AggregateActor[A <: AggregateLike](
   def changeState(state: ActorState): Unit = {
     state match {
       case Available =>
-        log.debug("aggregate '{}' accepting commands...", identifier)
+        log.debug("aggregate '{}' accepting commands", identifier)
         context become available
         unstashAll()
 
       case Busy =>
-        log.debug("aggregate '{}' busy, only answering to GetState and command results.", identifier)
+        log.debug("aggregate '{}' busy, only answering to GetState and command results", identifier)
         context become busy
     }
   }
