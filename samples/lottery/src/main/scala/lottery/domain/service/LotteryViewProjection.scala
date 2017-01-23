@@ -9,14 +9,14 @@ import lottery.domain.model.LotteryView.Participant
 
 import scala.concurrent.Future
 
-class LotteryViewProjection(repo: LotteryViewRepo) extends Projection[LotteryEvent] {
+class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
 
   def receiveEvent: ReceiveEvent = {
 
-    case Envelop(e: LotteryCreated, _) =>
+    case Envelope(e: LotteryCreated, _) =>
       Future.successful(repo.save(LotteryView(id = e.lotteryId)))
 
-    case Envelop(e: LotteryUpdateEvent, _) =>
+    case Envelope(e: LotteryUpdateEvent, _) =>
       Future.successful {
         repo
           .updateById(e.lotteryId) { lot =>

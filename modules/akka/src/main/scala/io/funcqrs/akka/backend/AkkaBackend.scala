@@ -49,7 +49,7 @@ trait AkkaBackend extends Backend[Future] {
     this
   }
 
-  def configure[E: ClassTag](config: ProjectionConfig[E]): AkkaBackend = {
+  def configure(config: ProjectionConfig): AkkaBackend = {
 
     val srcProvider = sourceProvider(config.query)
     // which strategy??

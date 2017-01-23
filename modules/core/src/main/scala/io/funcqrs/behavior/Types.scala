@@ -20,6 +20,7 @@ trait Types[A] extends AggregateAliases {
 
 trait AggregateAliases {
   type Aggregate
+
   type Id <: AggregateId
   type Command
   type Event

@@ -5,10 +5,10 @@ import scala.util.control.NonFatal
 import io.funcqrs.DomainEvent
 import Projection._
 
-trait Projection[E] {
+trait Projection {
 
-  type ReceiveEvent  = PartialFunction[Envelop[E], Future[Unit]]
-  type HandleFailure = PartialFunction[(Envelop[E], Throwable), Future[Unit]]
+  type ReceiveEvent  = PartialFunction[Envelope, Future[Unit]]
+  type HandleFailure = PartialFunction[(Envelope, Throwable), Future[Unit]]
 
   def name: String = this.getClass.getSimpleName
 
@@ -16,7 +16,7 @@ trait Projection[E] {
 
   def onFailure: HandleFailure = PartialFunction.empty
 
-  final def onEvent(envelop: Envelop[E]): Future[Unit] = {
+  final def onEvent(envelop: Envelope): Future[Unit] = {
     if (receiveEvent.isDefinedAt(envelop)) {
       import scala.concurrent.ExecutionContext.Implicits.global
       receiveEvent(envelop).recoverWith {
@@ -35,7 +35,7 @@ trait Projection[E] {
     * NOTE: In the occurrence of any failure on any of the underling Projections, this Projection may be replayed,
     * therefore idempotent operations are recommended.
     */
-  def andThen(projection: Projection[E]) = new AndThenProjection(this, projection)
+  def andThen(projection: Projection) = new AndThenProjection(this, projection)
 
   /**
     * Builds a [[OrElseProjection]]composed of this Projection and the passed Projection.
@@ -43,13 +43,13 @@ trait Projection[E] {
     * If this Projection is defined for a given incoming [[DomainEvent]], then this Projection will be applied,
     * otherwise we fallback to the passed Projection.
     */
-  def orElse(fallbackProjection: Projection[E]) = new OrElseProjection(this, fallbackProjection)
+  def orElse(fallbackProjection: Projection) = new OrElseProjection(this, fallbackProjection)
 }
 
 object Projection {
 
   /** Projection with empty domain */
-  def empty[E] = new Projection[E] {
+  def empty = new Projection {
     def receiveEvent: ReceiveEvent = PartialFunction.empty
   }
 
@@ -78,9 +78,9 @@ object Projection {
     * }}}
     *
     */
-  private[funcqrs] class AndThenProjection[E](firstProj: Projection[E], secondProj: Projection[E])
+  private[funcqrs] class AndThenProjection(firstProj: Projection, secondProj: Projection)
       extends ComposedProjection(firstProj, secondProj)
-      with Projection[E] {
+      with Projection {
 
     import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -110,16 +110,16 @@ object Projection {
     * for the given incoming [[io.funcqrs.DomainEvent]]
     *
     */
-  private[funcqrs] class OrElseProjection[E](firstProj: Projection[E], secondProj: Projection[E])
+  private[funcqrs] class OrElseProjection[E](firstProj: Projection, secondProj: Projection)
       extends ComposedProjection(firstProj, secondProj)
-      with Projection[E] {
+      with Projection {
 
     override def name: String = s"${firstProj.name}-or-then-${secondProj.name}"
 
     def receiveEvent = composedHandleEvent
   }
 
-  private[funcqrs] class ComposedProjection[E](firstProj: Projection[E], secondProj: Projection[E]) {
+  private[funcqrs] class ComposedProjection(firstProj: Projection, secondProj: Projection) {
     // compose underlying receiveEvents PartialFunction in order
     // to decide if this Projection is defined for given incoming DomainEvent
     private[funcqrs] def composedHandleEvent = firstProj.receiveEvent orElse secondProj.receiveEvent

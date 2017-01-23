@@ -48,8 +48,8 @@ class AggregateActor[A, C, E, I <: AggregateId](
   // persistenceId is always defined as the Aggregate.Identifier
   val persistenceId: String = identifier.value
 
-  /** The aggregate instance if initialized, Uninitialized otherwise */
-  private var aggregateState: State[Aggregate] = Uninitialized(identifier)
+  /** The aggregate instance wrapped in a Some if initialized, None otherwise */
+  private var aggregateState: Option[Aggregate] = None
 
   private var eventsSinceLastSnapshot = 0
 
@@ -144,7 +144,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
   protected def defaultReceive: Receive = {
     case AggregateActor.StateRequest(requester) => sendState(requester)
-    case AggregateActor.Exists(requester)       => requester ! aggregateState.isInitialized
+    case AggregateActor.Exists(requester)       => requester ! aggregateState.isDefined
     case AggregateActor.KillAggregate           => context.stop(self)
     case x: SaveSnapshotSuccess                 =>
       // delete the previous snapshot now that we know we have a newer snapshot
@@ -162,11 +162,11 @@ class AggregateActor[A, C, E, I <: AggregateId](
     */
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
-      case Initialized(aggregate) =>
-        log.debug("sending aggregate {} to {}", aggregate.id, replyTo)
+      case Some(aggregate) =>
+        log.debug("sending aggregate {} to {}", persistenceId, replyTo)
         replyTo ! aggregate
-      case Uninitialized(id) =>
-        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
+      case None =>
+        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $persistenceId have not been initialized"))
     }
   }
 
@@ -185,11 +185,12 @@ class AggregateActor[A, C, E, I <: AggregateId](
     * @param aggregate the aggregate
     */
   private def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
-    log.debug("restoring data for aggregate {}", aggregate.id)
+
+    log.debug("restoring data for aggregate {}", persistenceId)
 
     currentSnapshotSequenceNr = Some(metadata.sequenceNr)
 
-    aggregateState = Initialized(aggregate)
+    aggregateState = Some(aggregate)
     changeState(Available)
   }
 
@@ -206,7 +207,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
     }
   }
 
-  private def onSuccess(events: Events, updatedState: State[Aggregate], origSender: ActorRef): Unit = {
+  private def onSuccess(events: Events, updatedState: Option[Aggregate], origSender: ActorRef): Unit = {
 
     if (events.nonEmpty) {
 
@@ -234,7 +235,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
           // have we crossed the snapshot threshold?
           if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
             aggregateState match {
-              case Initialized(aggregate) =>
+              case Some(aggregate) =>
                 log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
                 saveSnapshot(aggregate)
               case _ =>
@@ -266,7 +267,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
-        case Initialized(aggregate) =>
+        case Some(aggregate) =>
           log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
           saveSnapshot(aggregate)
         case _ =>
@@ -278,7 +279,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
   /**
     * Internal representation of a completed update command.
     */
-  private case class Successful(events: Events, nextState: State[Aggregate], origSender: ActorRef)
+  private case class Successful(events: Events, nextState: Option[Aggregate], origSender: ActorRef)
 
   private case class FailedCommand(cause: Throwable, origSender: ActorRef)
 
@@ -296,8 +297,8 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
-  def props[A, C, E, I](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
-    Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
+  def props[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
+    Props(new AggregateActor[A, C, E, I](id, AsyncInterpreter(behavior), parentPath))
   }
 }
 

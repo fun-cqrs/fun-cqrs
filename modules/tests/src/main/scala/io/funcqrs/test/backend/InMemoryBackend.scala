@@ -5,7 +5,7 @@ import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
 import io.funcqrs.behavior.{ Types, _ }
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
-import io.funcqrs.projections.Envelop
+import io.funcqrs.projections.Envelope
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
 
@@ -48,7 +48,7 @@ class InMemoryBackend extends Backend[Identity] {
     this
   }
 
-  def configure[E: ClassTag](config: ProjectionConfig[E]): Backend[Identity] = {
+  def configure(config: ProjectionConfig): Backend[Identity] = {
 
     // does the event match the query criteria?
     def matchQuery(_tags: Set[Tag]): Boolean = {
@@ -59,7 +59,7 @@ class InMemoryBackend extends Backend[Identity] {
       }
     }
 
-    def matchQueryWithoutTagging(evt: E): Boolean = {
+    def matchQueryWithoutTagging(evt: Any): Boolean = {
       config.query match {
         case QuerySelectAll => true
         case _              => false
@@ -67,32 +67,20 @@ class InMemoryBackend extends Backend[Identity] {
     }
 
     // send even to projections
-    def sendToProjection(event: E) = {
-      val envelop = Envelop(event, 1)
+    def sendToProjection(event: Any) = {
+      val envelop = Envelope(event, 1)
       // TODO: projections should be interpreted as well to avoid this
       Await.ready(config.projection.onEvent(envelop), 10.seconds)
       ()
     }
 
-    def matchEvent(event: E) = {
-
+    eventStream.subscribe { event: AnyEvent =>
       event match {
-        // can only match on Facet, not on E with MetadataFacet
         case evt: MetadataFacet[_] if matchQuery(evt.tags) =>
           sendToProjection(event)
 
         case evt if matchQueryWithoutTagging(evt) =>
           sendToProjection(event)
-
-        case _ => // otherwise do nothing
-      }
-    }
-
-    eventStream.subscribe { event: AnyEvent =>
-      event match {
-        // now we must go ugly with types
-        case evt if ClassTagImplicits[E].runtimeClass.isAssignableFrom(evt.getClass) =>
-          matchEvent(evt.asInstanceOf[E])
 
         // otherwise do nothing, don't send to projection
         case anyEvent =>

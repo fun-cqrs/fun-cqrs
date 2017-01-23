@@ -8,12 +8,12 @@ import scala.util.{ Failure, Success, Try }
 trait AggregateMessageExtractors extends AggregateAliases {
 
   object IdAndCommand {
-    def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand): Option[(Id, Command)] = {
+    def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand[Id, Command]): Option[(Id, Command)] = {
 
       val extracted =
         for {
-          id <- Try(cmdMsg.id.asInstanceOf[Id])
-          cmd <- Try(cmdMsg.cmd.asInstanceOf[Command])
+          id <- Try(cmdMsg.id)
+          cmd <- Try(cmdMsg.cmd)
         } yield (id, cmd)
 
       extracted match {

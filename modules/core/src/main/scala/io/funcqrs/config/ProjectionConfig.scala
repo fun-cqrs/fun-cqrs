@@ -5,22 +5,22 @@ import io.funcqrs.backend.Query
 import scala.concurrent.Future
 import io.funcqrs.projections.Projection
 
-case class ProjectionConfig[E](
+case class ProjectionConfig(
     query: Query,
-    projection: Projection[E],
+    projection: Projection,
     name: String,
     offsetPersistenceStrategy: OffsetPersistenceStrategy = NoOffsetPersistenceStrategy
 ) {
 
-  def withoutOffsetPersistence(): ProjectionConfig[E] = {
+  def withoutOffsetPersistence(): ProjectionConfig = {
     copy(offsetPersistenceStrategy = NoOffsetPersistenceStrategy)
   }
 
-  def withBackendOffsetPersistence(): ProjectionConfig[E] = {
+  def withBackendOffsetPersistence(): ProjectionConfig = {
     copy(offsetPersistenceStrategy = BackendOffsetPersistenceStrategy(name))
   }
 
-  def withCustomOffsetPersistence(strategy: CustomOffsetPersistenceStrategy): ProjectionConfig[E] = {
+  def withCustomOffsetPersistence(strategy: CustomOffsetPersistenceStrategy): ProjectionConfig = {
     copy(offsetPersistenceStrategy = strategy)
   }
 
