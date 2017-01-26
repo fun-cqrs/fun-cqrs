@@ -10,6 +10,7 @@ import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.{ Future, TimeoutException }
 import scala.concurrent.duration._
+import scala.util.{ Success, Try }
 import scala.util.control.NonFatal
 
 class AggregateActor[A, C, E, I <: AggregateId](
@@ -17,6 +18,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
     interpreter: AsyncInterpreter[A, C, E],
     aggregateType: String
 ) extends AggregateAliases
+    with AggregateMessageExtractors
     with PersistentActor
     with ActorLogging {
 
@@ -78,7 +80,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
     case RecoveryCompleted =>
       log.debug("aggregate '{}' has recovered", identifier)
 
-    case event: Event => onEvent(event)
+    case TypedEvent(event) => onEvent(event)
 
     case unknown => log.debug("Unknown message on recovery")
   }
@@ -90,7 +92,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     val receive: Receive = {
 
-      case cmd: Command =>
+      case TypedCommand(cmd) =>
         log.debug("Received cmd: {}", cmd)
 
         val eventualTimeout =
@@ -127,7 +129,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
       case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand                  => onFailure(failedCmd)
 
-      case cmd: Command =>
+      case TypedCommand(cmd) =>
         log.debug("received {} while processing another command", cmd)
         stash()
 
@@ -170,12 +172,19 @@ class AggregateActor[A, C, E, I <: AggregateId](
     }
   }
 
-  protected def onEvent(evt: Event): Unit = {
-    log.debug("Reapplying event {}", evt)
-    eventsSinceLastSnapshot += 1
-    aggregateState = interpreter.onEvent(aggregateState, evt)
-    log.debug("State after event {}", aggregateState)
-    changeState(Available)
+  protected def onEvent(evt: Any): Unit = {
+
+    Try(evt.asInstanceOf[Event]) match {
+      case Success(castedEvent) =>
+        log.debug("Reapplying event {}", evt)
+        eventsSinceLastSnapshot += 1
+        aggregateState = interpreter.onEvent(aggregateState, castedEvent)
+        log.debug("State after event {}", aggregateState)
+        changeState(Available)
+
+      case _ => log.debug(s"Unknown message on recovery $evt")
+    }
+
   }
 
   /**

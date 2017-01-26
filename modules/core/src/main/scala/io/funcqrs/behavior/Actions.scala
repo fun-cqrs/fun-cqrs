@@ -1,11 +1,9 @@
 package io.funcqrs.behavior
 
-import io.funcqrs.interpreters.Identity
 import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
 
 import scala.collection.immutable
 import scala.language.higherKinds
-import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
 case class Actions[A, C, E] private (private val cmdInvokers: CommandToInvoker[C, E],
@@ -133,5 +131,6 @@ object Actions {
       rejectCmdInvokers = PartialFunction.empty,
       evtHandlers       = PartialFunction.empty
     )
+
   def empty[A, C, E]: Actions[A, C, E] = apply()
 }

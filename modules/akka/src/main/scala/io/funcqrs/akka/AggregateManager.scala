@@ -14,7 +14,7 @@ object AggregateManager {
 
   case class Exists(id: AggregateId)
 
-  case class UntypedIdAndCommand[I <: AggregateId, C](id: I, cmd: C)
+  case class UntypedIdAndCommand(id: Any, cmd: Any)
 
 }
 
@@ -90,7 +90,7 @@ trait AggregateManager[A, C, E, I <: AggregateId] extends Actor with ActorLoggin
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
-  private def badAggregateId(id: AggregateId) = {
+  private def badAggregateId(id: Any) = {
     sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
 
