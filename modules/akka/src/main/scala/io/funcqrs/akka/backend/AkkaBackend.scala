@@ -80,7 +80,7 @@ trait AkkaBackend extends Backend[Future] {
     this
   }
 
-  def actorOf[A, C, E, I](config: AggregateConfig[A, C, E, I])(implicit ev: ClassTag[A]): ActorRef = {
+  private def actorOf[A, C, E, I](config: AggregateConfig[A, C, E, I])(implicit ev: ClassTag[A]): ActorRef = {
     val name = config.name.getOrElse(ev.runtimeClass.getSimpleName)
     actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior), name)
   }

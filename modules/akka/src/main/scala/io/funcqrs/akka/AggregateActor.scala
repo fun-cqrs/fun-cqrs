@@ -117,25 +117,21 @@ class AggregateActor[A, C, E, I <: AggregateId](
     }
 
     // always compose with defaultReceive
-    receive orElse defaultReceive
+    defaultReceive orElse receive
 
   }
 
   private def busy: Receive = {
 
     val busyReceive: Receive = {
-
-      case AggregateActor.StateRequest(requester)    => sendState(requester)
       case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand                  => onFailure(failedCmd)
-
       case TypedCommand(cmd) =>
         log.debug("received {} while processing another command", cmd)
         stash()
-
     }
 
-    busyReceive orElse defaultReceive
+    defaultReceive orElse busyReceive
 
   }
 
@@ -154,7 +150,6 @@ class AggregateActor[A, C, E, I <: AggregateId](
         deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
       }
       currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
-
   }
 
   /**
@@ -224,7 +219,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
       // WATCH OUT!!!
       // procedural, state full and hard to reason piece of code!! ;-)
-      persistAll(events) { _ =>
+      persistAll(events) { evt =>
         eventsCount += 1
         eventsSinceLastSnapshot += 1
 

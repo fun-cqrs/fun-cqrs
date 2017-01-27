@@ -11,7 +11,7 @@ import scala.concurrent.Await
 
 trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
 
-  private val actorSys: ActorSystem = ActorSystem("test", ConfigFactory.load("application.conf"))
+  lazy val actorSys: ActorSystem = ActorSystem("test", ConfigFactory.load("application.conf"))
 
   lazy val backend = new AkkaBackend {
     override val actorSystem: ActorSystem = actorSys

@@ -13,7 +13,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
 
   val id = LotteryId("test-lottery")
 
-  class LotteryInMemoryTest extends InMemoryTestSupport[LotteryEvent] {
+  class LotteryInMemoryTest extends InMemoryTestSupport {
 
     def configure(backend: InMemoryBackend): Unit = {
       // ---------------------------------------------

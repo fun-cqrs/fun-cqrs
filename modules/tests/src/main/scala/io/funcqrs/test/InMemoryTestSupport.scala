@@ -79,15 +79,13 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[E]] to [[T]]
+    * @param pf - a PartialFunction from [[Any]] to [[T]]
     */
-  def expectEventPF[E, T](pf: PartialFunction[E, T]): T = {
-    val lastReceived = oldestEvent().asInstanceOf[E]
+  def expectEventPF[T](pf: PartialFunction[Any, T]): T = {
+    val lastReceived = oldestEvent()
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event, was: $lastReceived")
-
     // remove if assertion passes
-    receivedEvents.dequeue.asInstanceOf[E]
-
+    receivedEvents.dequeue
     // apply PF to it
     pf(lastReceived)
   }
@@ -113,11 +111,11 @@ trait InMemoryTestSupport {
     *
     * Useful to verify the content of the event pattern matching.
     *
-    * @param pf - a PartialFunction from [[E]] to [[T]]
+    * @param pf - a PartialFunction from [[Any]] to [[T]]
     * @throws AssertionError in case there is no matching Event on the buffer
     * @return E if event buffer contains an Event of type E
     */
-  def lookupExpectedEventPF[E, T](pf: PartialFunction[E, T]): T = {
+  def lookupExpectedEventPF[T](pf: PartialFunction[Any, T]): T = {
     Try(expectEventPF(pf)) match {
       case Success(event) => event
       case Failure(ignore) =>
@@ -141,11 +139,11 @@ trait InMemoryTestSupport {
     lastReceived.asInstanceOf[E]
   }
 
-  def lastReceivedEventPF[E, T](pf: PartialFunction[E, T]): T = {
+  def lastReceivedEventPF[T](pf: PartialFunction[Any, T]): T = {
 
     bufferShouldNoBeEmpty()
 
-    val lastReceived = receivedEvents.toList.last.asInstanceOf[E]
+    val lastReceived = receivedEvents.toList.last
 
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for last received event, was: $lastReceived")
     pf(lastReceived)

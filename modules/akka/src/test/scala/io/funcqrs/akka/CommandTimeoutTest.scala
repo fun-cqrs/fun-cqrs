@@ -2,9 +2,9 @@ package io.funcqrs.akka
 
 import java.util.UUID
 
+import io.funcqrs.AggregateId
 import io.funcqrs.behavior._
 import io.funcqrs.config.Api._
-import io.funcqrs.{ AggregateId, AggregateLike, ProtocolLike }
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.{ Seconds, Span }
@@ -14,21 +14,19 @@ import scala.concurrent.Future
 
 class CommandTimeoutTest extends FunSuite with Matchers with ScalaFutures with AkkaBackendSupport with BeforeAndAfter {
 
-  import io.funcqrs.akka.PersonProtocol._
-
   // very patient
   override implicit def patienceConfig: PatienceConfig =
     PatienceConfig(timeout = scaled(Span(3, Seconds)))
 
   before {
     backend.configure {
-      aggregate[Person](Person.behavior)
+      aggregate(Person.behavior)
     }
   }
 
   test("timeout commands don't leave aggregate in busy state") {
 
-    val personRef = backend.aggregateRef[Person](PersonId.generate)
+    val personRef = backend.aggregateRef[Person].forId(PersonId.generate)
 
     personRef ! MakePerson("Joe", 20)
     personRef ! ChangePersonsName("John")
@@ -50,61 +48,62 @@ class CommandTimeoutTest extends FunSuite with Matchers with ScalaFutures with A
   }
 
 }
+
+case class Person(id: PersonId, name: String, age: Int)
 case class PersonId(value: String) extends AggregateId
 object PersonId {
-
-  def generate: PersonId =
-    PersonId(UUID.randomUUID().toString)
+  def generate: PersonId = PersonId(UUID.randomUUID().toString)
 }
 
-object PersonProtocol extends ProtocolLike {
-  sealed trait PersonCommand extends ProtocolCommand
-  case class MakePerson(name: String, age: Int) extends PersonCommand
-  case class ChangePersonsName(name: String) extends PersonCommand
-  case object RegisterBirthday extends PersonCommand
+sealed trait PersonCommand
+final case class MakePerson(name: String, age: Int) extends PersonCommand
+final case class ChangePersonsName(name: String) extends PersonCommand
+case object RegisterBirthday extends PersonCommand
 
-  sealed trait PersonEvent extends ProtocolEvent
-  case class PersonCreated(name: String, age: Int) extends PersonEvent
-  case class PersonsNameUpdated(name: String) extends PersonEvent
-  case class PersonsAgeUpdated(age: Int) extends PersonEvent
-}
+sealed trait PersonEvent
+final case class PersonCreated(name: String, age: Int) extends PersonEvent
+final case class PersonsNameUpdated(name: String) extends PersonEvent
+final case class PersonsAgeUpdated(age: Int) extends PersonEvent
 
-case class Person(id: PersonId, name: String, age: Int) extends AggregateLike {
-  type Id       = PersonId
-  type Protocol = PersonProtocol.type
-}
+object Person extends Types[Person] {
 
-object Person {
+  type Id      = PersonId
+  type Command = PersonCommand
+  type Event   = PersonEvent
 
-  import io.funcqrs.akka.PersonProtocol._
-  def behavior(id: PersonId): Behavior[Person] =
-    Behavior {
-      actions[Person]
-        .handleCommand { cmd: MakePerson =>
-          PersonCreated(cmd.name, cmd.age)
+  def behavior(id: PersonId) =
+    Behavior.construct {
+      actions
+        .commandHandler {
+          OneEvent {
+            case MakePerson(name, age) => PersonCreated(name, age)
+          }
         }
-        .handleEvent { evt: PersonCreated =>
-          Person(id, evt.name, evt.age)
+        .eventHandler {
+          case PersonCreated(name, age) => Person(id, name, age)
         }
-    } {
+    } andThen {
       case person =>
-        actions[Person]
-          .handleCommand {
-            // change name takes a lot of time
-            cmd: ChangePersonsName =>
-              Future {
-                Thread.sleep(3000) // it takes ages!!
-                PersonsNameUpdated(cmd.name)
-              }
+        actions
+          .commandHandler {
+            EventuallyOneEvent {
+              case ChangePersonsName(name) =>
+                Future {
+                  Thread.sleep(3000) // it takes ages!!
+                  PersonsNameUpdated(name)
+                }
+            }
           }
-          .handleEvent { evt: PersonsNameUpdated =>
-            person.copy(name = evt.name)
+          .eventHandler {
+            case PersonsNameUpdated(name) => person.copy(name = name)
           }
-          .handleCommand { cmd: RegisterBirthday.type =>
-            PersonsAgeUpdated(person.age + 1)
+          .commandHandler {
+            OneEvent {
+              case RegisterBirthday => PersonsAgeUpdated(person.age + 1)
+            }
           }
-          .handleEvent { evt: PersonsAgeUpdated =>
-            person.copy(age = evt.age)
+          .eventHandler {
+            case PersonsAgeUpdated(age) => person.copy(age = age)
           }
     }
 }

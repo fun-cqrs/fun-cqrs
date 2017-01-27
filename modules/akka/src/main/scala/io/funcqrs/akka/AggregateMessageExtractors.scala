@@ -1,9 +1,8 @@
 package io.funcqrs.akka
 
-import io.funcqrs.AggregateId
 import io.funcqrs.behavior.AggregateAliases
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Success, Try }
 
 trait AggregateMessageExtractors extends AggregateAliases {
 

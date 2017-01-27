@@ -6,161 +6,98 @@ import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.AggregateManager._
-import io.funcqrs.akka.TestModel.UserProtocol._
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
-import io.funcqrs.{ AggregateId, CommandException, DomainCommand, MissingCommandHandlerException }
+import io.funcqrs.{ AggregateId, DomainCommand, MissingCommandHandlerException }
 import org.scalatest._
+import org.scalatest.concurrent.{ Eventually, ScalaFutures }
+import org.scalatest.exceptions.TestFailedException
+import org.scalatest.time.{ Seconds, Span }
 
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class AggregateManagerTest(val actorSys: ActorSystem)
-    extends TestKit(actorSys)
-    with ImplicitSender
-    with Matchers
-    with FlatSpecLike
-    with BeforeAndAfterAll {
+class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
 
   implicit val timeout = Timeout(500.millis)
 
-  def this() = this(ActorSystem("test", ConfigFactory.load("application.conf")))
+  // very patient
+  override implicit def patienceConfig: PatienceConfig =
+    PatienceConfig(timeout = scaled(Span(3, Seconds)))
 
-  private val eventsSourceProvider = (query: Query) => ???
-
-  lazy val backend = new AkkaBackend {
-    override val actorSystem: ActorSystem = actorSys
-    def sourceProvider(query: Query): EventsSourceProvider = ???
-  }
-
-  override def afterAll {
-    TestKit.shutdownActorSystem(system)
-  }
-
-  private lazy val aggregateManager =
-    backend.actorOf {
-      aggregate[User](User.behavior)
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    backend.configure {
+      aggregate(User.behavior)
     }
+  }
 
   behavior of "An AggregateManager"
 
   it should "initialize a new actor when receiving a creational command" in {
 
-    type Aggregate = User
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    val userId = UserId.generate()
-
-    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "create event") {
-      case (evt: UserCreated) :: _ =>
+    userRef.exists().futureValue shouldBe false
+    userRef ! CreateUser("John Doe", 30)
+    eventually {
+      userRef.exists().futureValue shouldBe true
     }
 
-    aggregateManager ! GetState(userId)
-    expectMsgPF(hint = "check aggregate state") {
-      case user: User =>
-        user.name shouldBe "John Doe"
-        user.age shouldBe 30
+    eventually {
+      val user = userRef.state().futureValue
+      user.name shouldBe "John Doe"
+      user.age shouldBe 30
     }
 
-    aggregateManager ! UntypedIdAndCommand(userId, ChangeName("Osvaldo"))
-    expectMsgPF(hint = "update name") {
-      case (evt: NameChanged) :: _ =>
-    }
+    userRef ! ChangeName("Osvaldo")
 
-    aggregateManager ! GetState(userId)
-    expectMsgPF(hint = "check aggregate state - name changed") {
-      case user: User =>
-        user.name shouldBe "Osvaldo"
+    eventually {
+      val user = userRef.state().futureValue
+      user.name shouldBe "Osvaldo"
     }
   }
 
   it should "return false when enquiring for non-existent aggregate" in {
 
-    val userId = UserId.generate()
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    aggregateManager ! Exists(userId)
-    expectMsgPF(hint = "checking existence of non-existent aggregate") {
-      case false => // Ok
-    }
+    userRef.exists().futureValue shouldBe false
   }
 
   it should "return true when enquiring for existent aggregate" in {
 
-    val userId = UserId.generate()
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "creating user") {
-      case (evt: UserCreated) :: _ =>
-    }
+    userRef ! CreateUser("John Doe", 30)
 
-    aggregateManager ! Exists(userId)
-    expectMsgPF(hint = "checking existence of existent aggregate") {
-      case true => // Ok
+    eventually {
+      userRef.exists().futureValue shouldBe true
     }
   }
 
   it should "not accept a create command twice" in {
 
-    val userId = UserId.generate()
-    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "creating user") {
-      case (evt: UserCreated) :: _ =>
-    }
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "creating user twice") {
-      case Failure(exp: MissingCommandHandlerException) =>
-        exp.getMessage contains "No command handlers defined for command: CreateUser(John Doe,30))"
-    }
+    userRef ! CreateUser("John Doe", 30)
+
+    (userRef ? CreateUser("John Doe", 30)).failed.futureValue shouldBe a[MissingCommandHandlerException]
   }
 
   it should "reject commands if aggregate is 'deleted'" in {
 
-    val userId = UserId.generate()
-    aggregateManager ! UntypedIdAndCommand(userId, CreateUser("John Doe", 30))
-    expectMsgPF(hint = "creating user") {
-      case (evt: UserCreated) :: _ =>
-    }
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    aggregateManager ! UntypedIdAndCommand(userId, DeleteUser)
-    expectMsgPF(hint = "sending delete command") {
-      case (evt: UserDeleted.type) :: _ => //ok
-    }
+    userRef ! CreateUser("John Doe", 30)
 
-    aggregateManager ! UntypedIdAndCommand(userId, ChangeName("Osvaldo"))
-    expectMsgPF(hint = "update name") {
-      case Failure(exp: IllegalArgumentException) =>
-        exp.getMessage contains "User is already deleted!"
-    }
+    userRef ! DeleteUser
+
+    val error = (userRef ? CreateUser("John Doe", 30)).failed.futureValue
+    error shouldBe a[IllegalArgumentException]
+    error.getMessage contains "User is already deleted!"
   }
 
-  it should "reject commands not defined in by its behavior" in {
-
-    // no generated id so we can check error message
-    val userId = UserId("test")
-
-    val badCommand = new DomainCommand {
-      override def toString: String = "BadCommand"
-    }
-
-    aggregateManager ! UntypedIdAndCommand(userId, badCommand)
-    expectMsgPF(hint = "sending bad command") {
-      case Failure(exp: IllegalArgumentException) =>
-        exp.getMessage shouldBe "Unknown message: UntypedIdAndCommand(UserId(test),BadCommand)"
-    }
-  }
-
-  // FIXME: we can't type check on Id, need to investigate further
-  ignore should "not accept AggregateIDs of another type" in {
-
-    case class BadUserId(value: String) extends AggregateId
-
-    aggregateManager ! UntypedIdAndCommand(BadUserId("bad-id"), CreateUser("John Doe", 30))
-
-    expectMsgPF(hint = "creating user") {
-      case Failure(exp: IllegalArgumentException) =>
-        exp.getMessage contains "Wrong aggregate id type "
-    }
-  }
 }
