@@ -1,22 +1,14 @@
 package io.funcqrs.akka
 
-import akka.actor.ActorSystem
-import akka.actor.Status.Failure
-import akka.testkit.{ ImplicitSender, TestKit }
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
-import io.funcqrs.akka.AggregateManager._
+import io.funcqrs.MissingCommandHandlerException
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
-import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
-import io.funcqrs.{ AggregateId, DomainCommand, MissingCommandHandlerException }
 import org.scalatest._
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
-import org.scalatest.exceptions.TestFailedException
 import org.scalatest.time.{ Seconds, Span }
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
 class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
@@ -25,10 +17,9 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   // very patient
   override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(3, Seconds)))
+    PatienceConfig(timeout = scaled(Span(5, Seconds)))
 
-  override protected def beforeAll(): Unit = {
-    super.beforeAll()
+  override def configureBackend(backend: AkkaBackend): Unit = {
     backend.configure {
       aggregate(User.behavior)
     }
@@ -38,38 +29,38 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "initialize a new actor when receiving a creational command" in {
 
-    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+    val userRef = aggregateRef[User].forId(UserId.generate())
 
     userRef.exists().futureValue shouldBe false
-    userRef ! CreateUser("John Doe", 30)
+    userRef ! CreateUser("João Ninguém", 30)
     eventually {
       userRef.exists().futureValue shouldBe true
     }
 
     eventually {
       val user = userRef.state().futureValue
-      user.name shouldBe "John Doe"
+      user.name shouldBe "João Ninguém"
       user.age shouldBe 30
     }
 
-    userRef ! ChangeName("Osvaldo")
+    userRef ! ChangeName("Osvaldo Waldo")
 
     eventually {
       val user = userRef.state().futureValue
-      user.name shouldBe "Osvaldo"
+      user.name shouldBe "Osvaldo Waldo"
     }
   }
 
   it should "return false when enquiring for non-existent aggregate" in {
 
-    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+    val userRef = aggregateRef[User].forId(UserId.generate())
 
     userRef.exists().futureValue shouldBe false
   }
 
   it should "return true when enquiring for existent aggregate" in {
 
-    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+    val userRef = aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 
@@ -80,7 +71,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "not accept a create command twice" in {
 
-    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+    val userRef = aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 
@@ -89,7 +80,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "reject commands if aggregate is 'deleted'" in {
 
-    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+    val userRef = aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 

@@ -3,6 +3,7 @@ package io.funcqrs.akka
 import java.util.UUID
 
 import io.funcqrs.AggregateId
+import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.behavior._
 import io.funcqrs.config.Api._
 import org.scalatest._
@@ -16,9 +17,9 @@ class CommandTimeoutTest extends FunSuite with Matchers with ScalaFutures with A
 
   // very patient
   override implicit def patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = scaled(Span(3, Seconds)))
+    PatienceConfig(timeout = scaled(Span(5, Seconds)))
 
-  before {
+  override def configureBackend(backend: AkkaBackend): Unit = {
     backend.configure {
       aggregate(Person.behavior)
     }
@@ -26,7 +27,7 @@ class CommandTimeoutTest extends FunSuite with Matchers with ScalaFutures with A
 
   test("timeout commands don't leave aggregate in busy state") {
 
-    val personRef = backend.aggregateRef[Person].forId(PersonId.generate)
+    val personRef = aggregateRef[Person].forId(PersonId.generate)
 
     personRef ! MakePerson("Joe", 20)
     personRef ! ChangePersonsName("John")

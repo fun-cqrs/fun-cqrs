@@ -13,8 +13,6 @@ ivyScala := ivyScala.value map {
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
-scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
-
 // dependencies
 lazy val root = Project(
     id   = "fun-cqrs",
@@ -63,9 +61,9 @@ lazy val lotteryApp = Project(
   base     = file("samples/lottery"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= sampleDeps)
- .settings(publishArtifact := false)
- .dependsOn(funCqrs)
- .dependsOn(funCqrsTestKit)
+  .settings(publishArtifact := false)
+  .dependsOn(funCqrs)
+  .dependsOn(funCqrsTestKit)
 //  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")

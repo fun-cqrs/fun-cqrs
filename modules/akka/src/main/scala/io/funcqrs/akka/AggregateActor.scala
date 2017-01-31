@@ -109,7 +109,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
         eventWithTimeout map {
           case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
-          case NonFatal(cause) => FailedCommand(cause, origSender)
+          case NonFatal(cause) => FailedCommand(cmd, cause, origSender)
         } pipeTo self
 
         changeState(Busy)
@@ -133,11 +133,6 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     defaultReceive orElse busyReceive
 
-  }
-
-  def onFailure(failedCmd: FailedCommand): Unit = {
-    failedCmd.origSender ! Status.Failure(failedCmd.cause)
-    changeState(Available)
   }
 
   protected def defaultReceive: Receive = {
@@ -257,6 +252,12 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
   }
 
+  def onFailure(failedCmd: FailedCommand): Unit = {
+    failedCmd.origSender ! Status.Failure(failedCmd.cause)
+
+    changeState(Available)
+  }
+
   /**
     * This method should be used as a callback handler for persist() method.
     * It will:
@@ -285,7 +286,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
     */
   private case class Successful(events: Events, nextState: Option[Aggregate], origSender: ActorRef)
 
-  private case class FailedCommand(cause: Throwable, origSender: ActorRef)
+  private case class FailedCommand(cmd: Command, cause: Throwable, origSender: ActorRef)
 
 }
 
