@@ -69,7 +69,7 @@ class AggregateActor[A <: AggregateLike](
 
     case SnapshotOffer(metadata, aggregate: Aggregate @unchecked) =>
       eventsSinceLastSnapshot = 0
-      log.debug("recovering aggregate from snapshot")
+      log.debug("aggregate '{}' is recovering from snapshot", identifier)
       restoreState(metadata, aggregate)
 
     case RecoveryCompleted =>
@@ -77,7 +77,7 @@ class AggregateActor[A <: AggregateLike](
 
     case event: Event => onEvent(event)
 
-    case unknown => log.debug("Unknown message on recovery")
+    case unknown => log.debug("aggregate '{}' received unknown message {} on recovery", identifier, unknown)
   }
 
   // always compose with defaultReceive
@@ -88,7 +88,7 @@ class AggregateActor[A <: AggregateLike](
     val receive: Receive = {
 
       case cmd: Command =>
-        log.debug("Received cmd: {}", cmd)
+        log.debug("aggregate '{}' received cmd: {}", identifier, cmd)
 
         val eventualTimeout =
           after(duration = commandTimeout, using = context.system.scheduler) {
@@ -125,7 +125,7 @@ class AggregateActor[A <: AggregateLike](
       case failedCmd: FailedCommand                  => onFailure(failedCmd)
 
       case cmd: Command =>
-        log.debug("received {} while processing another command", cmd)
+        log.debug("aggregate '{}' received {} while processing another command", identifier, cmd)
         stash()
 
     }
@@ -160,7 +160,7 @@ class AggregateActor[A <: AggregateLike](
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
       case Initialized(aggregate) =>
-        log.debug("sending aggregate {} to {}", aggregate.id, replyTo)
+        log.debug("aggregate '{}' sending state to {}", aggregate.id, replyTo)
         replyTo ! aggregate
       case Uninitialized(id) =>
         replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
@@ -168,10 +168,10 @@ class AggregateActor[A <: AggregateLike](
   }
 
   protected def onEvent(evt: Event): Unit = {
-    log.debug("Reapplying event {}", evt)
+    log.debug("aggregate '{}' reapplying event {}", identifier, evt)
     eventsSinceLastSnapshot += 1
     aggregateState = interpreter.onEvent(aggregateState, evt)
-    log.debug("State after event {}", aggregateState)
+    log.debug("aggregate '{}' has state after event {}", identifier, aggregateState)
     changeState(Available)
   }
 
@@ -182,7 +182,7 @@ class AggregateActor[A <: AggregateLike](
     * @param aggregate the aggregate
     */
   private def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
-    log.debug("restoring data for aggregate {}", aggregate.id)
+    log.debug("aggregate '{}' restoring data", aggregate.id)
 
     currentSnapshotSequenceNr = Some(metadata.sequenceNr)
 
@@ -193,12 +193,12 @@ class AggregateActor[A <: AggregateLike](
   def changeState(state: ActorState): Unit = {
     state match {
       case Available =>
-        log.debug("Accepting commands...")
+        log.debug("aggregate '{}' accepting commands", identifier)
         context become available
         unstashAll()
 
       case Busy =>
-        log.debug("Busy, only answering to GetState and command results.")
+        log.debug("aggregate '{}' busy, only answering to GetState and command results", identifier)
         context become busy
     }
   }
@@ -232,7 +232,7 @@ class AggregateActor[A <: AggregateLike](
           if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
             aggregateState match {
               case Initialized(aggregate) =>
-                log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
+                log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
                 saveSnapshot(aggregate)
               case _ =>
             }
@@ -264,7 +264,7 @@ class AggregateActor[A <: AggregateLike](
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
         case Initialized(aggregate) =>
-          log.debug("{} events reached, saving snapshot", eventsPerSnapshot)
+          log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
           saveSnapshot(aggregate)
         case _ =>
       }
