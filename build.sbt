@@ -36,12 +36,15 @@ lazy val funCqrs = Project(
 //================================================
 
 // Akka integration ==============================
+
+lazy val plugin = RootProject(file("../../../tmp/akka-persistence-inmemory"))
 lazy val funCqrsAkka = Project(
-  id       = "fun-cqrs-akka",
-  base     = file("modules/akka"),
-  settings = defaultSettings
-).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
-  .dependsOn(funCqrs % "compile->compile;test->test")
+    id       = "fun-cqrs-akka",
+    base     = file("modules/akka"),
+    settings = defaultSettings
+  ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
+   .dependsOn (funCqrs % "compile->compile;test->test")
+   .dependsOn(plugin)
 //================================================
 
 //Test kit =======================================
