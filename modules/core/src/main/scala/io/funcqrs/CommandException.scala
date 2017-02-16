@@ -6,3 +6,4 @@ class CommandException(msg: String) extends RuntimeException(msg) with NoStackTr
 class MissingCommandHandlerException(msg: String) extends RuntimeException(msg)
 class MissingEventHandlerException(msg: String) extends RuntimeException(msg)
 class MissingBehaviorException(msg: String) extends RuntimeException(msg)
+class MissingAggregateConfiguration(msg: String) extends IllegalStateException(msg)

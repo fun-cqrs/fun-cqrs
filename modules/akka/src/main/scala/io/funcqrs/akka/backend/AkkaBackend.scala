@@ -1,13 +1,12 @@
 package io.funcqrs.akka.backend
 
-import akka.actor.{ ActorPath, ActorRef, ActorSystem, Props }
+import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
-import io.funcqrs.AggregateLike
+import io.funcqrs.{AggregateLike, ClassTagImplicits, MissingAggregateConfiguration}
 import io.funcqrs.akka._
 import io.funcqrs.backend._
 import io.funcqrs.config._
-import io.funcqrs.ClassTagImplicits
 import io.funcqrs.akka.util.ConfigReader.aggregateConfig
 
 import scala.collection.concurrent
@@ -37,7 +36,9 @@ trait AkkaBackend extends Backend[Future] {
   def sourceProvider(query: Query): EventsSourceProvider
 
   def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateActorRef[A] = {
-    val aggregateManager = aggregates(ClassTagImplicits[A])
+    val aggregateManager = aggregates.get(ClassTagImplicits[A])
+      .getOrElse(throw new MissingAggregateConfiguration("The aggregate was not configured with a behaviour. " +
+        "Use io.funcqrs.config.Api.aggregate to provide a behaviour for this aggregate."))
 
     val aggregateName = aggregateManager.path.name
     val askTimeout    = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
