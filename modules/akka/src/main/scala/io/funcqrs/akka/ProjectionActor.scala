@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor._
 import akka.pattern._
-import akka.persistence.query.EventEnvelope
+import akka.persistence.query.{ EventEnvelope2, Sequence }
 import akka.stream.ActorMaterializer
 import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
@@ -13,7 +13,6 @@ import akka.util.Timeout
 import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
 import io.funcqrs.projections.{ Envelope, Projection }
-
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -72,7 +71,7 @@ abstract class ProjectionActor(
     log.debug("ProjectionActor: starting projection... {}", projection)
     implicit val mat = ActorMaterializer()
 
-    val subscriber = ActorSubscriber[EventEnvelope](self)
+    val subscriber = ActorSubscriber[EventEnvelope2](self)
     val actorSink  = Sink.fromSubscriber(subscriber)
 
     sourceProvider.source(lastProcessedOffset.map(_ + 1).getOrElse(0)).runWith(actorSink)
@@ -180,8 +179,8 @@ abstract class ProjectionActor(
 
     def unapply(onNext: OnNext): Option[(Any, Long)] = {
       onNext.element match {
-        case EventEnvelope(offset, _, _, event) => Option((event, offset))
-        case _                                  => None
+        case EventEnvelope2(Sequence(offset), _, _, event) => Option((event, offset))
+        case _                                             => None
       }
     }
   }

@@ -9,7 +9,7 @@ import scala.concurrent.Future
 
 class AndThenProjectionTest extends FlatSpec with Matchers with Futures with ScalaFutures with OptionValues {
 
-  implicit val patienceConf = patienceConfig
+  implicit val patienceConf: PatienceConfig = patienceConfig
 
   behavior of "AndThenProjection"
 
@@ -73,7 +73,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newFailingProjection() = new Projection {
-    def receiveEvent = {
+    def receiveEvent: ReceiveEvent = {
       case evt => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
@@ -82,7 +82,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     var result: Option[T] = None
   }
   def newFooProjection() = new StatefulProjection[String] {
-    def receiveEvent = {
+    def receiveEvent: ReceiveEvent = {
       case Envelope(evt: FooEvent, _) =>
         result = Some(evt.value)
         Future.successful(())
@@ -90,7 +90,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newBarProjection() = new StatefulProjection[Int] {
-    def receiveEvent = {
+    def receiveEvent: ReceiveEvent = {
       case Envelope(evt: BarEvent, _) =>
         result = Some(evt.num)
         Future.successful(())
