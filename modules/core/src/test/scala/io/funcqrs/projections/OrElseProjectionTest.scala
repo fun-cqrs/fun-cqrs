@@ -24,7 +24,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
 
     val orElseProjection = fooProjection1 orElse fooProjection2
 
-    whenReady(orElseProjection.onEvent(Envelope(FooEvent("abc"), 1))) { _ =>
+    whenReady(orElseProjection.onEvent(FooEvent("abc"))) { _ =>
       fooProjection1.result.value shouldBe "abc"
       fooProjection2.result shouldBe None
     }
@@ -37,7 +37,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
 
     val orElseProjection = fooProjection orElse barProjection
 
-    whenReady(orElseProjection.onEvent(Envelope(BarEvent(10), 1))) { _ =>
+    whenReady(orElseProjection.onEvent(BarEvent(10))) { _ =>
       fooProjection.result shouldBe None
       barProjection.result.value shouldBe 10
     }
@@ -51,7 +51,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
     val orElseProjection = newFailingBarProjection() orElse barProjection
 
     // we must recover it in other to use with ScalaTest
-    val recovered = orElseProjection.onEvent(Envelope(BarEvent(10), 1)).recover { case _ => () }
+    val recovered = orElseProjection.onEvent(BarEvent(10)).recover { case _ => () }
 
     whenReady(recovered) { _ =>
       barProjection.result shouldBe None
@@ -60,13 +60,13 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
 
   def newFailingBarProjection() = new Projection {
     def receiveEvent = {
-      case Envelope(evt: BarEvent, _) => Future.failed(new IllegalArgumentException("this projection should not receive events"))
+      case evt: BarEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
   def newFailingFooProjection() = new Projection {
     def receiveEvent = {
-      case Envelope(evt: FooEvent, _) => Future.failed(new IllegalArgumentException("this projection should not receive events"))
+      case evt: FooEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
@@ -74,7 +74,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
     var result: Option[String] = None
 
     def receiveEvent = {
-      case Envelope(evt: FooEvent, _) =>
+      case evt: FooEvent =>
         result = Some(evt.value)
         Future.successful(())
     }
@@ -85,7 +85,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
     var result: Option[Int] = None
 
     def receiveEvent = {
-      case Envelope(evt: BarEvent, _) =>
+      case evt: BarEvent =>
         result = Some(evt.num)
         Future.successful(())
     }

@@ -2,12 +2,10 @@ package lottery.domain.model
 
 import java.time.OffsetDateTime
 
-
 // Events ============================================================
 sealed trait LotteryEvent {
   def lotteryId: LotteryId
 }
-
 
 // Creation Event
 case class LotteryCreated(lotteryId: LotteryId) extends LotteryEvent

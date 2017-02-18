@@ -19,8 +19,8 @@ trait InMemoryTestSupport {
 
   private lazy val internalProjection = new Projection {
     def receiveEvent: ReceiveEvent = {
-      case envelop =>
-        receivedEvents += envelop.event // add all events to queue
+      case event =>
+        receivedEvents += event // add all events to queue
         Future.successful(())
     }
   }

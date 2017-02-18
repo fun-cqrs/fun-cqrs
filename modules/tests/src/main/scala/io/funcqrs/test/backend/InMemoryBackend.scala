@@ -2,17 +2,16 @@ package io.funcqrs.test.backend
 
 import io.funcqrs._
 import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
-import io.funcqrs.behavior.{ Types, _ }
+import io.funcqrs.behavior._
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
-import io.funcqrs.projections.Envelope
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
 
-import scala.collection.{ concurrent, immutable }
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.{ Await, Future }
+import scala.collection.{ concurrent, immutable }
 import scala.concurrent.duration._
+import scala.concurrent.{ Await, Future }
 import scala.reflect.ClassTag
 
 class InMemoryBackend extends Backend[Identity] {
@@ -68,9 +67,8 @@ class InMemoryBackend extends Backend[Identity] {
 
     // send even to projections
     def sendToProjection(event: Any) = {
-      val envelop = Envelope(event, 1)
       // TODO: projections should be interpreted as well to avoid this
-      Await.ready(config.projection.onEvent(envelop), 10.seconds)
+      Await.ready(config.projection.onEvent(event), 10.seconds)
       ()
     }
 

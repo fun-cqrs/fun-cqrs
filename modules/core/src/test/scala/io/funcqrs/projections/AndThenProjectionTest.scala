@@ -24,7 +24,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
     val andThenProjection = fooProjection1 andThen fooProjection2
 
-    whenReady(andThenProjection.onEvent(Envelope(FooEvent("abc"), 1))) { _ =>
+    whenReady(andThenProjection.onEvent(FooEvent("abc"))) { _ =>
       fooProjection1.result.value shouldBe "abc"
       fooProjection2.result.value shouldBe "abc"
     }
@@ -37,7 +37,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
     val andThenProjection = fooProjection andThen barProjection
 
-    whenReady(andThenProjection.onEvent(Envelope(BarEvent(10), 1))) { _ =>
+    whenReady(andThenProjection.onEvent(BarEvent(10))) { _ =>
       fooProjection.result shouldBe None
       barProjection.result.value shouldBe 10
     }
@@ -51,7 +51,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     val andThenProjection = newFailingProjection() andThen barProjection
 
     // we must recover it in other to use with ScalaTest
-    val recovered = andThenProjection.onEvent(Envelope(BarEvent(10), 1)).recover { case _ => () }
+    val recovered = andThenProjection.onEvent(BarEvent(10)).recover { case _ => () }
 
     whenReady(recovered) { _ =>
       barProjection.result shouldBe None
@@ -65,7 +65,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     val andThenProjection = barProjection andThen newFailingProjection()
 
     // we must recover it in other to use with ScalaTest
-    val recovered = andThenProjection.onEvent(Envelope(BarEvent(10), 1)).recover { case _ => () }
+    val recovered = andThenProjection.onEvent(BarEvent(10)).recover { case _ => () }
 
     whenReady(recovered) { _ =>
       barProjection.result.value shouldBe 10
@@ -83,7 +83,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
   def newFooProjection() = new StatefulProjection[String] {
     def receiveEvent: ReceiveEvent = {
-      case Envelope(evt: FooEvent, _) =>
+      case evt: FooEvent =>
         result = Some(evt.value)
         Future.successful(())
     }
@@ -91,7 +91,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
   def newBarProjection() = new StatefulProjection[Int] {
     def receiveEvent: ReceiveEvent = {
-      case Envelope(evt: BarEvent, _) =>
+      case evt: BarEvent =>
         result = Some(evt.num)
         Future.successful(())
     }

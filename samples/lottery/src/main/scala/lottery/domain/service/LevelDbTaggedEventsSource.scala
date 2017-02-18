@@ -11,13 +11,13 @@ package lottery.domain.service
 // // tag::leveldb-events-source[]
 // class LevelDbTaggedEventsSource(tag: Tag) extends EventsSourceProvider {
 
-  // *
-  //   * Builds a [[Source]] of [[EventEnvelope]]s containing the [[Tag]]
-  //   * and starting from the passed offset.
-  //   *
-  //   * @param offset - initial offset to start to read from
-  //   * @return
-    
+// *
+//   * Builds a [[Source]] of [[EventEnvelope]]s containing the [[Tag]]
+//   * and starting from the passed offset.
+//   *
+//   * @param offset - initial offset to start to read from
+//   * @return
+
 //   def source(offset: Long)(implicit context: ActorContext): Source[EventEnvelope, NotUsed] = {
 
 //     val readJournal =

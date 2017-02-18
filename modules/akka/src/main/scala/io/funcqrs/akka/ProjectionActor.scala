@@ -124,7 +124,7 @@ abstract class ProjectionActor(
             Future.failed(new TimeoutException(s"Timed out projection ${projection.name} for event $evt"))
           }
 
-        val projectionFuture = projection.onEvent(Envelope(evt, offset))
+        val projectionFuture = projection.onEvent(evt)
 
         val projectionWithTimeout = Future firstCompletedOf Seq(projectionFuture, eventualTimeout)
 

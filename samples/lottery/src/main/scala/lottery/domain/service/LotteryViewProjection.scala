@@ -13,10 +13,10 @@ class LotteryViewProjection(repo: LotteryViewRepo) extends Projection {
 
   def receiveEvent: ReceiveEvent = {
 
-    case Envelope(e: LotteryCreated, _) =>
+    case e: LotteryCreated =>
       Future.successful(repo.save(LotteryView(id = e.lotteryId)))
 
-    case Envelope(e: LotteryUpdateEvent, _) =>
+    case e: LotteryUpdateEvent =>
       Future.successful {
         repo
           .updateById(e.lotteryId) { lot =>

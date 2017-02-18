@@ -1,6 +1,5 @@
 package lottery.domain.model
 
-
 /** Defines the Lottery Protocol, all Commands it may receive and Events it may emit */
 // Commands ============================================================
 sealed trait LotteryCommand
