@@ -64,7 +64,7 @@ lazy val lotteryApp = Project(
   .settings(publishArtifact := false)
   .dependsOn(funCqrs)
   .dependsOn(funCqrsTestKit)
-//  .dependsOn(funCqrsAkka)
+  .dependsOn(funCqrsAkka)
 
 addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")
 addCommandAlias("runLotteryInMemory", "sample-lottery/runMain lottery.app.MainInMemory")
