@@ -5,7 +5,7 @@ import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.backend.Query
 import io.funcqrs.behavior.Types
-import org.scalatest.{ BeforeAndAfter, BeforeAndAfterAll, Suite }
+import org.scalatest.{ BeforeAndAfterAll, Suite }
 
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
 
 trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
 
-  private lazy val actorSys: ActorSystem = ActorSystem("test", ConfigFactory.load("application.conf"))
+  protected lazy val actorSys: ActorSystem = ActorSystem("test", ConfigFactory.load("application.conf"))
 
   lazy val backend = new AkkaBackend {
     override val actorSystem: ActorSystem = actorSys
@@ -22,7 +22,7 @@ trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-   
+
     // force creation of datastax Native PID for in-memory plugin
     akka.persistence.inmemory.nowUuid
     configureBackend(backend)

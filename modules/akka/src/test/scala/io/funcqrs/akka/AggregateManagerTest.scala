@@ -1,9 +1,11 @@
 package io.funcqrs.akka
 
+import akka.actor.ActorSystem
 import akka.util.Timeout
-import io.funcqrs.MissingCommandHandlerException
+import io.funcqrs.{ MissingCommandHandlerException, _ }
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
+import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
 import org.scalatest._
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
@@ -29,7 +31,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "initialize a new actor when receiving a creational command" in {
 
-    val userRef = aggregateRef[User].forId(UserId.generate())
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
     userRef.exists().futureValue shouldBe false
     userRef ! CreateUser("João Ninguém", 30)
@@ -53,14 +55,14 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "return false when enquiring for non-existent aggregate" in {
 
-    val userRef = aggregateRef[User].forId(UserId.generate())
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
     userRef.exists().futureValue shouldBe false
   }
 
   it should "return true when enquiring for existent aggregate" in {
 
-    val userRef = aggregateRef[User].forId(UserId.generate())
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 
@@ -71,7 +73,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "not accept a create command twice" in {
 
-    val userRef = aggregateRef[User].forId(UserId.generate())
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 
@@ -80,7 +82,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
   it should "reject commands if aggregate is 'deleted'" in {
 
-    val userRef = aggregateRef[User].forId(UserId.generate())
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
     userRef ! CreateUser("John Doe", 30)
 
@@ -91,4 +93,14 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
     error.getMessage contains "User is already deleted!"
   }
 
+  it should "fail with descriptive error getting aggregateRef for non-configured aggregate" in {
+    val freshBackend = new AkkaBackend {
+      override val actorSystem: ActorSystem = actorSys
+
+      def sourceProvider(query: Query): EventsSourceProvider = ???
+    }
+    assertThrows[MissingAggregateConfigurationException] {
+      freshBackend.aggregateRef[Person].forId(PersonId.generate)
+    }
+  }
 }
