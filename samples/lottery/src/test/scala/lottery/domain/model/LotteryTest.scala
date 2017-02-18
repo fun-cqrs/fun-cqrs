@@ -4,7 +4,6 @@ import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.config.Api._
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
-import lottery.domain.model.LotteryProtocol._
 import lottery.domain.service.{ LotteryViewProjection, LotteryViewRepo }
 import org.scalatest.{ FunSuite, Matchers, OptionValues, TryValues }
 
@@ -20,7 +19,7 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       // ---------------------------------------------
       // aggregate config - write model
       backend.configure {
-        aggregate[Lottery](Lottery.behavior)
+        aggregate(Lottery.behavior)
       }
 
       // ---------------------------------------------
@@ -28,14 +27,16 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       backend.configure {
         projection(
           // we don't use tagging for in-memory tests
-          query = QuerySelectAll,
+          query      = QuerySelectAll,
           projection = new LotteryViewProjection(repo),
-          name = "LotteryViewProjection"
+          name       = "LotteryViewProjection"
         )
       }
     }
 
-    def lotteryRef(id: LotteryId) = aggregateRef[Lottery](id)
+    def lotteryRef(id: LotteryId) =
+      backend.aggregateRef[Lottery].forId(id)
+
   }
 
   test("Run a Lottery") {
@@ -151,9 +152,8 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       view.winner shouldBe defined
 
       intercept[LotteryHasAlreadyAWinner] {
-
-        lottery ? RemoveAllParticipants // reseting is illegal if a winner is selected
-
+        // resetting is illegal if a winner is selected
+        lottery ? RemoveAllParticipants
       }
 
       val updateView = repo.find(id).success.value
@@ -179,9 +179,8 @@ class LotteryTest extends FunSuite with Matchers with OptionValues with TryValue
       view.winner shouldBe defined
 
       intercept[LotteryHasAlreadyAWinner] {
-
-        lottery ? AddParticipant("Ringo") // adding new participant is illegal if a winner is selected
-
+        // adding new participant is illegal if a winner is selected
+        lottery ? AddParticipant("Ringo")
       }
     }
 

@@ -16,11 +16,13 @@ import scala.util.{ Failure, Success, Try }
   *
   * This interpreter should be used for testing and / or for behaviors that preferably don't define any async operation.
   *
-  * @param behavior - a Aggregate [[Behavior]]
+  * @param behavior - a Aggregate Behavior
   * @param atMost - the maximum duration we are to wait before Futures timeout.
-  * @tparam A - an Aggregate type
+  * @tparam A - the Aggregate type
+  * @tparam C - the Command type
+  * @tparam E - the Event type
   */
-class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Duration = 5.seconds) extends Interpreter[A, Try] {
+class TryInterpreter[A, C, E](val behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) extends Interpreter[A, C, E, Try] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => Try(handler(cmd))
@@ -30,7 +32,7 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
 
   protected def fromTry[B](any: Try[B]): Try[B] = any
 
-  def applyCommand(state: State[A], cmd: Command): Try[(Events, State[A])] = {
+  def applyCommand(state: Option[A], cmd: Command): Try[(Events, Option[A])] = {
     for {
       evts <- onCommand(state, cmd)
       updatedAgg <- onEvents(state, evts)
@@ -39,5 +41,5 @@ class TryInterpreter[A <: AggregateLike](val behavior: Behavior[A], atMost: Dura
 }
 
 object TryInterpreter {
-  def apply[A <: AggregateLike](behavior: Behavior[A], atMost: Duration = 5.seconds) = new TryInterpreter(behavior, atMost)
+  def apply[A, C, E](behavior: Behavior[A, C, E], atMost: Duration = 5.seconds) = new TryInterpreter(behavior, atMost)
 }

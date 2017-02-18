@@ -2,8 +2,14 @@ package io.funcqrs
 
 import scala.util.control.NoStackTrace
 
-class CommandException(msg: String) extends RuntimeException(msg) with NoStackTrace
-class MissingCommandHandlerException(msg: String) extends RuntimeException(msg)
-class MissingEventHandlerException(msg: String) extends RuntimeException(msg)
-class MissingBehaviorException(msg: String) extends RuntimeException(msg)
-class MissingAggregateConfiguration(msg: String) extends IllegalStateException(msg)
+class InvalidCommandException(msg: String) extends IllegalArgumentException(msg) with NoStackTrace
+
+class CommandException(msg: String) extends IllegalArgumentException(msg)
+
+class MissingCommandHandlerException(msg: String) extends IllegalArgumentException(msg)
+
+class MissingEventHandlerException(msg: String) extends IllegalStateException(msg)
+
+class MissingBehaviorException(msg: String) extends IllegalStateException(msg)
+
+class MissingAggregateConfigurationException(msg: String) extends IllegalStateException(msg)

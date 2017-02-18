@@ -1,5 +1,6 @@
-package io.funcqrs
+package io.funcqrs.projections
 
+import io.funcqrs.TestDomainEvent
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
 
@@ -58,34 +59,37 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
   }
 
   def newFailingBarProjection() = new Projection {
-    def handleEvent = {
+    def receiveEvent = {
       case evt: BarEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
   def newFailingFooProjection() = new Projection {
-    def handleEvent = {
+    def receiveEvent = {
       case evt: FooEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
-  def newFooProjection() = new Projection {
+  class FooProjection extends Projection {
     var result: Option[String] = None
 
-    def handleEvent = {
+    def receiveEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
-        Future.successful()
+        Future.successful(())
     }
   }
+  def newFooProjection() = new FooProjection
 
-  def newBarProjection() = new Projection {
+  class BarProjection extends Projection {
     var result: Option[Int] = None
 
-    def handleEvent = {
+    def receiveEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
-        Future.successful()
+        Future.successful(())
     }
   }
+
+  def newBarProjection() = new BarProjection
 }

@@ -3,6 +3,7 @@ package io.funcqrs.interpreters
 import io.funcqrs._
 import io.funcqrs.behavior._
 
+import scala.collection.immutable
 import scala.language.higherKinds
 import scala.util.{ Failure, Success, Try }
 
@@ -11,11 +12,14 @@ import scala.util.{ Failure, Success, Try }
   *
   * Implementors must define which type F must be bound to.
   */
-abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
+abstract class Interpreter[A, C, E, F[_]] {
 
   type Aggregate = A
+  type Command   = C
+  type Event     = E
+  type Events    = immutable.Seq[E]
 
-  protected def behavior: Behavior[A]
+  protected def behavior: Behavior[Aggregate, Command, Event]
 
   type InterpreterFunction = PartialFunction[(Command, CommandHandlerInvoker[Command, Event]), F[Events]]
 
@@ -46,7 +50,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
     */
   protected def fromTry[B](any: Try[B]): F[B]
 
-  final def onCommand(state: State[Aggregate], cmd: Command): F[Events] = {
+  final def onCommand(state: Option[Aggregate], cmd: Command): F[Events] = {
 
     val tryActions =
       if (behavior.isDefinedAt(state)) {
@@ -75,9 +79,9 @@ abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
     * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
     * @return new aggregate state after applying event
     */
-  final def onEvent(state: State[Aggregate], evt: Event): State[Aggregate] = {
+  final def onEvent(state: Option[Aggregate], evt: Event): Option[Aggregate] = {
     if (behavior.isDefinedAt(state)) {
-      Initialized(behavior(state).onEvent(evt))
+      Some(behavior(state).onEvent(evt))
     } else {
       throw new MissingBehaviorException(s"No behavior defined for current aggregate state")
     }
@@ -91,7 +95,7 @@ abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
     * @throws MissingEventHandlerException if no Event handler is defined for one of the passed events.
     * @return new aggregate state after applying all events
     */
-  final def onEvents(state: State[Aggregate], evts: Events): F[State[Aggregate]] = {
+  final def onEvents(state: Option[Aggregate], evts: Events): F[Option[Aggregate]] = {
 
     val tried =
       Try { // don't let exceptions leak
@@ -103,6 +107,6 @@ abstract class Interpreter[A <: AggregateLike, F[_]] extends AggregateAliases {
     fromTry(tried)
   }
 
-  def applyCommand(state: State[Aggregate], cmd: Command): F[(Events, State[A])]
+  def applyCommand(state: Option[Aggregate], cmd: Command): F[(Events, Option[A])]
 
 }

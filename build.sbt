@@ -56,7 +56,6 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 // #                     SAMPLES                      #
 // #####################################################
-
 lazy val lotteryApp = Project(
   id       = "sample-lottery",
   base     = file("samples/lottery"),

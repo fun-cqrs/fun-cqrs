@@ -3,12 +3,11 @@ package lottery.domain.service
 import akka.NotUsed
 import akka.actor.ActorContext
 import akka.persistence.query.journal.leveldb.scaladsl.LeveldbReadJournal
-import akka.persistence.query.{ EventEnvelope, PersistenceQuery }
+import akka.persistence.query.{ EventEnvelope, EventEnvelope2, PersistenceQuery, Sequence }
 import akka.stream.scaladsl.Source
 import io.funcqrs.Tag
 import io.funcqrs.akka.EventsSourceProvider
 
-// tag::leveldb-events-source[]
 class LevelDbTaggedEventsSource(tag: Tag) extends EventsSourceProvider {
 
   /**
@@ -18,13 +17,19 @@ class LevelDbTaggedEventsSource(tag: Tag) extends EventsSourceProvider {
     * @param offset - initial offset to start to read from
     * @return
     */
-  def source(offset: Long)(implicit context: ActorContext): Source[EventEnvelope, NotUsed] = {
+  def source(offset: Long)(implicit context: ActorContext): Source[EventEnvelope2, NotUsed] = {
 
     val readJournal =
       PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
-    readJournal.eventsByTag(tag.value, offset)
+    readJournal.eventsByTag(tag.value, offset).map { e =>
+      EventEnvelope2(
+        offset        = Sequence(e.offset),
+        persistenceId = e.persistenceId,
+        sequenceNr    = e.sequenceNr,
+        event         = e.event
+      )
+    }
   }
 
 }
-// end::leveldb-events-source[]

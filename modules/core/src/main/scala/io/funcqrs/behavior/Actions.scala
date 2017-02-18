@@ -1,27 +1,27 @@
 package io.funcqrs.behavior
 
-import io.funcqrs.interpreters._
-import io.funcqrs._
+import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
 
 import scala.collection.immutable
-import scala.concurrent.Future
 import scala.language.higherKinds
-import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
-case class Actions[A <: AggregateLike](
-    cmdHandlerInvokers: CommandToInvoker[A#Command, A#Event] = PartialFunction.empty,
-    rejectCmdInvokers: CommandToInvoker[A#Command, A#Event]  = PartialFunction.empty,
-    eventHandlers: EventHandler[A#Event, A]                  = PartialFunction.empty
-) extends AggregateAliases {
+case class Actions[A, C, E] private (private val cmdInvokers: CommandToInvoker[C, E],
+                                     private val rejectCmdInvokers: CommandToInvoker[C, E],
+                                     private val evtHandlers: EventHandler[E, A]) {
 
   type Aggregate = A
+  type Command   = C
+  type Event     = E
+  type Events    = immutable.Seq[Event]
+
+  type TypedActions = Actions[Aggregate, Command, Event]
 
   /**
     * All command handlers together.
     * First reject handlers, then normal command handlers
     */
-  private val allHandlers = rejectCmdInvokers orElse cmdHandlerInvokers
+  private val allHandlers = rejectCmdInvokers orElse cmdInvokers
 
   /**
     * Returns a [[CommandHandlerInvoker]] for the passed [[Command]]. Invokers are delayed execution
@@ -34,7 +34,7 @@ case class Actions[A <: AggregateLike](
     if (allHandlers.isDefinedAt(cmd))
       allHandlers(cmd)
     else {
-      val cmdHandler: PartialFunction[Command, Try[Events]] = {
+      val cmdHandler: CommandToManyEvents[C, E, Try] = {
         case _ =>
           val msg = s"No command handlers defined for command: $cmd"
           Failure(new MissingCommandHandlerException(msg))
@@ -51,39 +51,55 @@ case class Actions[A <: AggregateLike](
     * @throws MissingEventHandlerException if no Event handler is defined for the passed event.
     */
   def onEvent(evt: Event): Aggregate = {
-    if (eventHandlers.isDefinedAt(evt))
-      eventHandlers(evt)
+    if (evtHandlers.isDefinedAt(evt))
+      evtHandlers(evt)
     else
       throw new MissingEventHandlerException(s"No event handlers defined for events: $evt")
   }
 
+  def commandHandler[F[_], G[_]](cmdHandler: CommandHandler[C, E, F, G]): TypedActions = {
+    addInvoker(cmdHandler.invoker)
+  }
+
+  private def addInvoker(invoker: CommandHandlerInvoker[C, E]): TypedActions = {
+
+    val invokerPF: CommandToInvoker[C, E] = {
+      case cmd if invoker.commandHandler.isDefinedAt(cmd) => invoker
+    }
+
+    this.copy(cmdInvokers = cmdInvokers orElse invokerPF)
+  }
+
   /**
-    * Concatenate `this` Actions with `that` Actions
+    * Declares an event handler
+    *
+    * @param handler - the event handler function
+    * @return an Actions for A
     */
-  def ++(that: Actions[A]) = {
-    this.copy(
-      cmdHandlerInvokers = this.cmdHandlerInvokers orElse that.cmdHandlerInvokers,
-      rejectCmdInvokers  = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
-      eventHandlers      = this.eventHandlers orElse that.eventHandlers
-    )
+  def eventHandler(handler: EventHandler[E, A]): TypedActions = {
+    this.copy(evtHandlers = evtHandlers orElse handler)
   }
 
   /**
     * Declares a guard clause that reject commands that fulfill a given condition.
     *
-    * A guard clause is a `Command Handler` as it handles a incoming command,
-    * but instead of producing [[Event]], it returns a [[Throwable]] to signalize an error condition.
+    * A guard clause is a `Command Handler` as it handles an incoming command,
+    * but instead of producing Event, it returns a [[Throwable]] to signalize an error condition.
     *
-    * Guard clauses command handlers have precedence over handlers producing [[Event]]s.
+    * Guard clauses command handlers have precedence over handlers producing Events.
     *
-    * @param cmdHandler - a PartialFunction from [[Command]] to [[Throwable]].
+    * @param cmdHandler - a PartialFunction from Command to [[Throwable]].
     * @return - return a [[Actions]].
     */
-  def reject(cmdHandler: PartialFunction[A#Command, Throwable]): Actions[Aggregate] = {
+  def reject(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = {
 
-    val invokerPF: CommandToInvoker[A#Command, A#Event] = {
-      case cmd if cmdHandler.isDefinedAt(cmd) =>
-        TryCommandHandlerInvoker(cmd => Failure(cmdHandler(cmd)))
+    val cmdHandlerSeq: CommandToManyEvents[C, E, Try] = {
+      case cmd => Failure(cmdHandler(cmd))
+    }
+    // return a fallback invoker if not define
+
+    val invokerPF: CommandToInvoker[C, E] = {
+      case cmd if cmdHandler.isDefinedAt(cmd) => TryCommandHandlerInvoker(cmdHandlerSeq)
     }
 
     this.copy(
@@ -91,113 +107,30 @@ case class Actions[A <: AggregateLike](
     )
   }
 
-  /** Alias for reject */
-  def rejectCommand(cmdHandler: PartialFunction[Command, Throwable]): Actions[Aggregate] = reject(cmdHandler)
+  /** Alias to reject */
+  def rejectCommand(cmdHandler: PartialFunction[C, Throwable]): Actions[A, C, E] = reject(cmdHandler)
 
-  /** Declares a `Command Handler` that produces one single [[Event]] */
-  def handleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Identity[E]): Actions[Aggregate] = {
-    // wrap single event in immutable.Seq
-    val handlerWithSeq: C => Identity[immutable.Seq[E]] = (cmd: C) => immutable.Seq(cmdHandler(cmd))
-    handleCommand[C, E, immutable.Seq](handlerWithSeq)
-  }
-
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[E])(
-      implicit ivk: InvokerDirective[F]): Actions[Aggregate] =
-    addInvoker(ivk.newInvoker(cmdHandler))
-
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[immutable.Seq[E]])(
-      implicit ivk: InvokerSeqDirective[F]): Actions[Aggregate] =
-    addInvoker(ivk.newInvoker(cmdHandler))
-
-  def handleCommand[C <: Command: ClassTag, E <: Event, F[_]](cmdHandler: C => F[List[E]])(
-      implicit ivk: InvokerListDirective[F]): Actions[Aggregate] =
-    addInvoker(ivk.newInvoker(cmdHandler))
-
-  private def addInvoker[C <: Command: ClassTag, E <: Event](invoker: CommandHandlerInvoker[C, E]): Actions[Aggregate] = {
-
-    // TODO: we can better solve it with a Map[Class, Invoker]
-    // as such we can detect if a duplicated key is added
-    object CmdExtractor extends ClassTagExtractor[C]
-    // PF from Cmd to Invoker
-    val invokerPF: CommandToInvoker[C, E] = { case CmdExtractor(cmd) => invoker }
-    // add it
-    this.copy(
-      cmdHandlerInvokers = cmdHandlerInvokers orElse invokerPF.asInstanceOf[CommandToInvoker[Command, Event]]
+  /**
+    * Concatenate `this` Actions with `that` Actions
+    */
+  def ++(that: Actions[A, C, E]) = {
+    Actions[A, C, E](
+      cmdInvokers       = this.cmdInvokers orElse that.cmdInvokers,
+      rejectCmdInvokers = this.rejectCmdInvokers orElse that.rejectCmdInvokers,
+      evtHandlers       = this.evtHandlers orElse that.evtHandlers
     )
   }
 
-  /**
-    */
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommand: ManyEventsBinder[Identity] = IdentityManyEventsBinder(this)
-
-  case class IdentityManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Identity] {
-
-    /** Declares a `Command Handler` that produces a Seq[[Event]] */
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Identity[immutable.Seq[E]]): Actions[Aggregate] = {
-      handleCommand[C, E, immutable.Seq](cmdHandler)
-    }
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def tryToHandleCommand[C <: Command: ClassTag, E <: Event](cmdHandler: C => Try[E]): Actions[Aggregate] = {
-    handleCommand[C, E, Try](cmdHandler)
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def tryToHandleCommand: ManyEventsBinder[Try] = TryManyEventsBinder(this)
-
-  case class TryManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Try] {
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Try[immutable.Seq[E]]): Actions[A] = {
-      handleCommand[C, E, Try](cmdHandler)
-    }
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommandAsync[C <: Command: ClassTag, E <: Event](cmdHandler: C => Future[E]): Actions[Aggregate] = {
-    handleCommand[C, E, Future](cmdHandler)
-  }
-
-  @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-  def handleCommandAsync: ManyEventsBinder[Future] = FutureManyEventsBinder(this)
-
-  case class FutureManyEventsBinder(behavior: Actions[A]) extends ManyEventsBinder[Future] {
-
-    @deprecated("Obsolete, use handleCommand instead", "0.4.7")
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: (C) => Future[immutable.Seq[E]]): Actions[A] = {
-      handleCommand[C, E, Future](cmdHandler)
-    }
-  }
-
-  /**
-    * Declares an event handler
-    *
-    * @param eventHandler - the event handler function
-    * @return an Actions for A
-    */
-  def handleEvent[E <: Event: ClassTag](eventHandler: E => A): Actions[Aggregate] = {
-
-    object EvtExtractor extends ClassTagExtractor[E]
-
-    val eventHandlerPF: EventHandler[A#Event, A] = {
-      case EvtExtractor(evt) => eventHandler(evt)
-    }
-    this.copy(eventHandlers = eventHandlers orElse eventHandlerPF)
-  }
-
-  trait ManyEventsBinder[F[_]] {
-    def manyEvents[C <: Command: ClassTag, E <: Event](cmdHandler: C => F[immutable.Seq[E]]): Actions[Aggregate]
-  }
-
-  @deprecated(message = "Use handleCommandAsync instead", since = "0.3.1")
-  def asyncHandler: ManyEventsBinder[Future] = handleCommandAsync
 }
 
 object Actions {
 
-  def apply[A <: AggregateLike]: Actions[A] = Actions[A]()
-  def empty[A <: AggregateLike]: Actions[A] = apply
+  def apply[A, C, E](): Actions[A, C, E] =
+    new Actions[A, C, E](
+      cmdInvokers       = PartialFunction.empty,
+      rejectCmdInvokers = PartialFunction.empty,
+      evtHandlers       = PartialFunction.empty
+    )
 
+  def empty[A, C, E]: Actions[A, C, E] = apply()
 }

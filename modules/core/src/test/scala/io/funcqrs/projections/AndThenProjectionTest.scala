@@ -1,5 +1,6 @@
-package io.funcqrs
+package io.funcqrs.projections
 
+import io.funcqrs.TestDomainEvent
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
 
@@ -8,7 +9,7 @@ import scala.concurrent.Future
 
 class AndThenProjectionTest extends FlatSpec with Matchers with Futures with ScalaFutures with OptionValues {
 
-  implicit val patienceConf = patienceConfig
+  implicit val patienceConf: PatienceConfig = patienceConfig
 
   behavior of "AndThenProjection"
 
@@ -72,7 +73,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newFailingProjection() = new Projection {
-    def handleEvent = {
+    def receiveEvent: ReceiveEvent = {
       case evt => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
@@ -81,7 +82,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     var result: Option[T] = None
   }
   def newFooProjection() = new StatefulProjection[String] {
-    def handleEvent = {
+    def receiveEvent: ReceiveEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
         Future.successful(())
@@ -89,7 +90,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newBarProjection() = new StatefulProjection[Int] {
-    def handleEvent = {
+    def receiveEvent: ReceiveEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
         Future.successful(())

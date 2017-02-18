@@ -6,11 +6,12 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging          =  "com.typesafe.scala-logging" %% "scala-logging"      % "3.5.0"
-  val scalaTest             =  "org.scalatest"              %% "scalatest"          % "3.0.0" % "test"
-  val rxScala               =  "io.reactivex"               %% "rxscala"       	    % "0.26.4"
+  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging"  % "3.5.0"
+  val scalaTest    = "org.scalatest"              %% "scalatest"      % "3.0.0" % "test"
+  val rxScala      = "io.reactivex"               %% "rxscala"        % "0.26.5"
+  val logback      = "ch.qos.logback"             % "logback-classic" % "1.1.9"
 
-  val mainDeps = Seq(scalaLogging, scalaTest)
+  val mainDeps = Seq(scalaLogging, scalaTest, logback)
   //------------------------------------------------------------------------------------------------------------
 
   //------------------------------------------------------------------------------------------------------------
@@ -23,6 +24,7 @@ object Dependencies {
       "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j"       % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"      % akkaVersion,
+//      "com.typesafe.akka" %% "akka-remote"      % akkaVersion,
       // experimental
       "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
       // test scope

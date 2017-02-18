@@ -3,11 +3,11 @@ package io.funcqrs.akka.backend
 import akka.actor.{ActorPath, ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
-import io.funcqrs.{AggregateLike, ClassTagImplicits, MissingAggregateConfiguration}
 import io.funcqrs.akka._
+import io.funcqrs.akka.util.ConfigReader.aggregateConfig
 import io.funcqrs.backend._
 import io.funcqrs.config._
-import io.funcqrs.akka.util.ConfigReader.aggregateConfig
+import io.funcqrs.{AggregateId, ClassTagImplicits, MissingAggregateConfigurationException}
 
 import scala.collection.concurrent
 import scala.concurrent.Future
@@ -35,19 +35,24 @@ trait AkkaBackend extends Backend[Future] {
 
   def sourceProvider(query: Query): EventsSourceProvider
 
-  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): AggregateActorRef[A] = {
-    val aggregateManager = aggregates.get(ClassTagImplicits[A])
-      .getOrElse(throw new MissingAggregateConfiguration("The aggregate was not configured with a behaviour. " +
-        "Use io.funcqrs.config.Api.aggregate to provide a behaviour for this aggregate."))
+  protected def aggregateRefById[A: ClassTag, C, E, I <: AggregateId](id: I): Ref[A, C, E] = {
+    val aggregateManager =
+      aggregates.getOrElse(
+        ClassTagImplicits[A],
+        throw new MissingAggregateConfigurationException(
+          "The aggregate was not configured with a behaviour. " +
+          "Use io.funcqrs.config.Api.aggregate to provide a behaviour for this aggregate."
+        )
+      )
 
     val aggregateName = aggregateManager.path.name
     val askTimeout    = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
 
-    new AggregateActorRef[A](id, aggregateManager, projectionMonitorActorRef, askTimeout)
+    new AggregateActorRef[A, C, E, I](id, aggregateManager, projectionMonitorActorRef, askTimeout)
   }
 
-  def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): AkkaBackend = {
-    aggregates += (ClassTagImplicits[A] -> actorOf[A](config))
+  def configure[A: ClassTag, C, E, I <: AggregateId](config: AggregateConfig[A, C, E, I]): AkkaBackend = {
+    aggregates += (ClassTagImplicits[A] -> actorOf[A, C, E, I](config))
     this
   }
 
@@ -82,7 +87,7 @@ trait AkkaBackend extends Backend[Future] {
     this
   }
 
-  def actorOf[A <: AggregateLike](config: AggregateConfig[A])(implicit ev: ClassTag[A]): ActorRef = {
+  private def actorOf[A, C, E, I](config: AggregateConfig[A, C, E, I])(implicit ev: ClassTag[A]): ActorRef = {
     val name = config.name.getOrElse(ev.runtimeClass.getSimpleName)
     actorSystem.actorOf(ConfigurableAggregateManager.props(config.behavior), name)
   }

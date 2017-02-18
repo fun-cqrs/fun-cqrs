@@ -3,8 +3,8 @@ package io.funcqrs.behavior
 import java.time.OffsetDateTime
 
 import io.funcqrs.EventId
-import io.funcqrs.model.{ IdleTracker, TimeTracker }
-import io.funcqrs.model.TimerTrackerProtocol._
+import io.funcqrs.interpreters.Identity
+import io.funcqrs.model.{ CreateTracker, _ }
 import org.scalatest.{ FunSuite, Matchers }
 
 import scala.collection.immutable
@@ -12,98 +12,151 @@ import scala.concurrent.Future
 import scala.util.Try
 
 /**
- * Test that `Actions` can receive command handlers for all the expected types:
- * - Event (Identity[Event])
- * - immutable.Seq[Event] (Identity[immutable.Seq[Event]])
- * - List[Event] (Identity[List[Event]])
- *
- * - Future[Event]
- * - Future[immutable.Seq[Event]]
- * - Future[List[Event]]
- *
- * - Try[Event]
- * - Try[immutable.Seq[Event]]
- * - Try[List[Event]]
- */
+  * Test that `Actions` can receive command handlers for all the expected types:
+  * - Event (Identity[Event])
+  * - immutable.Seq[Event] (Identity[immutable.Seq[Event]])
+  * - List[Event] (Identity[List[Event]])
+  *
+  * - Future[Event]
+  * - Future[immutable.Seq[Event]]
+  * - Future[List[Event]]
+  *
+  * - Try[Event]
+  * - Try[immutable.Seq[Event]]
+  * - Try[List[Event]]
+  */
 class ActionsTest extends FunSuite with Matchers {
 
   test("Actions should accept (compile) all default types supported by Fun.CQRS") {
-    actions[TimeTracker]
+    TimeTracker.actions
 
-      // handle command single event
-      .handleCommand {
-        cmd: CreateTracker.type => TimerCreated(EventId())
+    // ---------------------------------------------------------------
+    // IDENTITY
+    // handle Command to One Event (Identity)
+      .commandHandler {
+        OneEvent {
+          case CreateTracker => TimerCreated(EventId())
+        }
       }
 
       // handle command single List[Event]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          List(
-            TimerCreated(EventId()),
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-          )
+      .commandHandler {
+        ManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            List(
+              TimerCreated(EventId()),
+              TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+            )
+        }
       }
-
       // handle command single immutable.Seq[Event]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          immutable.Seq(
-            TimerCreated(EventId()),
-            TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-          )
+      .commandHandler {
+        ManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            immutable.Seq(
+              TimerCreated(EventId()),
+              TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+            )
+        }
+      }
+      // ---------------------------------------------------------------
+      // MAYBE - Option
+      // handle Command to One Event (Option)
+      .commandHandler {
+        MaybeOneEvent {
+          case CreateTracker => Some(TimerCreated(EventId()))
+        }
       }
 
+      // handle command single List[Event]
+      .commandHandler {
+        MaybeManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Option(
+              List(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            )
+        }
+      }
+      // handle command single immutable.Seq[Event]
+      .commandHandler {
+        MaybeManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Option(
+              immutable.Seq(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            )
+        }
+      }
+      // ---------------------------------------------------------------
+      // ATTEMPT - Try
       // handle command single Try[Event]
-      .handleCommand {
-        cmd: CreateTracker.type => Try(TimerCreated(EventId()))
+      .commandHandler {
+        AttemptOneEvent {
+          case CreateTracker => Try(TimerCreated(EventId()))
+        }
       }
 
       // handle command single Try[List[Event]]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          Try {
-            List(
-              TimerCreated(EventId()),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-            )
-          }
+      .commandHandler {
+        AttemptManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Try {
+              List(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            }
+        }
       }
 
       // handle command single Try[immutable.Seq[Event]]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          Try {
-            immutable.Seq(
-              TimerCreated(EventId()),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-            )
-          }
+      .commandHandler {
+        AttemptManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Try {
+              immutable.Seq(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            }
+        }
       }
+      // ---------------------------------------------------------------
+      // EVENTUALLY - Future
       // handle command single Future[Event]
-      .handleCommand {
-        cmd: CreateTracker.type => Future.successful(TimerCreated(EventId()))
+      .commandHandler {
+        EventuallyOneEvent {
+          case CreateTracker => Future.successful(TimerCreated(EventId()))
+        }
       }
-
       // handle command single Future[List[Event]]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          Future.successful {
-            List(
-              TimerCreated(EventId()),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-            )
-          }
+      .commandHandler {
+        EventuallyManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Future.successful {
+              List(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            }
+        }
       }
-
       // handle command single Future[immutable.Seq[Event]]
-      .handleCommand {
-        cmd: CreateAndStartTracking =>
-          Future.successful {
-            immutable.Seq(
-              TimerCreated(EventId()),
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
-            )
-          }
+      .commandHandler {
+        EventuallyManyEvents {
+          case CreateAndStartTracking(taskTitle) =>
+            Future.successful {
+              immutable.Seq(
+                TimerCreated(EventId()),
+                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              )
+            }
+        }
       }
   }
 }

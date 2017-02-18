@@ -1,25 +1,26 @@
-package io.funcqrs
+package io.funcqrs.projections
 
-import io.funcqrs.Projection._
+import io.funcqrs.projections.Projection.{ AndThenProjection, OrElseProjection }
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 trait Projection {
 
-  type HandleFailure = PartialFunction[(DomainEvent, Throwable), Future[Unit]]
+  type ReceiveEvent  = PartialFunction[Any, Future[Unit]]
+  type HandleFailure = PartialFunction[(Any, Throwable), Future[Unit]]
 
   def name: String = this.getClass.getSimpleName
 
-  def handleEvent: HandleEvent
+  def receiveEvent: ReceiveEvent
 
-  def handleFailure: HandleFailure = PartialFunction.empty
+  def onFailure: HandleFailure = PartialFunction.empty
 
-  final def onEvent(evt: DomainEvent): Future[Unit] = {
-    if (handleEvent.isDefinedAt(evt)) {
+  final def onEvent(evt: Any): Future[Unit] = {
+    if (receiveEvent.isDefinedAt(evt)) {
       import scala.concurrent.ExecutionContext.Implicits.global
-      handleEvent(evt).recoverWith {
-        case NonFatal(exp) if handleFailure.isDefinedAt((evt, exp)) => handleFailure(evt, exp)
+      receiveEvent(evt).recoverWith {
+        case NonFatal(exp) if onFailure.isDefinedAt((evt, exp)) => onFailure(evt, exp)
       }
     } else {
       Future.successful(())
@@ -29,7 +30,7 @@ trait Projection {
   /**
     * Builds a [[AndThenProjection]] composed of this Projection and the passed Projection.
     *
-    * [[DomainEvent]]s will be send to both projections. One after the other starting by this followed by the passed Projection.
+    * Events will be send to both projections. One after the other starting by this followed by the passed Projection.
     *
     * NOTE: In the occurrence of any failure on any of the underling Projections, this Projection may be replayed,
     * therefore idempotent operations are recommended.
@@ -39,7 +40,7 @@ trait Projection {
   /**
     * Builds a [[OrElseProjection]]composed of this Projection and the passed Projection.
     *
-    * If this Projection is defined for a given incoming [[DomainEvent]], then this Projection will be applied,
+    * If this Projection is defined for a given incoming Event, then this Projection will be applied,
     * otherwise we fallback to the passed Projection.
     */
   def orElse(fallbackProjection: Projection) = new OrElseProjection(this, fallbackProjection)
@@ -49,11 +50,11 @@ object Projection {
 
   /** Projection with empty domain */
   def empty = new Projection {
-    def handleEvent: HandleEvent = PartialFunction.empty
+    def receiveEvent: ReceiveEvent = PartialFunction.empty
   }
 
   /**
-    * A [[Projection]] composed of two other Projections to each [[DomainEvent]] will be sent.
+    * A [[Projection]] composed of two other Projections to each Event will be sent.
     *
     * Note that the second Projection is only applied once the first is completed successfully.
     *
@@ -87,7 +88,7 @@ object Projection {
 
     override def name: String = s"${firstProj.name}-and-then-${secondProj.name}"
 
-    def handleEvent: HandleEvent = {
+    def receiveEvent: ReceiveEvent = {
       // note that we only broadcast if at least one of the underlying
       // projections is defined for the incoming event
       // as such we make it possible to compose using orElse
@@ -106,20 +107,21 @@ object Projection {
     * with fallback to the `receiveEvent` method of the second Projection.
     *
     * As such the second Projection is only applied if the first Projection is not defined
-    * for the given incoming [[DomainEvent]]
+    * for the given incoming Events
     *
     */
   private[funcqrs] class OrElseProjection(firstProj: Projection, secondProj: Projection)
       extends ComposedProjection(firstProj, secondProj)
       with Projection {
     override def name: String = s"${firstProj.name}-or-then-${secondProj.name}"
-    def handleEvent           = composedHandleEvent
+
+    def receiveEvent = composedHandleEvent
   }
 
   private[funcqrs] class ComposedProjection(firstProj: Projection, secondProj: Projection) {
     // compose underlying receiveEvents PartialFunction in order
     // to decide if this Projection is defined for given incoming DomainEvent
-    private[funcqrs] def composedHandleEvent = firstProj.handleEvent orElse secondProj.handleEvent
+    private[funcqrs] def composedHandleEvent = firstProj.receiveEvent orElse secondProj.receiveEvent
   }
 
 }
