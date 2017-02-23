@@ -19,8 +19,8 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
     def unapply(aggregateId: Any): Option[Id] = {
       Try(aggregateId.asInstanceOf[Id]) match {
-        case Success(id) => Some(id)
-        case _           => None
+        case Success(casted) => Some(casted)
+        case _               => None
       }
     }
   }
@@ -29,8 +29,8 @@ trait AggregateMessageExtractors extends AggregateAliases {
 
     def unapply(aggregateId: Any): Option[Any] = {
       Try(aggregateId.asInstanceOf[Id]) match {
-        case Success(id) => None
-        case _           => Some(aggregateId)
+        case Success(_) => None
+        case _          => Some(aggregateId)
       }
     }
   }
