@@ -1,6 +1,5 @@
-package io.funcqrs.projections
+package io.funcqrs
 
-import io.funcqrs.TestDomainEvent
 import org.scalatest.concurrent.{ Futures, ScalaFutures }
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
 

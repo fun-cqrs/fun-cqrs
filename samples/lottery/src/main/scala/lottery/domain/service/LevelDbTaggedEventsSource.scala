@@ -22,14 +22,7 @@ class LevelDbTaggedEventsSource(tag: Tag) extends EventsSourceProvider {
     val readJournal =
       PersistenceQuery(context.system).readJournalFor[LeveldbReadJournal](LeveldbReadJournal.Identifier)
 
-    readJournal.eventsByTag(tag.value, offset).map { e =>
-      EventEnvelope2(
-        offset        = Sequence(e.offset),
-        persistenceId = e.persistenceId,
-        sequenceNr    = e.sequenceNr,
-        event         = e.event
-      )
-    }
+    readJournal.eventsByTag(tag.value, Sequence(offset))
   }
 
 }

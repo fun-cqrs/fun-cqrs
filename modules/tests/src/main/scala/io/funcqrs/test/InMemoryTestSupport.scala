@@ -1,9 +1,8 @@
 package io.funcqrs.test
 
-import io.funcqrs._
+import io.funcqrs.{ Projection, _ }
 import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.config.api._
-import io.funcqrs.projections.Projection
 import io.funcqrs.test.backend.InMemoryBackend
 
 import scala.collection.mutable

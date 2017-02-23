@@ -1,11 +1,8 @@
 package lottery.domain.service
 
-//tag::lottery-view-projection[]
-import io.funcqrs.projections._
-import io.funcqrs.HandleEvent
-import lottery.domain.model._
-import lottery.domain.model.LotteryView
+import io.funcqrs.Projection
 import lottery.domain.model.LotteryView.Participant
+import lottery.domain.model.{ LotteryView, _ }
 
 import scala.concurrent.Future
 

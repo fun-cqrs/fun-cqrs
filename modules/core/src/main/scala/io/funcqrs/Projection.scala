@@ -1,6 +1,6 @@
-package io.funcqrs.projections
+package io.funcqrs
 
-import io.funcqrs.projections.Projection.{ AndThenProjection, OrElseProjection }
+import io.funcqrs.Projection.{ AndThenProjection, OrElseProjection }
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
