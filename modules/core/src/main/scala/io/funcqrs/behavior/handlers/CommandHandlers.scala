@@ -35,7 +35,7 @@ object just {
   type ManyEvents[C, E] = io.funcqrs.behavior.handlers.ManyEvents[C, E]
 }
 
-object option {
+object maybe {
 
   case class OneEvent[C, E](handler: PartialFunction[C, Option[E]]) extends CommandHandler[C, E, Identity, Option] {
 

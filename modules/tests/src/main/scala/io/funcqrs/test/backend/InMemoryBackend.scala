@@ -74,7 +74,7 @@ class InMemoryBackend extends Backend[Identity] {
 
     eventStream.subscribe { event: AnyEvent =>
       event match {
-        case evt: MetadataFacet[_] if matchQuery(evt.tags) =>
+        case evt: Tagged if matchQuery(evt.tags) =>
           sendToProjection(event)
 
         case evt if matchQueryWithoutTagging(evt) =>

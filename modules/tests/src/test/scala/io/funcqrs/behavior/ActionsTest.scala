@@ -4,7 +4,6 @@ import io.funcqrs.behavior.handlers._
 
 import java.time.OffsetDateTime
 
-import io.funcqrs.EventId
 import io.funcqrs.model.{ CreateTracker, _ }
 import org.scalatest.{ FunSuite, Matchers }
 
@@ -17,6 +16,10 @@ import scala.util.Try
   * - Event (Identity[Event])
   * - immutable.Seq[Event] (Identity[immutable.Seq[Event]])
   * - List[Event] (Identity[List[Event]])
+  *
+  * - Option[Event]
+  * - Option[immutable.Seq[Event]]
+  * - Option[List[Event]]
   *
   * - Future[Event]
   * - Future[immutable.Seq[Event]]
@@ -36,7 +39,7 @@ class ActionsTest extends FunSuite with Matchers {
     // handle Command to One Event (Identity)
       .commandHandler {
         OneEvent {
-          case CreateTracker => TimerCreated(EventId())
+          case CreateTracker => TimerCreated(OffsetDateTime.now)
         }
       }
 
@@ -45,8 +48,8 @@ class ActionsTest extends FunSuite with Matchers {
         ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             List(
-              TimerCreated(EventId()),
-              TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              TimerCreated(OffsetDateTime.now),
+              TimerStarted(taskTitle, OffsetDateTime.now())
             )
         }
       }
@@ -55,8 +58,8 @@ class ActionsTest extends FunSuite with Matchers {
         ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             immutable.Seq(
-              TimerCreated(EventId()),
-              TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+              TimerCreated(OffsetDateTime.now),
+              TimerStarted(taskTitle, OffsetDateTime.now())
             )
         }
       }
@@ -64,31 +67,31 @@ class ActionsTest extends FunSuite with Matchers {
       // MAYBE - Option
       // handle Command to One Event (Option)
       .commandHandler {
-        option.OneEvent {
-          case CreateTracker => Some(TimerCreated(EventId()))
+        maybe.OneEvent {
+          case CreateTracker => Some(TimerCreated(OffsetDateTime.now))
         }
       }
 
       // handle command single List[Event]
       .commandHandler {
-        option.ManyEvents {
+        maybe.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Option(
               List(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             )
         }
       }
       // handle command single immutable.Seq[Event]
       .commandHandler {
-        option.ManyEvents {
+        maybe.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Option(
               immutable.Seq(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             )
         }
@@ -98,7 +101,7 @@ class ActionsTest extends FunSuite with Matchers {
       // handle command single Try[Event]
       .commandHandler {
         attempt.OneEvent {
-          case CreateTracker => Try(TimerCreated(EventId()))
+          case CreateTracker => Try(TimerCreated(OffsetDateTime.now))
         }
       }
 
@@ -108,8 +111,8 @@ class ActionsTest extends FunSuite with Matchers {
           case CreateAndStartTracking(taskTitle) =>
             Try {
               List(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             }
         }
@@ -121,8 +124,8 @@ class ActionsTest extends FunSuite with Matchers {
           case CreateAndStartTracking(taskTitle) =>
             Try {
               immutable.Seq(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             }
         }
@@ -132,7 +135,7 @@ class ActionsTest extends FunSuite with Matchers {
       // handle command single Future[Event]
       .commandHandler {
         eventually.OneEvent {
-          case CreateTracker => Future.successful(TimerCreated(EventId()))
+          case CreateTracker => Future.successful(TimerCreated(OffsetDateTime.now))
         }
       }
       // handle command single Future[List[Event]]
@@ -141,8 +144,8 @@ class ActionsTest extends FunSuite with Matchers {
           case CreateAndStartTracking(taskTitle) =>
             Future.successful {
               List(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             }
         }
@@ -153,8 +156,8 @@ class ActionsTest extends FunSuite with Matchers {
           case CreateAndStartTracking(taskTitle) =>
             Future.successful {
               immutable.Seq(
-                TimerCreated(EventId()),
-                TimerStarted(taskTitle, OffsetDateTime.now(), EventId())
+                TimerCreated(OffsetDateTime.now),
+                TimerStarted(taskTitle, OffsetDateTime.now())
               )
             }
         }

@@ -306,9 +306,3 @@ object AggregateActor {
     Props(new AggregateActor[A, C, E, I](id, AsyncInterpreter(behavior), parentPath))
   }
 }
-
-/**
-  * Exceptions extending this trait will not get logged by FunCqrs as errors.
-  */
-trait DomainException { self: Throwable =>
-}

@@ -3,10 +3,10 @@ package io.funcqrs
 import java.time.OffsetDateTime
 
 import io.funcqrs.behavior._
-import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
+import io.funcqrs.behavior.handlers._
+import io.funcqrs.interpreters.IdentityInterpreter
 import io.funcqrs.model._
 import org.scalatest.{ FunSuite, Matchers }
-import io.funcqrs.behavior.handlers._
 
 /**
   * The intent of this test is not test a specific Interpreter, but to test the
@@ -39,18 +39,18 @@ class InterpreterTest extends FunSuite with Matchers {
     TimeTracker.actions
       .commandHandler {
         OneEvent {
-          case CreateTracker => TimerCreated(EventId())
+          case CreateTracker => TimerCreated(OffsetDateTime.now)
         }
       }
       .commandHandler {
         ManyEvents {
           case cmd: CreateAndStartTracking =>
             List(
-              TimerCreated(EventId()),
+              TimerCreated(OffsetDateTime.now),
               // the event handler for TimerStarter depends on a created Tracker
               // and therefore can't be defined in this 'Actions'
               // behavior is available in next transition
-              TimerStarted(cmd.taskTitle, OffsetDateTime.now(), EventId())
+              TimerStarted(cmd.taskTitle, OffsetDateTime.now())
             )
         }
       }
