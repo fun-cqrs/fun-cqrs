@@ -5,6 +5,7 @@ import java.util.UUID
 import io.funcqrs.AggregateId
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.handlers._
 import io.funcqrs.config.Api._
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
@@ -87,7 +88,8 @@ object Person extends Types[Person] {
       case person =>
         actions
           .commandHandler {
-            EventuallyOneEvent {
+            eventually.OneEvent { 
+                // o
               case ChangePersonsName(name) =>
                 Future {
                   Thread.sleep(3000) // it takes ages!!

@@ -12,9 +12,9 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
 
   behavior of "OrElseProjection"
 
-  case class FooEvent(value: String) extends TestDomainEvent
+  case class FooEvent(value: String)
 
-  case class BarEvent(num: Int) extends TestDomainEvent
+  case class BarEvent(num: Int)
 
   it should "Events are not propagated to second Projection if first can handle event" in {
 

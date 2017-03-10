@@ -2,6 +2,7 @@ package io.funcqrs.interpreters
 
 import io.funcqrs._
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.handlers.CommandHandlerInvoker
 
 import scala.collection.immutable
 import scala.language.higherKinds

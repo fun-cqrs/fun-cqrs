@@ -5,7 +5,7 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior.{ Types, _ }
-
+import io.funcqrs.behavior.handlers._
 sealed trait TimeTracker {
 
   def id: TrackerId

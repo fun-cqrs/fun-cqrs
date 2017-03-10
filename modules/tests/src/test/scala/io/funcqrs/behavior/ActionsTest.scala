@@ -1,9 +1,10 @@
 package io.funcqrs.behavior
 
+import io.funcqrs.behavior.handlers._
+
 import java.time.OffsetDateTime
 
 import io.funcqrs.EventId
-import io.funcqrs.interpreters.Identity
 import io.funcqrs.model.{ CreateTracker, _ }
 import org.scalatest.{ FunSuite, Matchers }
 
@@ -63,14 +64,14 @@ class ActionsTest extends FunSuite with Matchers {
       // MAYBE - Option
       // handle Command to One Event (Option)
       .commandHandler {
-        MaybeOneEvent {
+        option.OneEvent {
           case CreateTracker => Some(TimerCreated(EventId()))
         }
       }
 
       // handle command single List[Event]
       .commandHandler {
-        MaybeManyEvents {
+        option.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Option(
               List(
@@ -82,7 +83,7 @@ class ActionsTest extends FunSuite with Matchers {
       }
       // handle command single immutable.Seq[Event]
       .commandHandler {
-        MaybeManyEvents {
+        option.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Option(
               immutable.Seq(
@@ -96,14 +97,14 @@ class ActionsTest extends FunSuite with Matchers {
       // ATTEMPT - Try
       // handle command single Try[Event]
       .commandHandler {
-        AttemptOneEvent {
+        attempt.OneEvent {
           case CreateTracker => Try(TimerCreated(EventId()))
         }
       }
 
       // handle command single Try[List[Event]]
       .commandHandler {
-        AttemptManyEvents {
+        attempt.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Try {
               List(
@@ -116,7 +117,7 @@ class ActionsTest extends FunSuite with Matchers {
 
       // handle command single Try[immutable.Seq[Event]]
       .commandHandler {
-        AttemptManyEvents {
+        attempt.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Try {
               immutable.Seq(
@@ -130,13 +131,13 @@ class ActionsTest extends FunSuite with Matchers {
       // EVENTUALLY - Future
       // handle command single Future[Event]
       .commandHandler {
-        EventuallyOneEvent {
+        eventually.OneEvent {
           case CreateTracker => Future.successful(TimerCreated(EventId()))
         }
       }
       // handle command single Future[List[Event]]
       .commandHandler {
-        EventuallyManyEvents {
+        eventually.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Future.successful {
               List(
@@ -148,7 +149,7 @@ class ActionsTest extends FunSuite with Matchers {
       }
       // handle command single Future[immutable.Seq[Event]]
       .commandHandler {
-        EventuallyManyEvents {
+        eventually.ManyEvents {
           case CreateAndStartTracking(taskTitle) =>
             Future.successful {
               immutable.Seq(

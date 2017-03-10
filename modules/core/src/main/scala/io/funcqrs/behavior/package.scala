@@ -1,8 +1,8 @@
 package io.funcqrs
 
-import scala.collection.immutable
-import io.funcqrs.behavior.Actions
+import io.funcqrs.behavior.handlers.CommandHandlerInvoker
 
+import scala.collection.immutable
 import scala.language.higherKinds
 
 package object behavior {

@@ -4,7 +4,7 @@ import java.util.UUID
 
 import io.funcqrs._
 import io.funcqrs.behavior._
-
+import io.funcqrs.behavior.handlers._
 object TestModel {
 
   case class User(name: String, age: Int, id: UserId, deleted: Boolean = false) {

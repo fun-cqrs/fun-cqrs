@@ -24,7 +24,7 @@ trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
     super.beforeAll()
 
     // force creation of datastax Native PID for in-memory plugin
-    akka.persistence.inmemory.nowUuid
+    // akka.persistence.inmemory.nowUuid
     configureBackend(backend)
   }
 

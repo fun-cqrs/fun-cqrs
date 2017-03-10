@@ -9,7 +9,6 @@ import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
-import io.funcqrs.DomainEvent
 import io.funcqrs.EventWithCommandId
 
 import scala.concurrent.duration.{ FiniteDuration, _ }

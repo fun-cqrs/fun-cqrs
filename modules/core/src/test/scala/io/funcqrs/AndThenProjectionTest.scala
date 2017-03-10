@@ -12,9 +12,9 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
 
   behavior of "AndThenProjection"
 
-  case class FooEvent(value: String) extends TestDomainEvent
+  case class FooEvent(value: String)
 
-  case class BarEvent(num: Int) extends TestDomainEvent
+  case class BarEvent(num: Int)
 
   it should "propagate events to both underlying Projection" in {
 

@@ -1,6 +1,7 @@
 package io.funcqrs.interpreters
 
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.handlers.{ FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

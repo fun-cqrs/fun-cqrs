@@ -29,7 +29,7 @@ object Dependencies {
       "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
       // test scope
       "com.typesafe.akka"   %% "akka-testkit"              % akkaVersion % "test",
-      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.4.17.2"  % "test"
+      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.4.17.3-SNAPSHOT"  % "test"
     )
   }
   //------------------------------------------------------------------------------------------------------------

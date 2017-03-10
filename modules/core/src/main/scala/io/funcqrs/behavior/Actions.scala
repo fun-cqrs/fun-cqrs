@@ -1,9 +1,11 @@
 package io.funcqrs.behavior
 
+import io.funcqrs.behavior.handlers.{ CommandHandler, CommandHandlerInvoker, TryCommandHandlerInvoker }
 import io.funcqrs.{ MissingCommandHandlerException, MissingEventHandlerException }
 
 import scala.collection.immutable
 import scala.language.higherKinds
+import scala.reflect.ClassTag
 import scala.util.{ Failure, Try }
 
 case class Actions[A, C, E] private (private val cmdInvokers: CommandToInvoker[C, E],

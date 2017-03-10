@@ -6,6 +6,7 @@ import io.funcqrs.behavior._
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import io.funcqrs.model._
 import org.scalatest.{ FunSuite, Matchers }
+import io.funcqrs.behavior.handlers._
 
 /**
   * The intent of this test is not test a specific Interpreter, but to test the
