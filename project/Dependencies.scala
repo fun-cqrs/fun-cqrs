@@ -1,7 +1,7 @@
 import sbt.Keys._
 import sbt._
 
-//@formatter:off
+
 object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ object Dependencies {
       "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
       // test scope
       "com.typesafe.akka"   %% "akka-testkit"              % akkaVersion % "test",
-      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.4.17.3-SNAPSHOT"  % "test"
+      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.4.17.3"  % "test"
     )
   }
   //------------------------------------------------------------------------------------------------------------
@@ -40,4 +40,4 @@ object Dependencies {
 
   val sampleDeps = Seq(levelDb, levelDbJNI) ++ mainDeps ++ akkaDeps
 }
-// /@formatter:on
+
