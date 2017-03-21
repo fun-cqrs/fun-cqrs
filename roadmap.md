@@ -36,13 +36,12 @@ It was possible to write the following:
 
 ```scala
 actions
-	.handleCommand {
-		cmd: SomeCommand => SomeEvent(...)
-	}
-	.handleCommand {
-		cmd: AnotherCommand => 
-			Future.successful(SomeOtherEvent(...))
-	}
+  .handleCommand {
+    cmd: SomeCommand => SomeEvent(...)
+  }
+  .handleCommand {
+    cmd: AnotherCommand => Future.successful(SomeOtherEvent(...))
+  }
 ```
 
 Note that the first `Command Handler` returns an unboxed type, while the second has it wrapped in a `Future`.
@@ -57,9 +56,9 @@ For instance, this wasn't possible:
 
 ```scala
 actions
-	.handleCommand {
-		case SomeCommand(foo) => SomeEvent(foo)
-	}
+  .handleCommand {
+    case SomeCommand(foo) => SomeEvent(foo)
+  }
 ```
 The code above won't compile because `handleCommand` required a `ClassTag` and the compiler can't provide one based on the input parameter of a `PartialFunction`.
 
