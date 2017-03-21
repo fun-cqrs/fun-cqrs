@@ -11,6 +11,7 @@ ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
 }
 
+
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
 // dependencies
