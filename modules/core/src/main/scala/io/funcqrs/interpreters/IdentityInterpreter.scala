@@ -1,10 +1,9 @@
 package io.funcqrs.interpreters
 
-import io.funcqrs.AggregateLike
 import io.funcqrs.behavior._
 import io.funcqrs.behavior.handlers.{ FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
 
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.Await
 import scala.concurrent.duration.{ Duration, _ }
 import scala.util.Try
 
