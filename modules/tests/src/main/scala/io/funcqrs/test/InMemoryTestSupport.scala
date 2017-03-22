@@ -17,7 +17,7 @@ trait InMemoryTestSupport {
   private lazy val receivedEvents = mutable.Queue[Any]()
 
   private lazy val internalProjection = new Projection {
-    def receiveEvent: ReceiveEvent = {
+    def handleEvent: HandleEvent = {
       case event =>
         receivedEvents += event // add all events to queue
         Future.successful(())

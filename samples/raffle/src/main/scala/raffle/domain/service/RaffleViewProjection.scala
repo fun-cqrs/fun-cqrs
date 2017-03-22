@@ -8,7 +8,7 @@ import scala.concurrent.Future
 
 class RaffleViewProjection(repo: RaffleViewRepo) extends Projection {
 
-  def receiveEvent: ReceiveEvent = {
+  def handleEvent: HandleEvent = {
 
     case e: RaffleCreated =>
       Future.successful(repo.save(RaffleView(id = e.lotteryId)))

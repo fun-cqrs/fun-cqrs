@@ -72,7 +72,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newFailingProjection() = new Projection {
-    def receiveEvent: ReceiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
@@ -81,7 +81,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
     var result: Option[T] = None
   }
   def newFooProjection() = new StatefulProjection[String] {
-    def receiveEvent: ReceiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
         Future.successful(())
@@ -89,7 +89,7 @@ class AndThenProjectionTest extends FlatSpec with Matchers with Futures with Sca
   }
 
   def newBarProjection() = new StatefulProjection[Int] {
-    def receiveEvent: ReceiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
         Future.successful(())

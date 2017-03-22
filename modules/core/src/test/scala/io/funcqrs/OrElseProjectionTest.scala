@@ -58,13 +58,13 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
   }
 
   def newFailingBarProjection() = new Projection {
-    def receiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: BarEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
   def newFailingFooProjection() = new Projection {
-    def receiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: FooEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
@@ -72,7 +72,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
   class FooProjection extends Projection {
     var result: Option[String] = None
 
-    def receiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
         Future.successful(())
@@ -83,7 +83,7 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
   class BarProjection extends Projection {
     var result: Option[Int] = None
 
-    def receiveEvent = {
+    def handleEvent: HandleEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
         Future.successful(())
