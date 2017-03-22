@@ -5,22 +5,27 @@ import _root_.akka.pattern._
 import _root_.akka.persistence._
 import io.funcqrs._
 import io.funcqrs.akka.util.ConfigReader._
-import io.funcqrs.behavior.{ Behavior, Initialized, State, Uninitialized }
+import io.funcqrs.behavior._
 import io.funcqrs.interpreters.AsyncInterpreter
 
 import scala.concurrent.{ Future, TimeoutException }
 import scala.concurrent.duration._
+import scala.util.{ Success, Try }
 import scala.util.control.NonFatal
 
-class AggregateActor[A <: AggregateLike](
-    identifier: A#Id,
-    interpreter: AsyncInterpreter[A],
+class AggregateActor[A, C, E, I <: AggregateId](
+    identifier: I,
+    interpreter: AsyncInterpreter[A, C, E],
     aggregateType: String
 ) extends AggregateAliases
+    with AggregateMessageExtractors
     with PersistentActor
     with ActorLogging {
 
   type Aggregate = A
+  type Id        = I
+  type Command   = C
+  type Event     = E
 
   /**
     * state of Aggregate Root
@@ -45,8 +50,8 @@ class AggregateActor[A <: AggregateLike](
   // persistenceId is always defined as the Aggregate.Identifier
   val persistenceId: String = identifier.value
 
-  /** The aggregate instance if initialized, Uninitialized otherwise */
-  private var aggregateState: State[Aggregate] = Uninitialized(identifier)
+  /** The aggregate instance wrapped in a Some if initialized, None otherwise */
+  private var aggregateState: Option[Aggregate] = None
 
   private var eventsSinceLastSnapshot = 0
 
@@ -75,7 +80,7 @@ class AggregateActor[A <: AggregateLike](
     case RecoveryCompleted =>
       log.debug("aggregate '{}' has recovered", identifier)
 
-    case event: Event => onEvent(event)
+    case TypedEvent(event) => onEvent(event)
 
     case unknown => log.debug("aggregate '{}' received unknown message {} on recovery", identifier, unknown)
   }
@@ -87,7 +92,7 @@ class AggregateActor[A <: AggregateLike](
 
     val receive: Receive = {
 
-      case cmd: Command =>
+      case TypedCommand(cmd) =>
         log.debug("aggregate '{}' received cmd: {}", identifier, cmd)
 
         val eventualTimeout =
@@ -104,7 +109,7 @@ class AggregateActor[A <: AggregateLike](
         eventWithTimeout map {
           case (events, nextState) => Successful(events, nextState, origSender)
         } recover {
-          case NonFatal(cause) => FailedCommand(cause, origSender)
+          case NonFatal(cause) => FailedCommand(cmd, cause, origSender)
         } pipeTo self
 
         changeState(Busy)
@@ -112,36 +117,27 @@ class AggregateActor[A <: AggregateLike](
     }
 
     // always compose with defaultReceive
-    receive orElse defaultReceive
+    defaultReceive orElse receive
 
   }
 
   private def busy: Receive = {
 
     val busyReceive: Receive = {
-
-      case AggregateActor.StateRequest(requester)    => sendState(requester)
       case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand                  => onFailure(failedCmd)
-
-      case cmd: Command =>
+      case TypedCommand(cmd) =>
         log.debug("aggregate '{}' received {} while processing another command", identifier, cmd)
         stash()
-
     }
 
-    busyReceive orElse defaultReceive
+    defaultReceive orElse busyReceive
 
-  }
-
-  def onFailure(failedCmd: FailedCommand): Unit = {
-    failedCmd.origSender ! Status.Failure(failedCmd.cause)
-    changeState(Available)
   }
 
   protected def defaultReceive: Receive = {
     case AggregateActor.StateRequest(requester) => sendState(requester)
-    case AggregateActor.Exists(requester)       => requester ! aggregateState.isInitialized
+    case AggregateActor.Exists(requester)       => requester ! aggregateState.isDefined
     case AggregateActor.KillAggregate           => context.stop(self)
     case x: SaveSnapshotSuccess                 =>
       // delete the previous snapshot now that we know we have a newer snapshot
@@ -149,7 +145,6 @@ class AggregateActor[A <: AggregateLike](
         deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = seqNr))
       }
       currentSnapshotSequenceNr = Some(x.metadata.sequenceNr)
-
   }
 
   /**
@@ -159,20 +154,27 @@ class AggregateActor[A <: AggregateLike](
     */
   protected def sendState(replyTo: ActorRef): Unit = {
     aggregateState match {
-      case Initialized(aggregate) =>
-        log.debug("aggregate '{}' sending state to {}", aggregate.id, replyTo)
+      case Some(aggregate) =>
+        log.debug("aggregate '{}' sending state to {}", identifier, replyTo)
         replyTo ! aggregate
-      case Uninitialized(id) =>
-        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $id not initialized"))
+      case None =>
+        replyTo ! Status.Failure(new NoSuchElementException(s"aggregate $persistenceId have not been initialized"))
     }
   }
 
-  protected def onEvent(evt: Event): Unit = {
-    log.debug("aggregate '{}' reapplying event {}", identifier, evt)
-    eventsSinceLastSnapshot += 1
-    aggregateState = interpreter.onEvent(aggregateState, evt)
-    log.debug("aggregate '{}' has state after event {}", identifier, aggregateState)
-    changeState(Available)
+  protected def onEvent(evt: Any): Unit = {
+
+    Try(evt.asInstanceOf[Event]) match {
+      case Success(castedEvent) =>
+        log.debug("aggregate '{}' reapplying event {}", identifier, evt)
+        eventsSinceLastSnapshot += 1
+        aggregateState = interpreter.onEvent(aggregateState, castedEvent)
+        log.debug("aggregate '{}' has state after event {}", identifier, aggregateState)
+        changeState(Available)
+
+      case _ => log.debug(s"Unknown message on recovery $evt")
+    }
+
   }
 
   /**
@@ -182,11 +184,12 @@ class AggregateActor[A <: AggregateLike](
     * @param aggregate the aggregate
     */
   private def restoreState(metadata: SnapshotMetadata, aggregate: Aggregate) = {
-    log.debug("aggregate '{}' restoring data", aggregate.id)
+
+    log.debug("aggregate '{}' restoring data", identifier)
 
     currentSnapshotSequenceNr = Some(metadata.sequenceNr)
 
-    aggregateState = Initialized(aggregate)
+    aggregateState = Some(aggregate)
     changeState(Available)
   }
 
@@ -203,7 +206,7 @@ class AggregateActor[A <: AggregateLike](
     }
   }
 
-  private def onSuccess(events: Events, updatedState: State[Aggregate], origSender: ActorRef): Unit = {
+  private def onSuccess(events: Events, updatedState: Option[Aggregate], origSender: ActorRef): Unit = {
 
     if (events.nonEmpty) {
 
@@ -211,7 +214,7 @@ class AggregateActor[A <: AggregateLike](
 
       // WATCH OUT!!!
       // procedural, state full and hard to reason piece of code!! ;-)
-      persistAll(events) { _ =>
+      persistAll(events) { evt =>
         eventsCount += 1
         eventsSinceLastSnapshot += 1
 
@@ -231,7 +234,7 @@ class AggregateActor[A <: AggregateLike](
           // have we crossed the snapshot threshold?
           if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
             aggregateState match {
-              case Initialized(aggregate) =>
+              case Some(aggregate) =>
                 log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
                 saveSnapshot(aggregate)
               case _ =>
@@ -249,6 +252,12 @@ class AggregateActor[A <: AggregateLike](
 
   }
 
+  def onFailure(failedCmd: FailedCommand): Unit = {
+    failedCmd.origSender ! Status.Failure(failedCmd.cause)
+
+    changeState(Available)
+  }
+
   /**
     * This method should be used as a callback handler for persist() method.
     * It will:
@@ -263,7 +272,7 @@ class AggregateActor[A <: AggregateLike](
 
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
       aggregateState match {
-        case Initialized(aggregate) =>
+        case Some(aggregate) =>
           log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
           saveSnapshot(aggregate)
         case _ =>
@@ -275,9 +284,9 @@ class AggregateActor[A <: AggregateLike](
   /**
     * Internal representation of a completed update command.
     */
-  private case class Successful(events: Events, nextState: State[Aggregate], origSender: ActorRef)
+  private case class Successful(events: Events, nextState: Option[Aggregate], origSender: ActorRef)
 
-  private case class FailedCommand(cause: Throwable, origSender: ActorRef)
+  private case class FailedCommand(cmd: Command, cause: Throwable, origSender: ActorRef)
 
 }
 
@@ -293,13 +302,7 @@ object AggregateActor {
 
   case class Exists(requester: ActorRef)
 
-  def props[A <: AggregateLike](id: A#Id, behavior: Behavior[A], parentPath: String): Props = {
-    Props(new AggregateActor(id, AsyncInterpreter(behavior), parentPath))
+  def props[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
+    Props(new AggregateActor[A, C, E, I](id, AsyncInterpreter(behavior), parentPath))
   }
-}
-
-/**
-  * Exceptions extending this trait will not get logged by FunCqrs as errors.
-  */
-trait DomainException { self: Throwable =>
 }

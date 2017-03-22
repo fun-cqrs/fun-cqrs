@@ -4,15 +4,15 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor._
 import akka.pattern._
-import akka.persistence.query.EventEnvelope
+import akka.persistence.query.{ EventEnvelope2, Sequence }
 import akka.stream.ActorMaterializer
 import akka.stream.actor.ActorSubscriberMessage.{ OnError, OnNext }
 import akka.stream.actor.{ ActorSubscriber, RequestStrategy, WatermarkRequestStrategy }
 import akka.stream.scaladsl.Sink
 import akka.util.Timeout
+import io.funcqrs.{ EventWithCommandId, Projection }
 import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
-import io.funcqrs.{ DomainEvent, Projection }
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -72,7 +72,7 @@ abstract class ProjectionActor(
     log.debug("ProjectionActor: starting projection... {}", projection)
     implicit val mat = ActorMaterializer()
 
-    val subscriber = ActorSubscriber[EventEnvelope](self)
+    val subscriber = ActorSubscriber[EventEnvelope2](self)
     val actorSink  = Sink.fromSubscriber(subscriber)
 
     sourceProvider.source(lastProcessedOffset.map(_ + 1).getOrElse(0)).runWith(actorSink)
@@ -80,23 +80,30 @@ abstract class ProjectionActor(
 
   override def receive: Receive = acceptingEvents
 
-  def runningProjection(currentEvent: DomainEvent, offset: Long): Receive = {
+  def runningProjection(currentEvent: Any, offset: Long): Receive = {
 
     val receive: Receive = {
 
       // stash new events while busy with projection
-      case OnNextDomainEvent(_, _) => stashWithBackPressure()
+      case OnNextEvent(_, _) => stashWithBackPressure()
 
       // ready with projection, notify parent and start consuming events
       case ProjectionActor.Done(lastEvent) =>
-        log.debug("Processed {}, sending to parent {}", lastEvent, context.parent)
-        context.parent ! lastEvent // send last processed event to parent
+        lastEvent match {
+          case e: EventWithCommandId =>
+            // send last processed event to parent
+            log.debug("Processed {}, sending to parent {}", lastEvent, context.parent)
+            context.parent ! lastEvent
+          case _ =>
+            // do nothing otherwise
+            log.debug("Processed {}", lastEvent)
+        }
 
         // first switch behavior
         // when used in combination with PersistedOffsetAkka we'll switch twice
         // when PersistedOffsetAkka is ready, we must become waitingOffsetPersistence back
         // via unbecome call in PersistedOffsetAkka. Uff! Complicated!
-        context become waitingOffsetPersistence(lastEvent)
+        context become waitingOffsetPersistence
 
         // save offset of last processed event
         // event will be processed twice if saveCurrentOffset fails
@@ -114,10 +121,20 @@ abstract class ProjectionActor(
     receive orElse errorHandling("running projection")
   }
 
+  private def eventuallySendToParent(event: Any) = {
+    event match {
+      // send last processed event to parent
+      case e: EventWithCommandId =>
+        log.debug("Processed {}, sending to parent {}", event, context.parent)
+        context.parent ! event
+      case _ => // do nothing otherwise
+    }
+  }
+
   def acceptingEvents: Receive = {
 
     val receive: Receive = {
-      case OnNextDomainEvent(evt, offset) =>
+      case OnNextEvent(evt, offset) =>
         log.debug("Received event {}", evt)
 
         val eventualTimeout =
@@ -160,7 +177,7 @@ abstract class ProjectionActor(
       context.stop(self)
   }
 
-  def waitingOffsetPersistence(currentEvent: DomainEvent): Receive = {
+  def waitingOffsetPersistence: Receive = {
 
     case ProjectionActor.OffsetPersisted(offset) =>
       unstashAllWithBackPressure()
@@ -176,12 +193,12 @@ abstract class ProjectionActor(
     case anyOther => stashWithBackPressure()
   }
 
-  object OnNextDomainEvent {
+  object OnNextEvent {
 
-    def unapply(onNext: OnNext): Option[(DomainEvent, Long)] = {
+    def unapply(onNext: OnNext): Option[(Any, Long)] = {
       onNext.element match {
-        case EventEnvelope(offset, _, _, event: DomainEvent) => Option((event, offset))
-        case _                                               => None
+        case EventEnvelope2(Sequence(offset), _, _, event) => Option((event, offset))
+        case _                                             => None
       }
     }
   }
@@ -190,7 +207,7 @@ abstract class ProjectionActor(
 
 object ProjectionActor {
 
-  case class Done(evt: DomainEvent)
+  case class Done(evt: Any)
   case class OffsetPersisted(offset: Long)
 
 }
@@ -246,7 +263,7 @@ object ProjectionActorWithOffsetManagedByAkkaPersistence {
 }
 
 /** A ProjectionActor that saves the offset using a [[CustomOffsetPersistenceStrategy]] */
-class ProjectionActorWithCustomOffsetPersistence(
+class ProjectionActorWithCustomOffsetPersistence[E](
     projection: Projection,
     sourceProvider: EventsSourceProvider,
     customOffsetPersistence: CustomOffsetPersistenceStrategy

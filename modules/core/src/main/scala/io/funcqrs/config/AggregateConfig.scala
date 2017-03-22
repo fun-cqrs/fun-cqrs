@@ -1,17 +1,13 @@
 package io.funcqrs.config
 
-import io.funcqrs._
 import io.funcqrs.behavior.Behavior
 
-// ================================================================================
-// support classes and traits for AggregateService creation!
-
-case class AggregateConfig[A <: AggregateLike](
+case class AggregateConfig[A, C, E, I](
     name: Option[String],
-    behavior: (A#Id) => Behavior[A]
+    behavior: (I) => Behavior[A, C, E]
 ) {
 
-  def withName(name: String): AggregateConfig[A] =
+  def withName(name: String): AggregateConfig[A, C, E, I] =
     this.copy(name = Option(name))
 
 }

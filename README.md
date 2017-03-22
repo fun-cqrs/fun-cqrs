@@ -11,6 +11,9 @@ When using the `AkkaBackend`, Aggregates are immutable classes (case class) that
 
 That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate state and generate read models through  **Event Projections**
 
+## Roadmap to v1.0.0
+
+**Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap.md). 
 
 ## Project artifact
 

@@ -11,6 +11,7 @@ ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
 }
 
+
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
 // dependencies
@@ -24,7 +25,7 @@ lazy val root = Project(
     funCqrs,
     funCqrsAkka,
     funCqrsTestKit,
-    lotteryApp
+    raffleApp
   )
 
 // Core ==========================================
@@ -56,10 +57,9 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 // #                     SAMPLES                      #
 // #####################################################
-
-lazy val lotteryApp = Project(
-  id       = "sample-lottery",
-  base     = file("samples/lottery"),
+lazy val raffleApp = Project(
+  id       = "sample-raffle",
+  base     = file("samples/raffle"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= sampleDeps)
   .settings(publishArtifact := false)
@@ -67,5 +67,5 @@ lazy val lotteryApp = Project(
   .dependsOn(funCqrsTestKit)
   .dependsOn(funCqrsAkka)
 
-addCommandAlias("runLotteryAkka", "sample-lottery/runMain lottery.app.MainAkka")
-addCommandAlias("runLotteryInMemory", "sample-lottery/runMain lottery.app.MainInMemory")
+addCommandAlias("runRaffleAkka", "sample-raffle/runMain raffle.app.MainAkka")
+addCommandAlias("runRaffleInMemory", "sample-raffle/runMain raffle.app.MainInMemory")

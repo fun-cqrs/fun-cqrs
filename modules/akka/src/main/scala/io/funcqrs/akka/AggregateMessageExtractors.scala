@@ -1,45 +1,55 @@
 package io.funcqrs.akka
 
-import io.funcqrs.{ AggregateAliases, AggregateId, AggregateLike }
+import io.funcqrs.behavior.AggregateAliases
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Success, Try }
 
 trait AggregateMessageExtractors extends AggregateAliases {
 
   object IdAndCommand {
     def unapply(cmdMsg: AggregateManager.UntypedIdAndCommand): Option[(Id, Command)] = {
-
-      val extracted =
-        for {
-          id <- Try(cmdMsg.id.asInstanceOf[Id])
-          cmd <- Try(cmdMsg.cmd.asInstanceOf[Command])
-        } yield (id, cmd)
-
-      extracted match {
-        case Success(value) => Some(value)
-        case Failure(exp)   => None
+      (cmdMsg.id, cmdMsg.cmd) match {
+        case (GoodId(id), TypedCommand(cmd)) => Some(id, cmd)
+        case _                               => None
       }
     }
   }
 
   object GoodId {
 
-    def unapply(aggregateId: Aggregate#Id): Option[Aggregate#Id] = {
-      Try(aggregateId) match {
-        case Success(id) => Some(id)
-        case _           => None
+    def unapply(aggregateId: Any): Option[Id] = {
+      Try(aggregateId.asInstanceOf[Id]) match {
+        case Success(casted) => Some(casted)
+        case _               => None
       }
     }
   }
 
   object BadId {
 
-    def unapply(aggregateId: Aggregate#Id): Option[AggregateId] = {
-      Try(aggregateId) match {
-        case Success(id) => None
-        case _           => Some(aggregateId)
+    def unapply(aggregateId: Any): Option[Any] = {
+      Try(aggregateId.asInstanceOf[Id]) match {
+        case Success(_) => None
+        case _          => Some(aggregateId)
       }
     }
   }
 
+  object TypedEvent {
+    def unapply(any: Any): Option[Event] = {
+      Try(any.asInstanceOf[Event]) match {
+        case Success(casted) => Option(casted)
+        case _               => None
+      }
+    }
+  }
+
+  object TypedCommand {
+    def unapply(any: Any): Option[Command] = {
+      Try(any.asInstanceOf[Command]) match {
+        case Success(casted) => Option(casted)
+        case _               => None
+      }
+    }
+  }
 }

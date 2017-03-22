@@ -6,7 +6,7 @@ import _root_.akka.actor._
 import io.funcqrs._
 import io.funcqrs.akka.AggregateActor.KillAggregate
 import io.funcqrs.akka.AggregateManager.{ Exists, GetState }
-import io.funcqrs.behavior.Behavior
+import io.funcqrs.behavior.{ AggregateAliases, Behavior }
 
 object AggregateManager {
 
@@ -14,7 +14,7 @@ object AggregateManager {
 
   case class Exists(id: AggregateId)
 
-  case class UntypedIdAndCommand(id: AggregateId, cmd: DomainCommand)
+  case class UntypedIdAndCommand(id: Any, cmd: Any)
 
 }
 
@@ -23,11 +23,14 @@ object AggregateManager {
   * Handles communication between client and aggregate.
   * It is also capable of aggregates creation and removal.
   */
-trait AggregateManager extends Actor with ActorLogging with AggregateAliases with AggregateMessageExtractors {
+trait AggregateManager[A, C, E, I <: AggregateId] extends Actor with ActorLogging with AggregateAliases with AggregateMessageExtractors {
 
   import scala.collection.immutable._
 
-  type Aggregate <: AggregateLike
+  type Aggregate        = A
+  override type Id      = I
+  override type Command = C
+  override type Event   = E
 
   case class PendingMessage(origSender: ActorRef, message: Any)
 
@@ -71,7 +74,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
     }
   }
 
-  def behavior(id: Aggregate#Id): Behavior[Aggregate]
+  def behavior(id: Id): Behavior[Aggregate, Command, Event]
 
   override def receive: Receive = {
 
@@ -83,27 +86,11 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
     case GetState(BadId(id)) => badAggregateId(id)
     case Exists(BadId(id))   => badAggregateId(id)
 
-    case cmd: Command =>
-      log.error(
-        """
-           | Received message without AggregateId!
-           | {}
-           |#=============================================================================#
-           |# Have you configured your aggregate to use assigned IDs?                     #
-           |# In that case, you must always send commands together with the aggregate ID! #
-           |#=============================================================================#
-         """.stripMargin,
-        cmd
-      )
-      sender() ! Status.Failure(
-        new IllegalArgumentException(s"Command send without AggregateId: $cmd!")
-      )
-
     case x =>
       sender() ! Status.Failure(new IllegalArgumentException(s"Unknown message: $x"))
   }
 
-  private def badAggregateId(id: AggregateId) = {
+  private def badAggregateId(id: Any) = {
     sender() ! Status.Failure(new IllegalArgumentException(s"Wrong aggregate id type ${id.getClass.getSimpleName}"))
   }
 
@@ -162,7 +149,7 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
     * Build Props for a new Aggregate Actor with the passed Id
     */
   def aggregateActorProps(id: Id): Props = {
-    AggregateActor.props[Aggregate](id, behavior(id), context.self.path.name)
+    AggregateActor.props[A, C, E, I](id, behavior(id), context.self.path.name)
   }
 
   private def applyPassivationStrategy() =
@@ -196,18 +183,16 @@ trait AggregateManager extends Actor with ActorLogging with AggregateAliases wit
   }
 }
 
-class ConfigurableAggregateManager[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) extends AggregateManager {
+class ConfigurableAggregateManager[A, C, E, I <: AggregateId](behaviorCons: I => Behavior[A, C, E]) extends AggregateManager[A, C, E, I] {
 
-  type Aggregate = A
-
-  def behavior(id: Id): Behavior[Aggregate] = {
+  def behavior(id: I): Behavior[A, C, E] = {
     behaviorCons(id)
   }
 }
 
 object ConfigurableAggregateManager {
 
-  def props[A <: AggregateLike](behaviorCons: A#Id => Behavior[A]) = {
+  def props[A, C, E, I <: AggregateId](behaviorCons: I => Behavior[A, C, E]) = {
     Props(new ConfigurableAggregateManager(behaviorCons))
   }
 }

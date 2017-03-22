@@ -12,9 +12,9 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
 
   behavior of "OrElseProjection"
 
-  case class FooEvent(value: String) extends TestDomainEvent
+  case class FooEvent(value: String)
 
-  case class BarEvent(num: Int) extends TestDomainEvent
+  case class BarEvent(num: Int)
 
   it should "Events are not propagated to second Projection if first can handle event" in {
 
@@ -58,34 +58,37 @@ class OrElseProjectionTest extends FlatSpec with Matchers with Futures with Scal
   }
 
   def newFailingBarProjection() = new Projection {
-    def handleEvent = {
+    def handleEvent: HandleEvent = {
       case evt: BarEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
   def newFailingFooProjection() = new Projection {
-    def handleEvent = {
+    def handleEvent: HandleEvent = {
       case evt: FooEvent => Future.failed(new IllegalArgumentException("this projection should not receive events"))
     }
   }
 
-  def newFooProjection() = new Projection {
+  class FooProjection extends Projection {
     var result: Option[String] = None
 
-    def handleEvent = {
+    def handleEvent: HandleEvent = {
       case evt: FooEvent =>
         result = Some(evt.value)
-        Future.successful()
+        Future.successful(())
     }
   }
+  def newFooProjection() = new FooProjection
 
-  def newBarProjection() = new Projection {
+  class BarProjection extends Projection {
     var result: Option[Int] = None
 
-    def handleEvent = {
+    def handleEvent: HandleEvent = {
       case evt: BarEvent =>
         result = Some(evt.num)
-        Future.successful()
+        Future.successful(())
     }
   }
+
+  def newBarProjection() = new BarProjection
 }

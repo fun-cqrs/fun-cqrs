@@ -1,8 +1,8 @@
 package io.funcqrs.test.backend
 
 import io.funcqrs._
-import io.funcqrs.backend.{ QuerySelectAll, Backend, QueryByTag, QueryByTags }
-import io.funcqrs.behavior.{ Behavior, State, Uninitialized, Initialized }
+import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
+import io.funcqrs.behavior._
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
 import rx.lang.scala.Subject
@@ -10,33 +10,39 @@ import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.concurrent.TrieMap
 import scala.collection.{ concurrent, immutable }
-import scala.concurrent.{ Future, Await }
-import scala.reflect.ClassTag
 import scala.concurrent.duration._
+import scala.concurrent.{ Await, Future }
+import scala.reflect.ClassTag
 
 class InMemoryBackend extends Backend[Identity] {
 
-  private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_]] = concurrent.TrieMap()
-  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_]]  = TrieMap()
+  private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_, _, _, _]] = concurrent.TrieMap()
+  private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_, _, _]]     = TrieMap()
 
-  private val eventStream: Subject[DomainEvent] = PublishSubject()
+  private val eventStream: Subject[AnyEvent] = PublishSubject()
 
-  private val stream: Stream[DomainEvent] = Stream()
+  private val stream: Stream[AnyEvent] = Stream()
 
-  def aggregateRef[A <: AggregateLike: ClassTag](id: A#Id): InMemoryAggregateRef[A] = {
+  protected def aggregateRefById[A: ClassTag, C, E, I <: AggregateId](id: I): InMemoryAggregateRef[A, C, E, I] = {
+
+    type ConfigType = AggregateConfig[A, C, E, I]
 
     aggregates
       .getOrElseUpdate(
         id, { // build new aggregateRef if not existent
-          val config   = aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[AggregateConfig[A]]
+
+          val config = configLookup[A, C, E, I] {
+            aggregateConfigs(ClassTagImplicits[A]).asInstanceOf[ConfigType]
+          }
+
           val behavior = config.behavior(id)
           new InMemoryAggregateRef(id, behavior)
         }
       )
-      .asInstanceOf[InMemoryAggregateRef[A]]
+      .asInstanceOf[InMemoryAggregateRef[A, C, E, I]]
   }
 
-  def configure[A <: AggregateLike: ClassTag](config: AggregateConfig[A]): Backend[Identity] = {
+  def configure[A: ClassTag, C, E, I](config: AggregateConfig[A, C, E, I]): Backend[Identity] = {
     aggregateConfigs += (ClassTagImplicits[A] -> config)
     this
   }
@@ -44,63 +50,66 @@ class InMemoryBackend extends Backend[Identity] {
   def configure(config: ProjectionConfig): Backend[Identity] = {
 
     // does the event match the query criteria?
-    def matchQuery(evt: DomainEvent with MetadataFacet[_]): Boolean = {
+    def matchQuery(_tags: Set[Tag]): Boolean = {
       config.query match {
-        case QueryByTag(tag)   => evt.tags.contains(tag)
-        case QueryByTags(tags) => tags.subsetOf(evt.tags)
+        case QueryByTag(tag)   => _tags.contains(tag)
+        case QueryByTags(tags) => tags.subsetOf(_tags)
         case QuerySelectAll    => true
       }
     }
 
-    def matchQueryWithoutTagging(evt: DomainEvent): Boolean = {
+    def matchQueryWithoutTagging(evt: Any): Boolean = {
       config.query match {
         case QuerySelectAll => true
         case _              => false
       }
     }
 
-    //noinspection MatchToPartialFunction
-    eventStream.subscribe { evt: DomainEvent =>
-      def sendToProjection(event: DomainEvent) = {
-        // TODO: projections should be interpreted as well to avoid this
-        Await.ready(config.projection.onEvent(evt), 10.seconds)
-        ()
+    // send even to projections
+    def sendToProjection(event: Any) = {
+      // TODO: projections should be interpreted as well to avoid this
+      Await.ready(config.projection.onEvent(event), 10.seconds)
+      ()
+    }
+
+    eventStream.subscribe { event: AnyEvent =>
+      event match {
+        case evt: Tagged if matchQuery(evt.tags) =>
+          sendToProjection(event)
+
+        case evt if matchQueryWithoutTagging(evt) =>
+          sendToProjection(event)
+
+        // otherwise do nothing, don't send to projection
+        case anyEvent =>
       }
-      evt match {
-        case evt: DomainEvent with MetadataFacet[_] if matchQuery(evt) =>
-          sendToProjection(evt)
-        case evt: DomainEvent if matchQueryWithoutTagging(evt) =>
-          sendToProjection(evt)
-        case anyEvent => // do nothing, don't send to projection
-      }
+
     }
 
     this
   }
 
-  private def publishEvents(evts: immutable.Seq[DomainEvent]): Unit = {
-    evts foreach publishEvent
+  private def publishEvents(evts: immutable.Seq[AnyEvent]): Unit = {
+    evts foreach { evt =>
+      eventStream.onNext(evt)
+    }
   }
 
-  private def publishEvent(evt: DomainEvent): Unit = {
-    eventStream.onNext(evt)
-  }
+  class InMemoryAggregateRef[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E]) extends IdentityAggregateRef[A, C, E] { self =>
 
-  class InMemoryAggregateRef[A <: AggregateLike](id: A#Id, behavior: Behavior[A]) extends IdentityAggregateRef[A] { self =>
-
-    private var aggregateState: State[A] = Uninitialized(id)
+    private var aggregateState: Option[A] = None
 
     val interpreter = IdentityInterpreter(behavior)
 
-    def ask(cmd: Command): Identity[Events] =
+    def ask(cmd: C): Identity[immutable.Seq[E]] =
       handle(aggregateState, cmd)
 
-    def tell(cmd: Command): Unit = {
+    def tell(cmd: C): Unit = {
       ask(cmd)
       () // omit events
     }
 
-    private def handle(state: State[Aggregate], cmd: Command): interpreter.Events = {
+    private def handle(state: Option[A], cmd: C): immutable.Seq[E] = {
       val (events, updatedAgg) = interpreter.applyCommand(state, cmd)
       aggregateState = updatedAgg
       publishEvents(events)
@@ -108,23 +117,21 @@ class InMemoryBackend extends Backend[Identity] {
     }
 
     def state(): Identity[A] =
-      aggregateState match {
-        case Initialized(aggregate) => aggregate
-        case Uninitialized(_)       => sys.error("Aggregate is not initialized")
-      }
+      aggregateState.getOrElse(sys.error("Aggregate is not initialized"))
 
-    def exists(): Identity[Boolean] = aggregateState.isInitialized
+    def exists(): Identity[Boolean] = aggregateState.isDefined
 
-    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = new AsyncAggregateRef[A] {
+    def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] = new AsyncAggregateRef[A, C, E] {
+
       def timeoutDuration: FiniteDuration = timeout
 
-      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, Future] = self.withAskTimeout(timeout)
+      def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] = self.withAskTimeout(timeout)
 
-      def tell(cmd: Command): Unit = self.tell(cmd)
+      def tell(cmd: C): Unit = self.tell(cmd)
 
-      def ask(cmd: Command): Future[Events] = Future.successful(self.ask(cmd))
+      def ask(cmd: C): Future[immutable.Seq[E]] = Future.successful(self.ask(cmd))
 
-      def state(): Future[Aggregate] = Future.successful(self.state())
+      def state(): Future[A] = Future.successful(self.state())
 
       def exists(): Future[Boolean] = Future.successful(self.exists())
     }

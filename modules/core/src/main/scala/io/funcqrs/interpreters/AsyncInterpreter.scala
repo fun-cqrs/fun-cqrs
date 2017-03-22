@@ -1,22 +1,24 @@
 package io.funcqrs.interpreters
 
-import io.funcqrs.AggregateLike
 import io.funcqrs.behavior._
+import io.funcqrs.behavior.handlers.{ FutureCommandHandlerInvoker, IdCommandHandlerInvoker, TryCommandHandlerInvoker }
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.language.higherKinds
 import scala.util.Try
-import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * An Interpreter with F[_] bounded to [[Future]].
   *
   * All command handling are interpreted to [[Future]] of Events.
   *
-  * @param behavior - a Aggregate [[Behavior]]
-  * @tparam A - an Aggregate type
+  * @param behavior - a Aggregate Behavior
+  * @tparam A - the Aggregate type
+  * @tparam C - the Command type
+  * @tparam E - the Event type
   */
-class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends Interpreter[A, Future] {
+class AsyncInterpreter[A, C, E](val behavior: Behavior[A, C, E]) extends Interpreter[A, C, E, Future] {
 
   protected def interpret: InterpreterFunction = {
     case (cmd, IdCommandHandlerInvoker(handler))     => Future.successful(handler(cmd))
@@ -26,7 +28,7 @@ class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends In
 
   protected def fromTry[B](any: Try[B]): Future[B] = Future.fromTry(any)
 
-  def applyCommand(state: State[A], cmd: Command): Future[(Events, State[A])] =
+  def applyCommand(state: Option[A], cmd: Command): Future[(Events, Option[A])] =
     for {
       evts <- onCommand(state, cmd)
       updatedAgg <- onEvents(state, evts)
@@ -34,5 +36,5 @@ class AsyncInterpreter[A <: AggregateLike](val behavior: Behavior[A]) extends In
 }
 
 object AsyncInterpreter {
-  def apply[A <: AggregateLike](behavior: Behavior[A]) = new AsyncInterpreter(behavior)
+  def apply[A, C, E](behavior: Behavior[A, C, E]) = new AsyncInterpreter(behavior)
 }

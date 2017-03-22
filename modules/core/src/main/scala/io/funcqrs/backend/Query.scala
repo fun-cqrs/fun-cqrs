@@ -2,9 +2,9 @@ package io.funcqrs.backend
 
 import io.funcqrs.Tag
 
-trait Query
-case class QueryByTag(tag: Tag) extends Query
-case class QueryByTags(tags: Set[Tag]) extends Query
+sealed trait Query
+final case class QueryByTag(tag: Tag) extends Query
+final case class QueryByTags(tags: Set[Tag]) extends Query
 case object QuerySelectAll extends Query
 
 object QueryByTags {

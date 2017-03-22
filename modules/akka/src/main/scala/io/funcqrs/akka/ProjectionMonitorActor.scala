@@ -9,7 +9,6 @@ import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
-import io.funcqrs.DomainEvent
 import io.funcqrs.EventWithCommandId
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
@@ -21,7 +20,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
   // (ProjectionName, DomainEvent)
-  type EventWithProjectionName = (DomainEvent with EventWithCommandId, String)
+  type EventWithProjectionName = (EventWithCommandId, String)
 
   // internal EventBus to dispatch events to subscribed EventsMonitor
   // (too lazy to build and maintain my own Map[CommandId, ActorRef])
@@ -48,11 +47,8 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     case CreateProjection(props, name) => createNewProjection(props, name)
 
     // receive status from child projection
-    // every incoming DomainEvent must be forwarded to internal EventBus
-    case evt: DomainEvent with EventWithCommandId => receivedEventFromProjection(evt)
-
-    // do nothing with events without CommandId
-    case evt: DomainEvent => // ignore
+    // every incoming EventWithCommandId must be forwarded to internal EventBus
+    case evt: EventWithCommandId => receivedEventFromProjection(evt)
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
@@ -60,6 +56,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // child EventsMonitor is ready, can be removed
     case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
 
+    // do nothing with events without CommandId
     case anyOther => log.warning("Unknown message: {}", anyOther)
   }
 
@@ -69,7 +66,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     val supervisorProps =
       BackoffSupervisor.props(
         childProps = props,
-        childName  = s"${name}-supervised",
+        childName  = s"$name-supervised",
         // wait at least 10 seconds to restart
         minBackoff = 10.seconds, // TODO: move to config
         // wait at most 5 minutes to restart
@@ -82,7 +79,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     sender() ! projectionSupervisor // send projection actor back
   }
 
-  private def receivedEventFromProjection(evt: DomainEvent with EventWithCommandId): Unit = {
+  private def receivedEventFromProjection(evt: Any with EventWithCommandId): Unit = {
     val currentSender = sender()
 
     val projectionName = currentSender.path.name
@@ -117,8 +114,8 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     import EventsMonitorActor._
 
     var replyActor: Option[ActorRef] = None
-    var eventsToWaitFor              = Seq[DomainEvent]()
-    var eventsReceived               = Seq[DomainEvent]()
+    var eventsToWaitFor              = Seq[EventWithCommandId]()
+    var eventsReceived               = Seq[EventWithCommandId]()
 
     //initialisation
     context.setReceiveTimeout(timeout)
@@ -130,14 +127,14 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
         replyActor      = Some(sender())
         tryComplete()
 
-      case evt: DomainEvent =>
-        log.debug("received event {}", evt)
-        eventsReceived = eventsReceived :+ evt
-        tryComplete()
-
       case ReceiveTimeout =>
         log.debug("Got timeout")
         removeMe()
+
+      case evt: EventWithCommandId =>
+        log.debug("received event {}", evt)
+        eventsReceived = eventsReceived :+ evt
+        tryComplete()
 
       case anyOther => log.debug("not expecting this one!! {}", anyOther)
     }
@@ -172,9 +169,9 @@ object ProjectionMonitorActor {
 
 object EventsMonitorActor {
 
-  case class Subscribe(events: Seq[DomainEvent])
+  case class Subscribe(events: Seq[EventWithCommandId])
   object Subscribe {
-    def apply(event: DomainEvent): Subscribe = Subscribe(Seq(event))
+    def apply(event: Any): Subscribe = Subscribe(Seq(event))
   }
 
   case object Done
