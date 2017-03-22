@@ -21,7 +21,7 @@ class InterpreterTest extends FunSuite with Matchers {
     // can't start timer due to missing case for Idle state
     def behavior =
       Behavior
-        .construct(constructionHandlers(TrackerId.generate))
+        .first(constructionHandlers(TrackerId.generate))
         .andThen {
           // missing behavior for IdleTracker
           case _: BusyTracker => Actions.empty

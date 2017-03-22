@@ -13,7 +13,7 @@ trait CommandHandler[C, E, F[_], G[_]] {
   def invoker: CommandHandlerInvoker[C, E]
 }
 
-case class OneEvent[C, E](handler: PartialFunction[C, E]) extends CommandHandler[C, E, Identity, Identity] {
+abstract class OneEventIdentity[C, E](handler: PartialFunction[C, E]) extends CommandHandler[C, E, Identity, Identity] {
 
   def invoker: CommandHandlerInvoker[C, E] = {
 
@@ -25,14 +25,19 @@ case class OneEvent[C, E](handler: PartialFunction[C, E]) extends CommandHandler
   }
 }
 
-case class ManyEvents[C, E](handler: PartialFunction[C, immutable.Seq[E]]) extends CommandHandler[C, E, Identity, immutable.Seq] {
+abstract class ManyEventsIdentity[C, E](handler: PartialFunction[C, immutable.Seq[E]])
+    extends CommandHandler[C, E, Identity, immutable.Seq] {
 
   def invoker: CommandHandlerInvoker[C, E] = IdCommandHandlerInvoker(handler)
 }
 
+case class OneEvent[C, E](handler: PartialFunction[C, E]) extends OneEventIdentity(handler)
+
+case class ManyEvents[C, E](handler: PartialFunction[C, immutable.Seq[E]]) extends ManyEventsIdentity(handler)
+
 object just {
-  type OneEvent[C, E]   = io.funcqrs.behavior.handlers.OneEvent[C, E]
-  type ManyEvents[C, E] = io.funcqrs.behavior.handlers.ManyEvents[C, E]
+  case class OneEvent[C, E](handler: PartialFunction[C, E]) extends OneEventIdentity(handler)
+  case class ManyEvents[C, E](handler: PartialFunction[C, immutable.Seq[E]]) extends ManyEventsIdentity(handler)
 }
 
 object maybe {

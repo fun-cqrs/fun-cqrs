@@ -74,39 +74,41 @@ object Person extends Types[Person] {
   type Event   = PersonEvent
 
   def behavior(id: PersonId) =
-    Behavior.construct {
-      actions
-        .commandHandler {
-          OneEvent {
-            case MakePerson(name, age) => PersonCreated(name, age)
-          }
-        }
-        .eventHandler {
-          case PersonCreated(name, age) => Person(id, name, age)
-        }
-    } andThen {
-      case person =>
+    Behavior
+      .first {
         actions
           .commandHandler {
-            eventually.OneEvent { 
-                // o
-              case ChangePersonsName(name) =>
-                Future {
-                  Thread.sleep(3000) // it takes ages!!
-                  PersonsNameUpdated(name)
-                }
-            }
-          }
-          .eventHandler {
-            case PersonsNameUpdated(name) => person.copy(name = name)
-          }
-          .commandHandler {
             OneEvent {
-              case RegisterBirthday => PersonsAgeUpdated(person.age + 1)
+              case MakePerson(name, age) => PersonCreated(name, age)
             }
           }
           .eventHandler {
-            case PersonsAgeUpdated(age) => person.copy(age = age)
+            case PersonCreated(name, age) => Person(id, name, age)
           }
-    }
+      }
+      .andThen {
+        case person =>
+          actions
+            .commandHandler {
+              eventually.OneEvent {
+                // o
+                case ChangePersonsName(name) =>
+                  Future {
+                    Thread.sleep(3000) // it takes ages!!
+                    PersonsNameUpdated(name)
+                  }
+              }
+            }
+            .eventHandler {
+              case PersonsNameUpdated(name) => person.copy(name = name)
+            }
+            .commandHandler {
+              OneEvent {
+                case RegisterBirthday => PersonsAgeUpdated(person.age + 1)
+              }
+            }
+            .eventHandler {
+              case PersonsAgeUpdated(age) => person.copy(age = age)
+            }
+      }
 }

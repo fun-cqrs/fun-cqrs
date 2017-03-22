@@ -38,7 +38,7 @@ class ActionsTest extends FunSuite with Matchers {
     // IDENTITY
     // handle Command to One Event (Identity)
       .commandHandler {
-        OneEvent {
+        just.OneEvent {
           case CreateTracker => TimerCreated(OffsetDateTime.now)
         }
       }

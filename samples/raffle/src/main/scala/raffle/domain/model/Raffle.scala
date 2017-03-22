@@ -167,18 +167,20 @@ object Raffle extends Types[Raffle] {
   // a tag for raffle, useful to query the event store later on
   val tag = Tags.aggregateTag("raffle")
 
+  def create(raffleId: RaffleId) = {
+    actions
+      .commandHandler {
+        OneEvent { case CreateRaffle => RaffleCreated(raffleId) }
+      }
+      .eventHandler {
+        case _: RaffleCreated => EmptyRaffle(id = raffleId)
+      }
+  }
+
   def behavior(raffleId: RaffleId): Behavior[Raffle, RaffleCommand, RaffleEvent] =
     Behavior
-    // defines how to construct a Raffle Aggregate
-      .construct {
-
-        actions
-          .commandHandler {
-            OneEvent { case CreateRaffle => RaffleCreated(raffleId) }
-          }
-          .eventHandler {
-            case _: RaffleCreated => EmptyRaffle(id = raffleId)
-          }
+      .first { // defines how to construct a Raffle Aggregate
+        create(raffleId)
       }
       // defines how to update it
       .andThen {

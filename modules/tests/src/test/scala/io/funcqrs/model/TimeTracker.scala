@@ -109,7 +109,7 @@ object TimeTracker extends Types[TimeTracker] {
 
   def behavior(id: TrackerId) =
     Behavior
-      .construct(constructionHandlers(id))
+      .first(constructionHandlers(id))
       .andThen {
         case tracker: IdleTracker => tracker.actionsWhenIdle
         case tracker: BusyTracker => tracker.actionsWhenBusy

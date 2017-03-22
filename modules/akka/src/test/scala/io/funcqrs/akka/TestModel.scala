@@ -18,43 +18,45 @@ object TestModel {
     type Event   = UserEvt
 
     def behavior(id: UserId) = {
-      Behavior.construct {
-        actions
-          .rejectCommand {
-            case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
-          }
-          .commandHandler {
-            OneEvent {
-              case CreateUser(name, age) => UserCreated(name, age)
-            }
-          }
-          .eventHandler {
-            case UserCreated(name, age) => User(name, age, id)
-          }
-      } andThen {
-
-        case user =>
+      Behavior
+        .first {
           actions
             .rejectCommand {
-              case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
+              case cmd: CreateUser if cmd.age <= 0 => new IllegalArgumentException("age must be >= 0")
             }
             .commandHandler {
               OneEvent {
-                case ChangeName(newName) => NameChanged(newName)
+                case CreateUser(name, age) => UserCreated(name, age)
               }
             }
             .eventHandler {
-              case NameChanged(newName) => user.copy(name = newName)
+              case UserCreated(name, age) => User(name, age, id)
             }
-            .commandHandler {
-              OneEvent {
-                case DeleteUser => UserDeleted
+        }
+        .andThen {
+
+          case user =>
+            actions
+              .rejectCommand {
+                case _ if user.isDeleted => new IllegalArgumentException("User is already deleted!")
               }
-            }
-            .eventHandler {
-              case UserDeleted => user.copy(deleted = true)
-            }
-      }
+              .commandHandler {
+                OneEvent {
+                  case ChangeName(newName) => NameChanged(newName)
+                }
+              }
+              .eventHandler {
+                case NameChanged(newName) => user.copy(name = newName)
+              }
+              .commandHandler {
+                OneEvent {
+                  case DeleteUser => UserDeleted
+                }
+              }
+              .eventHandler {
+                case UserDeleted => user.copy(deleted = true)
+              }
+        }
     }
   }
 
