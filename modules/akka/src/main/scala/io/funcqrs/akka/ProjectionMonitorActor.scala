@@ -4,7 +4,7 @@ import java.util.UUID
 
 import akka.actor._
 import akka.event.{ ActorEventBus, LookupClassification }
-import akka.pattern.BackoffSupervisor
+import akka.pattern.{ Backoff, BackoffSupervisor }
 import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
@@ -12,6 +12,14 @@ import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
 import io.funcqrs.EventWithCommandId
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
+
+object ProjectionMonitorActor {
+
+  case class CreateProjection(props: Props, name: String)
+
+  case class EventsMonitorRequest(commandId: CommandId, projectionName: String)
+
+}
 
 /**
   * Parent actor for all ProjectionActors
@@ -56,8 +64,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // child EventsMonitor is ready, can be removed
     case RemoveMe(eventsMonitor) => removeEventMonitor(eventsMonitor)
 
-    // do nothing with events without CommandId
-    case anyOther => log.warning("Unknown message: {}", anyOther)
+    case anyOther => // do nothing with events without CommandId
   }
 
   private def createNewProjection(props: Props, name: String): Unit = {
@@ -65,13 +72,15 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     val supervisorProps =
       BackoffSupervisor.props(
-        childProps = props,
-        childName  = s"$name-supervised",
-        // wait at least 10 seconds to restart
-        minBackoff = 10.seconds, // TODO: move to config
-        // wait at most 5 minutes to restart
-        maxBackoff   = 5.minutes, // TODO: move to config
-        randomFactor = 0.0 // TODO: move to config
+        Backoff.onStop(
+          childProps = props,
+          childName  = s"$name-supervised",
+          // wait at least 10 seconds to restart
+          minBackoff = 10.seconds, // TODO: move to config
+          // wait at most 5 minutes to restart
+          maxBackoff   = 5.minutes, // TODO: move to config
+          randomFactor = 0.0 // TODO: move to config
+        )
       )
 
     val projectionSupervisor = context.actorOf(supervisorProps, name)
@@ -157,14 +166,6 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
   def eventsMonitor(commandId: CommandId, projectionName: String, timeout: FiniteDuration) =
     Props(new EventsMonitorActor(commandId, projectionName, timeout))
-}
-
-object ProjectionMonitorActor {
-
-  case class CreateProjection(props: Props, name: String)
-
-  case class EventsMonitorRequest(commandId: CommandId, projectionName: String)
-
 }
 
 object EventsMonitorActor {

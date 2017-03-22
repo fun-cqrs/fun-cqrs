@@ -3,7 +3,6 @@ package io.funcqrs.akka
 import akka.actor.ActorSystem
 import com.typesafe.config.ConfigFactory
 import io.funcqrs.akka.backend.AkkaBackend
-import io.funcqrs.backend.Query
 import io.funcqrs.behavior.Types
 import org.scalatest.{ BeforeAndAfterAll, Suite }
 
@@ -17,7 +16,6 @@ trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
 
   lazy val backend = new AkkaBackend {
     override val actorSystem: ActorSystem = actorSys
-    def sourceProvider(query: Query): EventsSourceProvider = ???
   }
 
   override protected def beforeAll(): Unit = {
@@ -33,7 +31,4 @@ trait AkkaBackendSupport extends Suite with BeforeAndAfterAll {
     Await.ready(backend.actorSystem.terminate(), 10.seconds)
   }
 
-  implicit class FailedFuture[T](fut: Future[T]) {
-//    def failed
-  }
 }

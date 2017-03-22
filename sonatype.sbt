@@ -14,6 +14,10 @@ pomExtra in Global := {
       <distribution>repo</distribution>
     </license>
   </licenses>
+  <scm>
+    <url>https://github.com/strongtyped/fun-cqrs.git</url>
+    <connection>scm:git:git@github.com:strongtyped/fun-cqrs.git</connection>
+  </scm>
   <developers>
     <developer>
       <id>@renatocaval</id>

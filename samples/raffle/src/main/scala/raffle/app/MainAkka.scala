@@ -1,13 +1,20 @@
 package raffle.app
 
+import akka.actor.ActorSystem
 import raffle.domain.model._
 
+import scala.concurrent.Await
 import scala.util.{ Failure, Success }
+import scala.concurrent.duration._
+
 object MainAkka extends App {
 
   val id = RaffleId.generate()
 
-  val lotteryRef = AppContext.akkaBackend.aggregateRef[Raffle].forId(id)
+  val actorSys: ActorSystem = ActorSystem("FunCQRS")
+  val backend               = AppContext.akkaBackend(actorSys)
+
+  val lotteryRef = backend.aggregateRef[Raffle].forId(id)
 
   lotteryRef ! CreateRaffle
 
@@ -29,6 +36,6 @@ object MainAkka extends App {
     case Failure(ex)  => println(s"FAILED: ${ex.getMessage}")
   }
 
-  AppContext.close
+  Await.ready(actorSys.terminate(), 5.seconds)
 
 }

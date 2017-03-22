@@ -1,11 +1,10 @@
 package raffle.domain.model
 
-import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.config.Api._
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
-import raffle.domain.service.{ RaffleViewProjection, RaffleViewRepo }
 import org.scalatest.{ FunSuite, Matchers, OptionValues, TryValues }
+import raffle.domain.service.{ RaffleViewProjection, RaffleViewRepo }
 
 class RaffleTest extends FunSuite with Matchers with OptionValues with TryValues {
 
@@ -26,10 +25,9 @@ class RaffleTest extends FunSuite with Matchers with OptionValues with TryValues
       // projection config - read model
       backend.configure {
         projection(
-          // we don't use tagging for in-memory tests
-          query      = QuerySelectAll,
-          projection = new RaffleViewProjection(repo),
-          name       = "RaffleViewProjection"
+          projection       = new RaffleViewProjection(repo),
+          publisherFactory = backend.inMemoryPublisherFactory[RaffleEvent],
+          name             = "RaffleViewProjection"
         )
       }
     }

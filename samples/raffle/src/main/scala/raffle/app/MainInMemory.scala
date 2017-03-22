@@ -9,10 +9,7 @@ object MainInMemory extends App {
 
   val id = RaffleId.generate()
 
-  val lotteryRef =
-    AppContext.inMemoryBackend
-      .aggregateRef[Raffle]
-      .forId(id)
+  val lotteryRef = AppContext.inMemoryBackend.aggregateRef[Raffle].forId(id)
 
   lotteryRef ! CreateRaffle
 

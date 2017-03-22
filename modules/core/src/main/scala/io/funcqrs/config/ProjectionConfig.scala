@@ -1,42 +1,47 @@
 package io.funcqrs.config
 
-import io.funcqrs.Projection
-import io.funcqrs.backend.Query
-
+import io.funcqrs.projections.Projection
+import io.funcqrs.projections.PublisherFactory
+import scala.language.higherKinds
 import scala.concurrent.Future
 
-case class ProjectionConfig(
-    query: Query,
-    projection: Projection,
+case class ProjectionConfig[O, E](
+    projection: Projection[E],
+    publisherFactory: PublisherFactory[O, E],
     name: String,
-    offsetPersistenceStrategy: OffsetPersistenceStrategy = NoOffsetPersistenceStrategy
+    offsetPersistenceStrategy: OffsetPersistenceStrategy[O] = NoOffsetPersistenceStrategy
 ) {
 
-  def withoutOffsetPersistence(): ProjectionConfig = {
+  def withoutOffsetPersistence(): ProjectionConfig[O, E] = {
     copy(offsetPersistenceStrategy = NoOffsetPersistenceStrategy)
   }
 
-  def withBackendOffsetPersistence(): ProjectionConfig = {
+  @deprecated("use an explicit offset persistence strategy", "1.0.0")
+  def withBackendOffsetPersistence()(implicit ev: O =:= Long): ProjectionConfig[O, E] = {
     copy(offsetPersistenceStrategy = BackendOffsetPersistenceStrategy(name))
   }
 
-  def withCustomOffsetPersistence(strategy: CustomOffsetPersistenceStrategy): ProjectionConfig = {
+  def withCustomOffsetPersistence(strategy: CustomOffsetPersistenceStrategy[O]): ProjectionConfig[O, E] = {
+    copy(offsetPersistenceStrategy = strategy)
+  }
+
+  def withOffsetPersistenceStrategy(strategy: CustomOffsetPersistenceStrategy[O]): ProjectionConfig[O, E] = {
     copy(offsetPersistenceStrategy = strategy)
   }
 
 }
 
-trait OffsetPersistenceStrategy
+trait OffsetPersistenceStrategy[+O]
 
-case object NoOffsetPersistenceStrategy extends OffsetPersistenceStrategy
+case object NoOffsetPersistenceStrategy extends OffsetPersistenceStrategy[Nothing]
 
-case class BackendOffsetPersistenceStrategy(persistenceId: String) extends OffsetPersistenceStrategy
+case class BackendOffsetPersistenceStrategy[O](persistenceId: String) extends OffsetPersistenceStrategy[O]
 
-trait CustomOffsetPersistenceStrategy extends OffsetPersistenceStrategy {
+trait CustomOffsetPersistenceStrategy[O] extends OffsetPersistenceStrategy[O] {
 
-  def saveCurrentOffset(offset: Long): Future[Unit]
+  def saveCurrentOffset(offset: O): Future[Unit]
 
   /** Returns the current offset as persisted in DB */
-  def readOffset: Future[Option[Long]]
+  def readOffset: Future[Option[O]]
 
 }

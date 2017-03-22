@@ -1,34 +1,32 @@
 package io.funcqrs.akka
 
-import akka.actor.Stash
-import akka.persistence._
-import io.funcqrs.akka.PersistedOffsetAkka.LastProcessedEventOffset
-
-import scala.concurrent.{ Promise, Future }
+import scala.concurrent.Future
 import scala.util.control.NonFatal
 
 /** Defines how the projection offset should be persisted */
-trait OffsetPersistence { this: ProjectionActor =>
+trait OffsetPersistence[O, E] { this: ProjectionActor[O, E] =>
 
-  def saveCurrentOffset(offset: Long): Future[Unit]
+  def saveCurrentOffset(offset: O): Future[Unit]
 }
 
 /** Does NOT persist the offset forcing a full stream read each time */
-trait OffsetNotPersisted extends OffsetPersistence { this: ProjectionActor =>
+trait OffsetNotPersisted[O, E] extends OffsetPersistence[O, E] { this: ProjectionActor[O, E] =>
 
-  def saveCurrentOffset(offset: Long): Future[Unit] = Future.successful(())
+  def saveCurrentOffset(offset: O): Future[Unit] = {
+    Future.successful(())
+  }
 
   // nothing to recover, thus recoveryCompleted on preStart
   override def preStart(): Unit = recoveryCompleted()
 }
 
 /** Read and save from a database. */
-trait PersistedOffsetCustom extends OffsetPersistence { this: ProjectionActor =>
+trait PersistedOffsetCustom[O, E] extends OffsetPersistence[O, E] { this: ProjectionActor[O, E] =>
 
-  def saveCurrentOffset(offset: Long): Future[Unit]
+  def saveCurrentOffset(offset: O): Future[Unit]
 
   /** Returns the current offset as persisted in DB */
-  def readOffset: Future[Option[Long]]
+  def readOffset: Future[Option[O]]
 
   /** On preStart we read the offset from db and start the events streaming */
   override def preStart(): Unit = {
@@ -46,67 +44,6 @@ trait PersistedOffsetCustom extends OffsetPersistence { this: ProjectionActor =>
           context.stop(self)
       }
   }
-}
-
-/**
-  * Persist Last Processed Event Offset as Projection Event in akka-persistence
-  *
-  * This implementation is a quick win for those that simply want to persist the offset without caring about
-  * the persistence layer.
-  *
-  * However, the drawback is that most (if not all) akka-persistence plugins will
-  * save it as binary data which make it difficult to inspect the DB to get to know the last processed event.
-  */
-trait PersistedOffsetAkka extends OffsetPersistence with PersistentActor { self: ProjectionActor =>
-
-  def persistenceId: String
-
-  override def receive = receiveCommand
-
-  override def receiveCommand: Receive = acceptingEvents
-
-  override val receiveRecover: Receive = {
-
-    case SnapshotOffer(metadata, offset: Long) =>
-      log.debug("[{}] snapshot offer - last processed event offset {}", persistenceId, offset)
-      lastProcessedOffset = Some(offset)
-
-    case LastProcessedEventOffset(offset) =>
-      log.debug("[{}] - last processed event offset {}", persistenceId, offset)
-      lastProcessedOffset = Option(offset)
-
-    case _: RecoveryCompleted =>
-      log.debug("[{}] recovery completed - last processed event offset {}", persistenceId, lastProcessedOffset)
-      recoveryCompleted()
-
-    case unknown => log.debug("Unknown message on recovery: {}", unknown)
-
-  }
-
-  def saveCurrentOffset(offset: Long): Future[Unit] = {
-
-    // we need to conform with OffsetPersistence API and return a Future[Unit]
-    // Seems odd, but thet ProjectionActor that may get this trait mixed in
-    // is not aware (and should not be aware) that this trait makes him a PersistentActor
-    val saveOffsetPromise = Promise[Unit]()
-
-    persist(LastProcessedEventOffset(offset)) { evt =>
-      log.debug("Projection: {} - saving domain event offset {}", persistenceId, offset)
-      val seqNrToDelete = lastSequenceNr - 1
-
-      // delete old message if any, no need to wait
-      if (seqNrToDelete > 0) {
-        log.debug("Projection: {} - deleting previous projection event: {}", persistenceId, seqNrToDelete)
-        deleteMessages(seqNrToDelete)
-      }
-
-      lastProcessedOffset = Option(offset)
-      saveOffsetPromise.success(())
-    }
-
-    saveOffsetPromise.future
-  }
-
 }
 
 object PersistedOffsetAkka {

@@ -1,10 +1,14 @@
 package io.funcqrs.test.backend
 
-import io.funcqrs._
-import io.funcqrs.backend.{ Backend, QueryByTag, QueryByTags, QuerySelectAll }
+import io.funcqrs.backend.Backend
 import io.funcqrs.behavior._
 import io.funcqrs.config.{ AggregateConfig, ProjectionConfig }
 import io.funcqrs.interpreters.{ Identity, IdentityInterpreter }
+import io.funcqrs.projections.PublisherFactory
+import io.funcqrs.{ AnyEvent, _ }
+import org.reactivestreams.Publisher
+import rx.RxReactiveStreams
+import rx.lang.scala.JavaConversions._
 import rx.lang.scala.Subject
 import rx.lang.scala.subjects.PublishSubject
 
@@ -13,15 +17,42 @@ import scala.collection.{ concurrent, immutable }
 import scala.concurrent.duration._
 import scala.concurrent.{ Await, Future }
 import scala.reflect.ClassTag
+import scala.util.{ Success, Try }
 
 class InMemoryBackend extends Backend[Identity] {
 
   private var aggregateConfigs: concurrent.Map[ClassTag[_], AggregateConfig[_, _, _, _]] = concurrent.TrieMap()
   private var aggregates: concurrent.Map[AggregateId, IdentityAggregateRef[_, _, _]]     = TrieMap()
 
-  private val eventStream: Subject[AnyEvent] = PublishSubject()
+  private var eventsOffset: Long = 0
 
-  private val stream: Stream[AnyEvent] = Stream()
+  type OffsetWithEvent = (Long, AnyEvent)
+  private val eventStream: Subject[OffsetWithEvent] = PublishSubject()
+
+  def inMemoryPublisherFactory[E] = new PublisherFactory[Long, E] {
+
+    def from(offset: Option[Long]): Publisher[(Long, E)] = {
+
+      object Cast {
+        def unapply(evt: AnyEvent): Option[E] =
+          Try(evt.asInstanceOf[E]) match {
+            case Success(casted) => Some(casted)
+            case _               => None
+          }
+      }
+
+      val filtered =
+        eventStream
+          .collect {
+            case (o, Cast(e)) => (o, e)
+          }
+
+      val obs = toJavaObservable(filtered).asInstanceOf[rx.Observable[(Long, E)]]
+
+      RxReactiveStreams.toPublisher(obs)
+    }
+
+  }
 
   protected def aggregateRefById[A: ClassTag, C, E, I <: AggregateId](id: I): InMemoryAggregateRef[A, C, E, I] = {
 
@@ -47,43 +78,17 @@ class InMemoryBackend extends Backend[Identity] {
     this
   }
 
-  def configure(config: ProjectionConfig): Backend[Identity] = {
+  def configure[O, E](config: ProjectionConfig[O, E]): Backend[Identity] = {
 
-    // does the event match the query criteria?
-    def matchQuery(_tags: Set[Tag]): Boolean = {
-      config.query match {
-        case QueryByTag(tag)   => _tags.contains(tag)
-        case QueryByTags(tags) => tags.subsetOf(_tags)
-        case QuerySelectAll    => true
-      }
-    }
+    val rxStream = toScalaObservable(RxReactiveStreams.toObservable(config.publisherFactory.from(None)))
 
-    def matchQueryWithoutTagging(evt: Any): Boolean = {
-      config.query match {
-        case QuerySelectAll => true
-        case _              => false
-      }
-    }
-
-    // send even to projections
-    def sendToProjection(event: Any) = {
+    rxStream.subscribe { envelope =>
+      val (_, evt) = envelope
+      // send even to projections
+      val res = config.projection.onEvent(evt)
       // TODO: projections should be interpreted as well to avoid this
-      Await.ready(config.projection.onEvent(event), 10.seconds)
+      Await.ready(res, 10.seconds)
       ()
-    }
-
-    eventStream.subscribe { event: AnyEvent =>
-      event match {
-        case evt: Tagged if matchQuery(evt.tags) =>
-          sendToProjection(event)
-
-        case evt if matchQueryWithoutTagging(evt) =>
-          sendToProjection(event)
-
-        // otherwise do nothing, don't send to projection
-        case anyEvent =>
-      }
-
     }
 
     this
@@ -91,7 +96,8 @@ class InMemoryBackend extends Backend[Identity] {
 
   private def publishEvents(evts: immutable.Seq[AnyEvent]): Unit = {
     evts foreach { evt =>
-      eventStream.onNext(evt)
+      eventsOffset = eventsOffset + 1
+      eventStream.onNext((eventsOffset, evt))
     }
   }
 
@@ -141,4 +147,5 @@ class InMemoryBackend extends Backend[Identity] {
       def exists(predicate: (A) => Boolean): Future[Boolean] = Future.successful(self.exists(predicate))
     }
   }
+
 }

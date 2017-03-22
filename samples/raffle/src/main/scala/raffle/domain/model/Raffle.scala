@@ -8,7 +8,8 @@ import io.funcqrs.behavior.Types
 import io.funcqrs.behavior._
 import io.funcqrs.behavior.handlers._
 
-import scala.util.Random
+import scala.concurrent.Future
+import scala.util.{ Random, Try }
 
 sealed trait Raffle {
   def id: RaffleId

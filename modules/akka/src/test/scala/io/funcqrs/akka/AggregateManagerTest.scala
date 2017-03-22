@@ -2,11 +2,10 @@ package io.funcqrs.akka
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
-import io.funcqrs.{ MissingCommandHandlerException, _ }
 import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
-import io.funcqrs.backend.Query
 import io.funcqrs.config.api._
+import io.funcqrs.{ MissingCommandHandlerException, _ }
 import org.scalatest._
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.time.{ Seconds, Span }
@@ -113,11 +112,11 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
   }
 
   it should "fail with descriptive error getting aggregateRef for non-configured aggregate" in {
+
     val freshBackend = new AkkaBackend {
       override val actorSystem: ActorSystem = actorSys
-
-      def sourceProvider(query: Query): EventsSourceProvider = ???
     }
+
     assertThrows[MissingAggregateConfigurationException] {
       freshBackend.aggregateRef[Person].forId(PersonId.generate)
     }

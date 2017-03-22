@@ -1,12 +1,11 @@
 package io.funcqrs.test
 
-import io.funcqrs.{ Projection, _ }
-import io.funcqrs.backend.QuerySelectAll
 import io.funcqrs.config.api._
+import io.funcqrs.projections.Projection
 import io.funcqrs.test.backend.InMemoryBackend
+import io.funcqrs.{ AnyEvent, ClassTagImplicits }
 
 import scala.collection.mutable
-import scala.concurrent.Future
 import scala.reflect.ClassTag
 import scala.util.{ Failure, Success, Try }
 
@@ -16,11 +15,9 @@ trait InMemoryTestSupport {
   // will be added to this queue for later assertions
   private lazy val receivedEvents = mutable.Queue[Any]()
 
-  private lazy val internalProjection = new Projection {
-    def handleEvent: HandleEvent = {
-      case event =>
-        receivedEvents += event // add all events to queue
-        Future.successful(())
+  private lazy val internalProjection = new Projection[AnyEvent] {
+    def handleEvent = sync.HandleEvent {
+      case event => receivedEvents += event // add all events to queue
     }
   }
 
@@ -30,11 +27,12 @@ trait InMemoryTestSupport {
 
     backend.configure {
       projection(
-        query      = QuerySelectAll,
-        projection = internalProjection,
-        name       = "InternalTestProjection"
+        projection       = internalProjection,
+        publisherFactory = backend.inMemoryPublisherFactory[AnyEvent],
+        name             = "InternalTestProjection"
       )
     }
+
     backend
   }
 

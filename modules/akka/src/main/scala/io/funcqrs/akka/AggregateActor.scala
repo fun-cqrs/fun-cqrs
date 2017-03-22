@@ -13,6 +13,23 @@ import scala.concurrent.duration._
 import scala.util.{ Success, Try }
 import scala.util.control.NonFatal
 
+object AggregateActor {
+
+  /**
+    * We don't want the aggregate to be killed if it hasn't fully restored yet,
+    * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
+    */
+  case object KillAggregate
+
+  case class StateRequest(requester: ActorRef)
+
+  case class Exists(requester: ActorRef)
+
+  def props[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
+    Props(new AggregateActor[A, C, E, I](id, AsyncInterpreter(behavior), parentPath))
+  }
+}
+
 class AggregateActor[A, C, E, I <: AggregateId](
     identifier: I,
     interpreter: AsyncInterpreter[A, C, E],
@@ -304,21 +321,4 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
   private case class FailedCommand(cmd: Command, cause: Throwable, origSender: ActorRef)
 
-}
-
-object AggregateActor {
-
-  /**
-    * We don't want the aggregate to be killed if it hasn't fully restored yet,
-    * thus we need some non AutoReceivedMessage that can be handled by akka persistence.
-    */
-  case object KillAggregate
-
-  case class StateRequest(requester: ActorRef)
-
-  case class Exists(requester: ActorRef)
-
-  def props[A, C, E, I <: AggregateId](id: I, behavior: Behavior[A, C, E], parentPath: String): Props = {
-    Props(new AggregateActor[A, C, E, I](id, AsyncInterpreter(behavior), parentPath))
-  }
 }
