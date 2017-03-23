@@ -1,3 +1,5 @@
+
+
 # Fun.CQRS
 
 
@@ -13,28 +15,33 @@ That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is u
 
 ## Roadmap to v1.0.0
 
-**Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap.md). 
+**Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. 
+
+A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) and migration guide [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md). 
+
 
 ## Project artifact
 
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "0.4.10"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0-M1"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "0.4.10"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M1"
 ```
 
 ## Documentation
 
+!!! ATTENTION !!! - Documentation is out-of-date as we are in the process of relasing 1.0.0.
+
 The documentation is published [here](http://www.funcqrs.io).
 
-There is also a sample application  under fun-cqrs/samples/lottery.
+There is also a sample application under fun-cqrs/samples/raffle (up-to-date). 
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
 
