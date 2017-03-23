@@ -17,7 +17,7 @@ That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is u
 
 **Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. 
 
-A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) and migration guide [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md). 
+A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) and migration guide [here](https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
 
 
 ## Project artifact
