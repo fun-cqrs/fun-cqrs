@@ -2,7 +2,7 @@
 
 This document covers the migration steps necessary to port your existing **Fun.CQRS** application to version 1.0.0.    
 
-**Fun.CQRS** 1.0.0 brings some breaking changes on the API. Internally nothing changed, but the user facing API was refactored and you will have to modify your code accordingly. 
+**Fun.CQRS** 1.0.0 brings some breaking changes on the API level. Internally nothing changed, but the user facing API was refactored and you will have to modify your code accordingly. 
 
 We have pulished a [roadmap document](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-1.0.0.md) explaining the motivations for those API changes. If you need any further information or help, you can contact us on the gitter channel [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge).  
 
