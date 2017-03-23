@@ -88,10 +88,10 @@ case class FooMetadata(
   type Id = FooId
 }
   
-  sealed trait FooEvent extends MetadataFacet[FooMetadata]
+sealed trait FooEvent extends MetadataFacet[FooMetadata]
 ```
 
-This should be easily refactored to:
+This should be refactored to:
 
 ```scala
 case class FooMetadata(
@@ -165,7 +165,7 @@ Command handlers were also refactored to `PartialFunctions`, however the migrati
 
 Priviously Command Handlers declaration required the availabilty of `InvokerDirectives` in the implicit scope. This was need to seamlessly revolve the handlers' return types. 
 
-We move out of that approach for many reasons that were explained on the roadmap document that we won't repeat here. Please, consult it for more info.
+We move out of that approach for many reasons that were explained in the roadmap document that we won't repeat here. Please, consult it for more info.
 
 The migration of the command handlers can be done partially by replacing all occurences of
 
@@ -178,7 +178,7 @@ by
   
 But this is not yet enough. This won't compile.
 
-After that your command handler may have this shape:
+After that, your command handler may look like this:
 
 ```scala 
 commandHandler { case cmd: FooCommand => FooEvent(...) } 
@@ -189,7 +189,7 @@ this will need to be refactored to:
 ```scala
 import io.funcqrs.behavior.handlers._
 commandHandler { 
-	OneEvent { case cmd: FooCommand => FooEvent(...) }
+  OneEvent { case cmd: FooCommand => FooEvent(...) }
 } 
 ```
 
@@ -224,12 +224,12 @@ You must have...
 
 ```scala
 Behavior
-	.first { 
-   	createActions(...)
-	}
-	.andThen {
-		case foo => foo.someOtherActions
-	}   
+  .first { 
+    createActions(...)
+  }
+  .andThen {
+    case foo => foo.someOtherActions
+  }   
 ```
 
 ## Backend Configuration
@@ -272,7 +272,7 @@ backend.aggregateRef[Foo].forId(id)
 
 In order to correctly resolve the types the call to `aggregateRef` requires an implicit `Types[Foo]`. This is automatically provided if `Foo`'s companion object implements `Types` (as recommended). How this is achieve is out of scope for this migration guide. Just keep in mind that you get it for 'free' if you follow this recommendatoin.
 
-If for some reason your realy can't or don't want your companion object to implement `Types`, then you need to bring it into the implicit scope yourself or pass it explicit when calling `aggregateRef`.
+If for some reason you really can't or don't want your companion object to implement `Types`, then you need to bring it into the implicit scope yourself or pass it explicit when calling `aggregateRef`.
 
 
 # Migrating to 1.0.0-M2
