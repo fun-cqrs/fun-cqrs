@@ -270,9 +270,9 @@ val id = FooId("bar")
 backend.aggregateRef[Foo].forId(id)
 ```
 
-In order to correctly resolve the types the call to `aggregateRef` requires an implicit `Types[Foo]`. This is automatically provided if `Foo`'s companion object implements `Types` (as recommended). How this is achieve is out of scope for this migration guide. Just keep in mind that you get it for 'free' if you follow this recommendatoin.
+In order to correctly resolve the types the call to `aggregateRef` requires an implicit `Types[Foo]`. This is automatically provided if `Foo`'s companion object implements `Types` (as recommended). How this is achieve is out of scope for this migration guide. Just keep in mind that you get it for 'free' if you follow this recommendation.
 
-If for some reason you really can't or don't want your companion object to implement `Types`, then you need to bring it into the implicit scope yourself or pass it explicit when calling `aggregateRef`.
+If for some reason you really can't or don't want your companion object to implement `Types`, then you need to bring it into the implicit scope yourself or pass it explicitly when calling `aggregateRef`.
 
 
 # Migrating to 1.0.0-M2
