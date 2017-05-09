@@ -73,10 +73,11 @@ class ViewBoundedAggregateActorRef[A, C, E, I <: AggregateId](
     eventsFilter: EventsFilter = All
 ) extends AggregateAliases {
 
-  type Aggregate = A
-  type Id        = I
-  type Command   = C
-  type Event     = E
+  type Aggregate           = A
+  type Id                  = I
+  type Command             = C
+  type Event               = E
+  type EventsWithCommandId = immutable.Seq[EventWithCommandId]
 
   val underlyingRef = aggregateRef
 
@@ -123,7 +124,7 @@ class ViewBoundedAggregateActorRef[A, C, E, I <: AggregateId](
         // initialize an EventMonitor for the given command
         monitor <- newEventsMonitor()
         // send command to Write Model (AggregateManager)
-        events <- sendCommandFunc.mapTo[Events]
+        events <- sendCommandFunc.mapTo[EventsWithCommandId]
 
         // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
       } yield (akkaAsk(monitor), events)
@@ -137,14 +138,16 @@ class ViewBoundedAggregateActorRef[A, C, E, I <: AggregateId](
         result <- (monitor ? Subscribe(toWatch)).mapTo[EventsMonitorActor.Done.type]
       } yield toWatch
 
-    resultOnRead.recoverWith {
-      // on failure, we send the events we got from the Write Model
-      // together with the exception that made it fail (probably a timeout)
-      case NonFatal(e) =>
-        resultOnWrite.flatMap {
-          case (_, evts) => Future.failed(new ProjectionJoinException(evts, defaultView, e))
-        }
-    }
+    resultOnRead
+      .mapTo[Events]
+      .recoverWith {
+        // on failure, we send the events we got from the Write Model
+        // together with the exception that made it fail (probably a timeout)
+        case NonFatal(e) =>
+          resultOnWrite.flatMap {
+            case (_, evts) => Future.failed(new ProjectionJoinException(evts, defaultView, e))
+          }
+      }
   }
 
 }

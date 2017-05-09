@@ -45,6 +45,22 @@ class AggregateActor[A, C, E, I <: AggregateId](
   private val commandTimeout =
     aggregateConfig(aggregateType).getDuration("async-command-timeout", 5.seconds)
 
+  private val dropSnapshot = aggregateConfig(aggregateType).getBoolean("drop-snapshot", default = false)
+
+  override def preStart(): Unit = {
+    super.preStart()
+    if (dropSnapshot)
+      deleteSnapshots(SnapshotSelectionCriteria.Latest)
+  }
+
+  override def recovery = {
+    if (dropSnapshot) {
+      Recovery(fromSnapshot = SnapshotSelectionCriteria.None)
+    } else {
+      Recovery(fromSnapshot = SnapshotSelectionCriteria.Latest)
+    }
+  }
+
   import context.dispatcher
 
   // persistenceId is always defined as the Aggregate.Identifier

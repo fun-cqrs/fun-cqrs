@@ -19,7 +19,7 @@ import scala.concurrent.duration.{ FiniteDuration, _ }
 class ProjectionMonitorActor extends Actor with ActorLogging {
 
   type CommandIdWithProjectionName = (CommandId, String)
-  // (ProjectionName, DomainEvent)
+
   type EventWithProjectionName = (EventWithCommandId, String)
 
   // internal EventBus to dispatch events to subscribed EventsMonitor
@@ -170,9 +170,6 @@ object ProjectionMonitorActor {
 object EventsMonitorActor {
 
   case class Subscribe(events: Seq[EventWithCommandId])
-  object Subscribe {
-    def apply(event: Any): Subscribe = Subscribe(Seq(event))
-  }
 
   case object Done
 

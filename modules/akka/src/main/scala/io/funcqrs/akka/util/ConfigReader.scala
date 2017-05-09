@@ -40,6 +40,19 @@ case class ConfigReader(specificPath: String, globalPath: String, config: Config
     )
 
   /**
+    * Get a Boolean value.
+    *
+    * @param propertyName - property name to lookup
+    * @param default - default [[Boolean]] value
+    * @return return value of `propertyName` or `default` if property is not found at `specificPath` and at `globalPath`
+    */
+  def getBoolean(propertyName: String, default: => Boolean): Boolean =
+    readConfig(
+      _.getBoolean(propertyName),
+      default
+    )
+
+  /**
     * Try to get a configuration value in a specific order.
     * First the specific location, then the global and if all fails the hardcoded default value
     */
