@@ -11,6 +11,8 @@ ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
 }
 
+// replaces dynver + by -
+version in ThisBuild ~= (_.replace('+', '-'))
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
