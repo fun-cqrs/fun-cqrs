@@ -57,12 +57,22 @@ case class AggregateActorRef[A, C, E, I <: AggregateId](
     }
   }
 
-  def exists(): Future[Boolean] = {
+  def isInitialized: Future[Boolean] = {
     askableActorRef.ask(Exists(id))(askTimeout).mapTo[Boolean]
   }
 
   def join(viewName: String): ViewBoundedAggregateActorRef[A, C, E, I] = {
     new ViewBoundedAggregateActorRef[A, C, E, I](this, viewName, projectionMonitor)
+  }
+
+  def exists(predicate: (Aggregate) => Boolean): Future[Boolean] = {
+    import scala.concurrent.ExecutionContext.Implicits.global
+    isInitialized.flatMap { initialized =>
+      if (initialized)
+        state().map(predicate)
+      else
+        Future.successful(false)
+    }
   }
 }
 
@@ -83,7 +93,8 @@ class ViewBoundedAggregateActorRef[A, C, E, I <: AggregateId](
 
   // Delegation to underlying AsyncAggregateService
   def state()(implicit timeout: Timeout, sender: ActorRef): Future[A]        = underlyingRef.state()
-  def exists()(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = underlyingRef.exists()
+  def isInitialized(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = underlyingRef.isInitialized
+  def exists()(implicit timeout: Timeout, sender: ActorRef): Future[Boolean] = isInitialized
 
   def withFilter(eventsFilter: EventsFilter): ViewBoundedAggregateActorRef[A, C, E, I] =
     new ViewBoundedAggregateActorRef(underlyingRef, defaultView, projectionMonitorActorRef, eventsFilter)
