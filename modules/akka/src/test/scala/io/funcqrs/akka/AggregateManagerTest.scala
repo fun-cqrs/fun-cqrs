@@ -33,10 +33,10 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
     val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    userRef.exists().futureValue shouldBe false
+    userRef.isInitialized.futureValue shouldBe false
     userRef ! CreateUser("João Ninguém", 30)
     eventually {
-      userRef.exists().futureValue shouldBe true
+      userRef.isInitialized.futureValue shouldBe true
     }
 
     eventually {
@@ -57,7 +57,7 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
 
     val userRef = backend.aggregateRef[User].forId(UserId.generate())
 
-    userRef.exists().futureValue shouldBe false
+    userRef.isInitialized.futureValue shouldBe false
   }
 
   it should "return true when enquiring for existent aggregate" in {
@@ -67,7 +67,26 @@ class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures 
     userRef ! CreateUser("John Doe", 30)
 
     eventually {
-      userRef.exists().futureValue shouldBe true
+      userRef.isInitialized.futureValue shouldBe true
+    }
+  }
+
+  it should "return predicate evaluation when enquiring for existent" in {
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+
+    userRef ! CreateUser("Jane Doe", 26)
+
+    eventually {
+      userRef.exists(_.age < 30).futureValue shouldBe true
+      userRef.exists(_.age > 30).futureValue shouldBe false
+    }
+  }
+
+  it should "return false when enquiring for existent with predicate of non-existent aggregate" in {
+    val userRef = backend.aggregateRef[User].forId(UserId.generate())
+
+    eventually {
+      userRef.exists(_ => true).futureValue shouldBe false
     }
   }
 

@@ -119,7 +119,10 @@ class InMemoryBackend extends Backend[Identity] {
     def state(): Identity[A] =
       aggregateState.getOrElse(sys.error("Aggregate is not initialized"))
 
-    def exists(): Identity[Boolean] = aggregateState.isDefined
+    def isInitialized: Identity[Boolean] = aggregateState.isDefined
+
+    def exists(predicate: (A) => Boolean): Identity[Boolean] =
+      aggregateState.exists(predicate)
 
     def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future] = new AsyncAggregateRef[A, C, E] {
 
@@ -133,7 +136,9 @@ class InMemoryBackend extends Backend[Identity] {
 
       def state(): Future[A] = Future.successful(self.state())
 
-      def exists(): Future[Boolean] = Future.successful(self.exists())
+      def isInitialized: Future[Boolean] = Future.successful(self.isInitialized)
+
+      def exists(predicate: (A) => Boolean): Future[Boolean] = Future.successful(self.exists(predicate))
     }
   }
 }
