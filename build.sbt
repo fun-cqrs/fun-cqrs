@@ -45,6 +45,15 @@ lazy val funCqrsAkka = Project(
   .dependsOn(funCqrs % "compile->compile;test->test")
 //================================================
 
+// Cats API ======================================
+lazy val funCqrsCats = Project(
+  id       = "fun-cqrs-cats",
+  base     = file("modules/cats"),
+  settings = defaultSettings
+).settings(libraryDependencies ++= mainDeps ++ catsDeps)
+  .dependsOn(funCqrs % "compile->compile;test->test")
+//================================================
+
 //Test kit =======================================
 lazy val funCqrsTestKit = Project(
   id       = "fun-cqrs-test-kit",

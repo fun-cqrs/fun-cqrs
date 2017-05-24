@@ -35,6 +35,20 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
 
   //------------------------------------------------------------------------------------------------------------
+  // Cats API
+  val catsDeps = {
+    libraryDependencies += "org.typelevel" %% "cats" % "0.9.0"
+    val version = "0.9.0"
+
+    Seq(
+      "org.typelevel" %% "cats-macros" % version,
+      "org.typelevel" %% "cats-kernel" % version,
+      "org.typelevel" %% "cats-core" % version
+    )
+  }
+  //------------------------------------------------------------------------------------------------------------
+
+  //------------------------------------------------------------------------------------------------------------
   val levelDb    = "org.iq80.leveldb"          % "leveldb"        % "0.7"
   val levelDbJNI = "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8"
 
