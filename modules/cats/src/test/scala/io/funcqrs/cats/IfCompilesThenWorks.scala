@@ -1,8 +1,7 @@
 package io.funcqrs.cats
 
 import cats.Functor
-import cats.data.Validated.{Invalid, Valid}
-import cats.data.{Validated, ValidatedNel}
+import cats.data.ValidatedNel
 import io.funcqrs.AggregateId
 import io.funcqrs.behavior.Types
 import org.scalatest.{FunSuite, Matchers}
@@ -36,10 +35,12 @@ case object TwoIsIllegal extends ValidationError
 
 class ActionsTest extends FunSuite with Matchers {
 
-  def validate(v: Int): Validated[ValidationError, Int] = v match {
-    case 2 => Invalid(TwoIsIllegal)
-    case 13 => Invalid(ThirteenIsIllegal)
-    case n => Valid(n)
+  import cats.syntax.validated._
+
+  def validate(v: Int): ValidatedNel[ValidationError, Int] = v match {
+    case 2 => TwoIsIllegal.invalidNel
+    case 13 => ThirteenIsIllegal.invalidNel
+    case n => n.validNel
   }
 
   test("validatedId OneEvent and ManyEvents should be accepted (compiled)") {
@@ -52,18 +53,13 @@ class ActionsTest extends FunSuite with Matchers {
     Test1.actions
       .commandHandler {
         OneEvent {
-          case AddValue(x) => validate(x).map(ValueAdded).toValidatedNel
+          case AddValue(x) => validate(x).map(ValueAdded)
         }
       }
       .commandHandler {
         ManyEvents {
           case AddValues(vs) =>
-            val res: ValidatedNel[ValidationError, List[TestEvent]] =
-              vs.toList.map(validate)
-                .map(_.map(ValueAdded))
-                .map(_.toValidatedNel)
-                .sequenceU
-            res
+            vs.toList.traverseU(validate(_).map(ValueAdded))
         }
       }
   }
@@ -73,30 +69,22 @@ class ActionsTest extends FunSuite with Matchers {
 
     import cats.implicits._
     import scala.concurrent.ExecutionContext.Implicits.global
-    
+
     import scala.collection.immutable.Seq
 
-    implicit val futureFunctor: Functor[Future] = new Functor[Future] {
-      def map[A,B](fa: Future[A])(f: A => B) = fa map f
-    }
-    
     new ValidatedCommandHandlers[ValidationError, Option] {
       Test1.actions
         .commandHandler {
           OneEvent[TestCommand, TestEvent] {
             case AddValue(x) => validate(x)
               .map(v => Some[TestEvent](ValueAdded(v)))
-              .toValidatedNel
           }
         }
         .commandHandler {
           ManyEvents {
             case AddValues(vs) =>
               val es: ValidatedNel[ValidationError, Seq[Option[TestEvent]]] =
-                vs.toList.map(validate)
-                  .map(_.map(v => Some(ValueAdded(v))))
-                  .map(_.toValidatedNel)
-                  .sequenceU
+                vs.toList.traverseU(validate(_).map(v => Some(ValueAdded(v))))
               es.map(x => Some(x.flatten).filter(_.nonEmpty))
           }
         }
