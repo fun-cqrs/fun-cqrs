@@ -7,6 +7,7 @@ import io.funcqrs.akka._
 import io.funcqrs.akka.util.ConfigReader.aggregateConfig
 import io.funcqrs.backend._
 import io.funcqrs.config._
+import io.funcqrs.projections.PublisherFactory
 import io.funcqrs.{AggregateId, ClassTagImplicits, MissingAggregateConfigurationException}
 
 import scala.collection.concurrent
@@ -33,7 +34,6 @@ trait AkkaBackend extends Backend[Future] {
 
   private val aggregates: concurrent.Map[ClassTag[_], ActorRef] = concurrent.TrieMap()
 
-  def sourceProvider(query: Query): EventsSourceProvider
 
   protected def aggregateRefById[A: ClassTag, C, E, I <: AggregateId](id: I): Ref[A, C, E] = {
     val aggregateManager =
@@ -41,12 +41,12 @@ trait AkkaBackend extends Backend[Future] {
         ClassTagImplicits[A],
         throw new MissingAggregateConfigurationException(
           "The aggregate was not configured with a behaviour. " +
-          "Use io.funcqrs.config.Api.aggregate to provide a behaviour for this aggregate."
+            "Use io.funcqrs.config.Api.aggregate to provide a behaviour for this aggregate."
         )
       )
 
     val aggregateName = aggregateManager.path.name
-    val askTimeout    = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
+    val askTimeout = aggregateConfig(aggregateName).getDuration("ask-timeout", 5.seconds)
 
     new AggregateActorRef[A, C, E, I](id, aggregateManager, projectionMonitorActorRef, askTimeout)
   }
@@ -56,22 +56,26 @@ trait AkkaBackend extends Backend[Future] {
     this
   }
 
-  def configure(config: ProjectionConfig): AkkaBackend = {
+  def configure[O, E](config: ProjectionConfig[O, E]): AkkaBackend = {
 
-    val srcProvider = sourceProvider(config.query)
+
     // which strategy??
     // build different ProjectionActor depending on the chosen Offset Persistence Strategy
     def projectionProps = {
       config.offsetPersistenceStrategy match {
 
         case NoOffsetPersistenceStrategy =>
-          ProjectionActorWithoutOffsetPersistence.props(config.projection, srcProvider)
+          ProjectionActorWithoutOffsetPersistence.props[O, E](config.projection, config.publisherFactory)
 
         case BackendOffsetPersistenceStrategy(persistenceId) =>
-          ProjectionActorWithOffsetManagedByAkkaPersistence.props(config.projection, srcProvider, persistenceId)
+          ProjectionActorWithCustomOffsetPersistence.props[Long, E](
+            config.projection,
+            config.publisherFactory.asInstanceOf[PublisherFactory[Long, E]],
+            AkkaOffsetPersistenceStrategy.offsetAsLong(actorSystem, config.name)
+          )
 
-        case strategy: CustomOffsetPersistenceStrategy =>
-          ProjectionActorWithCustomOffsetPersistence.props(config.projection, srcProvider, strategy)
+        case strategy: CustomOffsetPersistenceStrategy[O] =>
+          ProjectionActorWithCustomOffsetPersistence.props[O, E](config.projection, config.publisherFactory, strategy)
       }
     }
 

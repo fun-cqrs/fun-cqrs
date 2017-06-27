@@ -17,7 +17,13 @@ trait AggregateRef[A, C, E, F[_]] {
   def tell(cmd: C): Unit
 
   def state(): F[A]
-  def exists(): F[Boolean]
+
+  @deprecated(message = "use isInitialized for check Aggregate contains some state", since = "1.0.0")
+  def exists(): F[Boolean] = isInitialized
+
+  def exists(predicate: A => Boolean): F[Boolean]
+
+  def isInitialized: F[Boolean]
 
   def withAskTimeout(timeout: FiniteDuration): AggregateRef[A, C, E, Future]
 }

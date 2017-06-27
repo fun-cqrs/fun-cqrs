@@ -1,8 +1,6 @@
 package raffle.domain.service
 
-import com.typesafe.scalalogging.LazyLogging
-
-import scala.util.Try
+import scala.util.{ Success, Try }
 
 trait InMemoryRepository {
 
@@ -13,8 +11,9 @@ trait InMemoryRepository {
 
   def find(id: Identifier): Try[Model] = Try(store(id))
 
-  def save(model: Model): Unit = {
+  def save(model: Model): Try[Unit] = {
     store = store + ($id(model) -> model)
+    Success(())
   }
 
   def deleteById(id: Identifier): Unit =

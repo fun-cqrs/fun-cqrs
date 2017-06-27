@@ -13,6 +13,7 @@ object TestModel {
 
   object User extends Types[User] {
 
+    val tag = "user-test"
     type Id      = UserId
     type Command = UserCmd
     type Event   = UserEvt

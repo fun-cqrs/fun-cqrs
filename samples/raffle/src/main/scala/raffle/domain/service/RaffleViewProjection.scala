@@ -1,26 +1,28 @@
 package raffle.domain.service
 
-import io.funcqrs.Projection
+import io.funcqrs.projections.Projection
 import raffle.domain.model.RaffleView.Participant
-import raffle.domain.model.{ RaffleView$, _ }
+import raffle.domain.model.{ RaffleView, _ }
 
 import scala.concurrent.Future
 
-class RaffleViewProjection(repo: RaffleViewRepo) extends Projection {
+class RaffleViewProjection(repo: RaffleViewRepo) extends Projection[RaffleEvent] {
 
-  def handleEvent: HandleEvent = {
+  def handleEvent = attempt.HandleEvent {
 
     case e: RaffleCreated =>
-      Future.successful(repo.save(RaffleView(id = e.lotteryId)))
+      repo.save(RaffleView(id = e.raffleId))
 
     case e: RaffleUpdateEvent =>
-      Future.successful {
-        repo
-          .updateById(e.lotteryId) { lot =>
-            updateFunc(lot, e)
-          }
-          .map(_ => ())
-      }
+      repo
+        .updateById(e.raffleId) { lot =>
+          updateFunc(lot, e)
+        }
+        .map(_ => ())
+  }
+
+  override def onFailure: OnFailure = {
+    case (e, _) => Future.successful(())
   }
 
   private def updateFunc(view: RaffleView, evt: RaffleUpdateEvent): RaffleView = {
@@ -40,4 +42,5 @@ class RaffleViewProjection(repo: RaffleViewRepo) extends Projection {
   private def newParticipant(evt: ParticipantAdded): Participant =
     RaffleView.Participant(evt.name)
 }
+
 //end::lottery-view-projection[]

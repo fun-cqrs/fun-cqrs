@@ -1,8 +1,8 @@
 package io.funcqrs.config
 
-import io.funcqrs.{ CommandException, Projection }
-import io.funcqrs.backend.Query
+import io.funcqrs.CommandException
 import io.funcqrs.behavior._
+import io.funcqrs.projections.{ Projection, PublisherFactory }
 
 import scala.language.higherKinds
 
@@ -15,7 +15,8 @@ object Api {
       case anyOtherState =>
         Actions[A, C, E]()
           .rejectCommand {
-            case anyCommand => new CommandException(s"No actions defined for current state: $anyOtherState")
+            case anyCommand =>
+              new CommandException(s"No actions defined for ${anyCommand.getClass.getSimpleName} on current state: $anyOtherState")
           }
     }
     // enrich user defined behavior with a fallback
@@ -28,11 +29,11 @@ object Api {
   }
 
   /** Initiates the configuration of a Projection */
-  def projection(query: Query, projection: Projection, name: String): ProjectionConfig = {
-    ProjectionConfig(query, projection, name)
+  def projection[O, E](projection: Projection[E], publisherFactory: PublisherFactory[O, E], name: String): ProjectionConfig[O, E] = {
+    ProjectionConfig(projection, publisherFactory, name)
   }
 
-  def projection(query: Query, projection: Projection): ProjectionConfig = {
-    ProjectionConfig(query, projection, projection.name)
+  def projection[O, E](projection: Projection[E], publisherFactory: PublisherFactory[O, E]): ProjectionConfig[O, E] = {
+    ProjectionConfig(projection, publisherFactory, projection.name)
   }
 }

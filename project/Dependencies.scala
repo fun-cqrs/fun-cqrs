@@ -1,17 +1,19 @@
 import sbt.Keys._
 import sbt._
 
-
 object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging = "com.typesafe.scala-logging" %% "scala-logging"  % "3.5.0"
-  val scalaTest    = "org.scalatest"              %% "scalatest"      % "3.0.0" % "test"
-  val rxScala      = "io.reactivex"               %% "rxscala"        % "0.26.5"
-  val logback      = "ch.qos.logback"             % "logback-classic" % "1.1.9"
+  val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.5.0"
+  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.0.0" % "test"
+  val logback         = "ch.qos.logback"             % "logback-classic"  % "1.1.9"
+  val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.0"
 
-  val mainDeps = Seq(scalaLogging, scalaTest, logback)
+  val rxScala               = "io.reactivex" %% "rxscala"                % "0.26.5"
+  val reactiveStreamAdapter = "io.reactivex" % "rxjava-reactive-streams" % "1.2.1"
+
+  val mainDeps = Seq(scalaLogging, scalaTest, logback, reactiveStreams)
   //------------------------------------------------------------------------------------------------------------
 
   //------------------------------------------------------------------------------------------------------------
@@ -40,4 +42,3 @@ object Dependencies {
 
   val sampleDeps = Seq(levelDb, levelDbJNI) ++ mainDeps ++ akkaDeps
 }
-

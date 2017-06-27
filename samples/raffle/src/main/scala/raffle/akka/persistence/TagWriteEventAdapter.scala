@@ -5,7 +5,7 @@ import raffle.domain.model.{ Raffle, RaffleEvent }
 
 class TagWriteEventAdapter extends WriteEventAdapter {
 
-  def manifest(event: Any): String = ""
+  def manifest(event: Any): String = event.getClass.getName
 
   def toJournal(event: Any): Any = {
     event match {
