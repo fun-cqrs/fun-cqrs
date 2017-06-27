@@ -17,7 +17,13 @@ That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is u
 
 **Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. 
 
-A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) and migration guide [here](https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
+A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) 
+
+## Migration Guide to v1.0.0
+
+As we progress with the v1.0.0 we update the [migration guide(https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
+
+Please, make sure you follow all the instructions and broadly test your migrated project before using it with production data.
 
 
 ## Project artifact
@@ -25,14 +31,14 @@ A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/devel
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0-M1"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0-M2"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M1"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M2"
 ```
 
 ## Documentation
