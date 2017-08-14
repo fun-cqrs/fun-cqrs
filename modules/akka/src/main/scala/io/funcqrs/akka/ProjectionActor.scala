@@ -4,8 +4,8 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor._
 import akka.pattern._
-import akka.stream.scaladsl.{ Sink, Source }
 import akka.stream.{ AbruptTerminationException, ActorMaterializer }
+import akka.stream.scaladsl.{ Sink, Source }
 import akka.util.Timeout
 import io.funcqrs.EventWithCommandId
 import io.funcqrs.akka.ProjectionActor.Start

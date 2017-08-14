@@ -19,14 +19,14 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
   val akkaDeps = {
-    val akkaVersion = "2.5.3"
+    val akkaVersion = "2.5.4"
 
     Seq(
       "com.typesafe.akka" %% "akka-actor"       % akkaVersion,
       "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j"       % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"      % akkaVersion,
-//      "com.typesafe.akka" %% "akka-remote"      % akkaVersion,
+      
       // experimental
       "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
       // test scope
