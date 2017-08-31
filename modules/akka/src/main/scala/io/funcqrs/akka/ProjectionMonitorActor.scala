@@ -10,6 +10,7 @@ import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
 import io.funcqrs.EventWithCommandId
+import io.funcqrs.projections.OffsetEnvelope
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
 
@@ -57,6 +58,12 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
     // receive status from child projection
     // every incoming EventWithCommandId must be forwarded to internal EventBus
     case evt: EventWithCommandId => receivedEventFromProjection(evt)
+
+    // receive envelope from child projection, get the EventWithCommandId and forward to internal EventBus
+    // we can't just forward the entire envelope because then the EventsMonitorActor will not be able to correlate it
+    // with an Event it's expecting
+    case envelope: OffsetEnvelope[_, _] if envelope.event.isInstanceOf[EventWithCommandId] =>
+      receivedEventFromProjection(envelope.event.asInstanceOf[EventWithCommandId])
 
     // create EventsMonitorActors on demand
     case EventsMonitorRequest(commandId, projectionName) => createEventMonitor(commandId, projectionName)
