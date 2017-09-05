@@ -125,6 +125,8 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     val receive: Receive = {
 
+      case AggregateActor.KillAggregate           => context.stop(self) // Comes first!
+
       case TypedCommand(cmd) =>
         log.debug("aggregate '{}' received cmd: {}", identifier, cmd)
 
@@ -157,6 +159,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
   private def busy: Receive = {
 
     val busyReceive: Receive = {
+      case AggregateActor.KillAggregate           => stash() // We have to wait for the last command result to be processed.
       case Successful(events, nextState, origSender) => onSuccess(events, nextState, origSender)
       case failedCmd: FailedCommand                  => onFailure(failedCmd)
       case TypedCommand(cmd) =>
@@ -171,7 +174,6 @@ class AggregateActor[A, C, E, I <: AggregateId](
   protected def defaultReceive: Receive = {
     case AggregateActor.StateRequest(requester) => sendState(requester)
     case AggregateActor.Exists(requester)       => requester ! aggregateState.isDefined
-    case AggregateActor.KillAggregate           => context.stop(self)
     case x: SaveSnapshotSuccess                 =>
       // delete the previous snapshot now that we know we have a newer snapshot
       currentSnapshotSequenceNr.foreach { seqNr =>
