@@ -10,6 +10,7 @@ import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
 import io.funcqrs.akka.ProjectionMonitorActor.EventsMonitorRequest
 import io.funcqrs.EventWithCommandId
+import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.projections.OffsetEnvelope
 
 import scala.concurrent.duration.{ FiniteDuration, _ }
@@ -107,8 +108,9 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     val monitorName = s"monitor::$projectionName::${commandId.value}::${UUID.randomUUID()}"
 
-    // TODO this could be moved to property file eventually
-    val shutdownEventsMonitorAfter = 10.seconds
+    // take at least the same timeout as the underlying projection
+    // if you're willing to wait X seconds on the projection, you should be willing to wait X seconds for events coming from the Projection
+    val shutdownEventsMonitorAfter = projectionConfig(projectionName).getDuration("async-projection-timeout", 5.seconds) + 1.second
     val monitor                    = context.actorOf(eventsMonitor(commandId, projectionName, shutdownEventsMonitorAfter), monitorName)
 
     // subscribe for events having `commandId` and coming from projection named with `projectionName`
@@ -144,7 +146,9 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
         tryComplete()
 
       case ReceiveTimeout =>
-        log.debug("Got timeout")
+        log.debug(
+          s"Got timeout after waiting ${timeout.toSeconds}s for ${eventsToWaitFor.size} events. Received ${eventsReceived.size} in the meantime"
+        )
         removeMe()
 
       case evt: EventWithCommandId =>
