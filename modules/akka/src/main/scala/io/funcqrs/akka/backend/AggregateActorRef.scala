@@ -32,6 +32,10 @@ case class AggregateActorRef[A, C, E, I <: AggregateId](
   // need it explicitly because akka.pattern.ask conflicts with AggregatRef.ask
   private val askableActorRef = akkaAsk(aggregateManagerActor)
 
+  //if you need a reply w/o using ask (more idiomatic to do so)
+  def tell(cmd: Command, sender: ActorRef): Unit =
+    aggregateManagerActor.tell(UntypedIdAndCommand(id, cmd), sender)
+
   def tell(cmd: Command): Unit =
     aggregateManagerActor ! UntypedIdAndCommand(id, cmd)
 
