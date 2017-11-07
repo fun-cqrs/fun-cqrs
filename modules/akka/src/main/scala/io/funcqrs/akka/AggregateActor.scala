@@ -112,6 +112,12 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     case RecoveryCompleted =>
       log.debug("aggregate '{}' has recovered", identifier)
+      // also take snapshots when done replaying, this is very important if you have to replay a lot of events
+      // (like when you had to delete all snapshots for example). Because if you don't do this, you'll never get another snapshot unless
+      // the aggregate is actually used by sending a command that produces an event.
+      // by taking a snapshot when done with replaying, we'll only have to do the replay once, no matter how the aggregate gets used afterwards.
+      saveSnapshotIfNeeded(aggregateState)
+
 
     case TypedEvent(event) => onEvent(event)
 
@@ -207,12 +213,6 @@ class AggregateActor[A, C, E, I <: AggregateId](
         eventsSinceLastSnapshot += 1
         aggregateState = interpreter.onEvent(aggregateState, castedEvent)
         log.debug("aggregate '{}' has state after event {}", identifier, aggregateState)
-
-        // also take snapshots while replaying, this is very important if you have to replay a lot of events
-        // (like when you had to delete all snapshots for example). Because if you don't do this, you'll never get another snapshot unless
-        // the aggregate is actually used by sending a command that produces an event.
-        // by taking a snapshot while replaying, we'll only have to do the replay once, no matter how the aggregate gets used afterwards.
-        saveSnapshotIfNeeded(aggregateState)
 
         changeState(Available)
 
