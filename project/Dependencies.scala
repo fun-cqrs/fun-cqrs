@@ -19,19 +19,19 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
   val akkaDeps = {
-    val akkaVersion = "2.4.17"
+    val akkaVersion = "2.5.4"
 
     Seq(
       "com.typesafe.akka" %% "akka-actor"       % akkaVersion,
       "com.typesafe.akka" %% "akka-persistence" % akkaVersion,
       "com.typesafe.akka" %% "akka-slf4j"       % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"      % akkaVersion,
-//      "com.typesafe.akka" %% "akka-remote"      % akkaVersion,
+      
       // experimental
-      "com.typesafe.akka" %% "akka-persistence-query-experimental" % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
       // test scope
       "com.typesafe.akka"   %% "akka-testkit"              % akkaVersion % "test",
-      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.4.17.3"  % "test"
+      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.1.1"  % "test"
     )
   }
   //------------------------------------------------------------------------------------------------------------

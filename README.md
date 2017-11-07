@@ -21,7 +21,7 @@ A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/devel
 
 ## Migration Guide to v1.0.0
 
-As we progress with the v1.0.0 we update the [migration guide(https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
+As we progress with the v1.0.0 we update the [migration guide](https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
 
 Please, make sure you follow all the instructions and broadly test your migrated project before using it with production data.
 

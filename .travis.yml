@@ -1,6 +1,6 @@
 language: scala
 sudo: false
-script: sbt -jvm-opts jvmopts.travis test
+script: sbt -jvm-opts jvmopts.travis +test
 jdk:
 - oraclejdk8
 notifications:

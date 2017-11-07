@@ -3,9 +3,9 @@ import BuildSettings._
 
 name := "fun-cqrs"
 organization in ThisBuild := "io.strongtyped"
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.11.11"
 
-crossScalaVersions in ThisBuild := Seq("2.11.8", "2.12.1")
+crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3")
 
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
@@ -72,3 +72,12 @@ lazy val raffleApp = Project(
 
 addCommandAlias("runRaffleAkka", "sample-raffle/runMain raffle.app.MainAkka")
 addCommandAlias("runRaffleInMemory", "sample-raffle/runMain raffle.app.MainInMemory")
+
+
+publishTo in ThisBuild := version { (v: String) =>
+  val nexus = "https://collab.mow.vlaanderen.be/artifacts/repository/"
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("collab snapshots" at nexus + "maven-snapshots")
+  else
+    Some("collab releases" at nexus + "maven-releases")
+}.value
