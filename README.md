@@ -43,11 +43,7 @@ libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M2"
 
 ## Documentation
 
-!!! ATTENTION !!! - Documentation is out-of-date as we are in the process of relasing 1.0.0.
-
-The documentation is published [here](http://www.funcqrs.io).
-
-There is also a sample application under fun-cqrs/samples/raffle (up-to-date). 
+There is a sample application under fun-cqrs/samples/raffle (up-to-date). 
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
 
