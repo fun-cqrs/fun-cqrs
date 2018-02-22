@@ -31,14 +31,14 @@ Please, make sure you follow all the instructions and broadly test your migrated
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0-M2"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M2"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0"
 ```
 
 ## Documentation
