@@ -1,18 +1,19 @@
 import Dependencies._
 import BuildSettings._
+import sbt._
 
 name := "fun-cqrs"
-organization in ThisBuild := "io.strongtyped"
+organization in ThisBuild := "org.funcqrs"
 scalaVersion in ThisBuild := "2.11.11"
 
 crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3")
 
+val snapshotSuffix = "-SNAPSHOT"
+isSnapshot := version.value.endsWith(snapshotSuffix)
+
 ivyScala := ivyScala.value map {
   _.copy(overrideScalaVersion = true)
 }
-
-// replaces dynver + by -
-version in ThisBuild ~= (_.replace('+', '-'))
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
@@ -58,7 +59,7 @@ lazy val funCqrsTestKit = Project(
 //================================================
 
 // #####################################################
-// #                     SAMPLES                      #
+// #                     SAMPLES                       #
 // #####################################################
 lazy val raffleApp = Project(
   id       = "sample-raffle",
@@ -74,10 +75,48 @@ addCommandAlias("runRaffleAkka", "sample-raffle/runMain raffle.app.MainAkka")
 addCommandAlias("runRaffleInMemory", "sample-raffle/runMain raffle.app.MainInMemory")
 
 
-publishTo in ThisBuild := version { (v: String) =>
-  val nexus = "https://collab.mow.vlaanderen.be/artifacts/repository/"
-  if (v.trim.endsWith("SNAPSHOT"))
-    Some("collab snapshots" at nexus + "maven-snapshots")
+// #####################################################
+// #                  PUBLISH SETTINGS                 #
+// #####################################################
+
+publishMavenStyle := true
+
+pomIncludeRepository := { _ =>
+  false
+}
+
+pomExtra := pomInfo
+
+credentials ++= publishingCredentials
+
+pgpPassphrase := Option(System.getenv().get("PGP_PASSPHRASE")).map(_.toCharArray)
+
+pgpSecretRing := file("local.secring.gpg")
+
+pgpPublicRing := file("local.pubring.gpg")
+
+publishTo in ThisBuild := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
   else
-    Some("collab releases" at nexus + "maven-releases")
-}.value
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+
+lazy val publishingCredentials = (for {
+  username <- Option(System.getenv().get("SONATYPE_USERNAME"))
+  password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
+} yield Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password))).getOrElse(Seq())
+
+lazy val pomInfo = <url>https://github.com/fun-cqrs/fun-cqrs</url>
+  <licenses>
+    <license>
+      <name>Apache 2</name>
+      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <url>git@github.com:fun-cqrs/fun-cqrs.git</url>
+    <connection>scm:git:git@github.com:fun-cqrs/fun-cqrs.git</connection>
+  </scm>
