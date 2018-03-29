@@ -72,3 +72,12 @@ lazy val raffleApp = Project(
 
 addCommandAlias("runRaffleAkka", "sample-raffle/runMain raffle.app.MainAkka")
 addCommandAlias("runRaffleInMemory", "sample-raffle/runMain raffle.app.MainInMemory")
+
+
+publishTo in ThisBuild := version { (v: String) =>
+  val nexus = "https://collab.mow.vlaanderen.be/artifacts/repository/"
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("collab snapshots" at nexus + "maven-snapshots")
+  else
+    Some("collab releases" at nexus + "maven-releases")
+}.value
