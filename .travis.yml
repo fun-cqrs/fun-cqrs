@@ -11,7 +11,7 @@ notifications:
       - "%{repository}#%{build_number} (%{branch} - %{commit} : %{author}): %{message}"
 after_success:
   - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "develop" && sbt +publishSigned
-  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && sbt release with-defaults
+  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && sbt 'release with-defaults'
 before_install:
   - openssl aes-256-cbc -k $TRAVIS_FUNCQRS_ENC -in secring.gpg.enc -out local.secring.gpg -d || true
   - openssl aes-256-cbc -k $TRAVIS_FUNCQRS_ENC -in pubring.gpg.enc -out local.pubring.gpg -d || true
