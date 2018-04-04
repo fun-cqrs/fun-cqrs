@@ -19,12 +19,12 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-an
 
 // dependencies
 lazy val root = Project(
-  id   = "fun-cqrs",
+  id = "fun-cqrs",
   base = file("."),
   settings = Seq(
     publishArtifact := false
   )
-) aggregate (
+) aggregate(
   funCqrs,
   funCqrsAkka,
   funCqrsTestKit,
@@ -34,16 +34,16 @@ lazy val root = Project(
 
 // Core ==========================================
 lazy val funCqrs = Project(
-  id       = "fun-cqrs-core",
-  base     = file("modules/core"),
+  id = "fun-cqrs-core",
+  base = file("modules/core"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= mainDeps)
 //================================================
 
 // Akka integration ==============================
 lazy val funCqrsAkka = Project(
-  id       = "fun-cqrs-akka",
-  base     = file("modules/akka"),
+  id = "fun-cqrs-akka",
+  base = file("modules/akka"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
   .dependsOn(funCqrs % "compile->compile;test->test")
@@ -51,8 +51,8 @@ lazy val funCqrsAkka = Project(
 
 //Test kit =======================================
 lazy val funCqrsTestKit = Project(
-  id       = "fun-cqrs-test-kit",
-  base     = file("modules/tests"),
+  id = "fun-cqrs-test-kit",
+  base = file("modules/tests"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= mainDeps ++ Seq(rxScala, reactiveStreamAdapter))
   .dependsOn(funCqrs % "compile->compile;test->test")
@@ -62,8 +62,8 @@ lazy val funCqrsTestKit = Project(
 // #                     SAMPLES                       #
 // #####################################################
 lazy val raffleApp = Project(
-  id       = "sample-raffle",
-  base     = file("samples/raffle"),
+  id = "sample-raffle",
+  base = file("samples/raffle"),
   settings = defaultSettings
 ).settings(libraryDependencies ++= sampleDeps)
   .settings(publishArtifact := false)
@@ -85,9 +85,9 @@ pomIncludeRepository := { _ =>
   false
 }
 
-pomExtra := pomInfo
-
 credentials ++= publishingCredentials
+
+pomExtra in ThisBuild := pomInfo
 
 pgpPassphrase := Option(System.getenv().get("PGP_PASSPHRASE")).map(_.toCharArray)
 
@@ -109,14 +109,21 @@ lazy val publishingCredentials = (for {
 } yield Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password))).getOrElse(Seq())
 
 lazy val pomInfo = <url>https://github.com/fun-cqrs/fun-cqrs</url>
-  <licenses>
-    <license>
-      <name>Apache 2</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <url>git@github.com:fun-cqrs/fun-cqrs.git</url>
-    <connection>scm:git:git@github.com:fun-cqrs/fun-cqrs.git</connection>
-  </scm>
+    <licenses>
+      <license>
+        <name>Apache 2</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+        <distribution>repo</distribution>
+      </license>
+    </licenses>
+    <scm>
+      <url>git@github.com:fun-cqrs/fun-cqrs.git</url>
+      <connection>scm:git:git@github.com:fun-cqrs/fun-cqrs.git</connection>
+    </scm>
+    <developers>
+      <developer>
+        <id>rcavalcanti</id>
+        <name>Renato Cavalcanti</name>
+        <url>https://github.com/renatocaval</url>
+      </developer>
+    </developers>

@@ -14,15 +14,15 @@ releaseCrossBuild := true // true if you cross-build the project for multiple Sc
 releaseProcess := Seq[ReleaseStep](
   checkSnapshotDependencies,
   inquireVersions,
-  runClean,
-  runTest,
-  setReleaseVersion,
-  commitReleaseVersion,
-  tagRelease,
+  // runClean,
+  // runTest, // is done by travis
+  // setReleaseVersion, // we set versions ourselves
+  // commitReleaseVersion,
+  // tagRelease,
   // For non cross-build projects, use releaseStepCommand("publishSigned")
   releaseStepCommandAndRemaining("+publishSigned"),
-  setNextVersion,
-  commitNextVersion,
-  releaseStepCommand("sonatypeReleaseAll"),
-  pushChanges
+  // setNextVersion,
+  // commitNextVersion,
+  releaseStepCommand("sonatypeReleaseAll")
+  // pushChanges
 )

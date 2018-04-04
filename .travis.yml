@@ -10,7 +10,8 @@ notifications:
     template:
       - "%{repository}#%{build_number} (%{branch} - %{commit} : %{author}): %{message}"
 after_success:
-  - test $TRAVIS_PULL_REQUEST == "false" && sbt release with-defaults
+  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "develop" && sbt +publishSigned
+  - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && sbt release with-defaults
 before_install:
   - openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in secring.gpg.enc -out local.secring.gpg -d
   - openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in pubring.gpg.enc -out local.pubring.gpg -d
