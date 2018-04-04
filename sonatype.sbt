@@ -1,36 +1,28 @@
-sonatypeProfileName := "io.strongtyped"
+import ReleaseTransformations._
 
-credentials ++= (for {
-  username <- Option(System.getenv().get("SONATYPE_USERNAME"))
-  password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
-} yield Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password)).toSeq
+sonatypeProfileName := "org.funcqrs"
 
-pomExtra in Global := {
-  <url>https://github.com/strongtyped/fun-cqrs</url>
-  <licenses>
-    <license>
-      <name>Apache-style</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
-  <scm>
-    <url>https://github.com/strongtyped/fun-cqrs.git</url>
-    <connection>scm:git:git@github.com:strongtyped/fun-cqrs.git</connection>
-  </scm>
-  <developers>
-    <developer>
-      <id>@renatocaval</id>
-      <name>Renato Cavalcanti</name>
-      <url>http://www.strongtyped.io/</url>
-    </developer>
-  </developers>
-}
+releaseCrossBuild := true // true if you cross-build the project for multiple Scala versions
 
-publishTo in Global := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
+// https://github.com/sbt/sbt-release
+// Interactive release:
+//  > sbt release
+// Pass versions manually:
+//  > sbt release release-version 1.0.99 next-version 1.2.0-SNAPSHOT
+// Non-interactive release:
+//  > sbt release with-defaults
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  // runClean,
+  // runTest, // is done by travis
+  // setReleaseVersion, // we set versions ourselves
+  // commitReleaseVersion,
+  // tagRelease,
+  // For non cross-build projects, use releaseStepCommand("publishSigned")
+  releaseStepCommandAndRemaining("+publishSigned"),
+  // setNextVersion,
+  // commitNextVersion,
+  releaseStepCommand("sonatypeReleaseAll")
+  // pushChanges
+)

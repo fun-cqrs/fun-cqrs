@@ -21,7 +21,7 @@ A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/devel
 
 ## Migration Guide to v1.0.0
 
-As we progress with the v1.0.0 we update the [migration guide(https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
+As we progress with the v1.0.0 we update the [migration guide](https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
 
 Please, make sure you follow all the instructions and broadly test your migrated project before using it with production data.
 
@@ -31,23 +31,19 @@ Please, make sure you follow all the instructions and broadly test your migrated
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0-M2"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0-M2"
+libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0"
 ```
 
 ## Documentation
 
-!!! ATTENTION !!! - Documentation is out-of-date as we are in the process of relasing 1.0.0.
-
-The documentation is published [here](http://www.funcqrs.io).
-
-There is also a sample application under fun-cqrs/samples/raffle (up-to-date). 
+There is a sample application under fun-cqrs/samples/raffle (up-to-date). 
 
 You can also watch these two videos to better understand the philosophy behind Fun.CQRS.
 

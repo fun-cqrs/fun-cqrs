@@ -4,10 +4,8 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor._
 import akka.pattern._
-import akka.persistence.query.EventEnvelope2
-import akka.stream.{ AbruptTerminationException, ActorMaterializer, KillSwitch, KillSwitches }
-import akka.stream.actor.ActorSubscriber
-import akka.stream.scaladsl.{ Keep, Sink, Source }
+import akka.stream.{ AbruptTerminationException, ActorMaterializer }
+import akka.stream.scaladsl.{ Sink, Source }
 import akka.util.Timeout
 import io.funcqrs.EventWithCommandId
 import io.funcqrs.akka.ProjectionActor.Start
@@ -15,7 +13,7 @@ import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
 import io.funcqrs.projections.{ Projection, PublisherFactory }
 
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{ Failure, Success }
