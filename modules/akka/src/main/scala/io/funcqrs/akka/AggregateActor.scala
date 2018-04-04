@@ -112,6 +112,12 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
     case RecoveryCompleted =>
       log.debug("aggregate '{}' has recovered", identifier)
+      // also take snapshots when done replaying, this is very important if you have to replay a lot of events
+      // (like when you had to delete all snapshots for example). Because if you don't do this, you'll never get another snapshot unless
+      // the aggregate is actually used by sending a command that produces an event.
+      // by taking a snapshot when done with replaying, we'll only have to do the replay once, no matter how the aggregate gets used afterwards.
+      saveSnapshotIfNeeded(aggregateState)
+
 
     case TypedEvent(event) => onEvent(event)
 
@@ -172,8 +178,10 @@ class AggregateActor[A, C, E, I <: AggregateId](
   }
 
   protected def defaultReceive: Receive = {
-    case AggregateActor.StateRequest(requester) => sendState(requester)
-    case AggregateActor.Exists(requester)       => requester ! aggregateState.isDefined
+    case AggregateActor.StateRequest(requester) =>
+      sendState(requester)
+    case AggregateActor.Exists(requester)       =>
+      requester ! aggregateState.isDefined
     case x: SaveSnapshotSuccess                 =>
       // delete the previous snapshot now that we know we have a newer snapshot
       currentSnapshotSequenceNr.foreach { seqNr =>
@@ -205,11 +213,11 @@ class AggregateActor[A, C, E, I <: AggregateId](
         eventsSinceLastSnapshot += 1
         aggregateState = interpreter.onEvent(aggregateState, castedEvent)
         log.debug("aggregate '{}' has state after event {}", identifier, aggregateState)
+
         changeState(Available)
 
       case _ => log.debug(s"Unknown message on recovery $evt")
     }
-
   }
 
   /**
@@ -265,17 +273,7 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
           // we only update the internal aggregate state once all events are persisted
           aggregateState = updatedState
-
-          // have we crossed the snapshot threshold?
-          if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
-            aggregateState match {
-              case Some(aggregate) =>
-                log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
-                saveSnapshot(aggregate)
-              case _ =>
-            }
-            eventsSinceLastSnapshot = 0
-          }
+          saveSnapshotIfNeeded(aggregateState)
         }
       }
     } else {
@@ -293,28 +291,23 @@ class AggregateActor[A, C, E, I <: AggregateId](
     changeState(Available)
   }
 
-  /**
-    * This method should be used as a callback handler for persist() method.
-    * It will:
-    * - apply the event on the aggregate effectively changing its state
-    * - check if a snapshot needs to be saved.
-    *
-    * @param evt DomainEvent that has been persisted
-    */
-  protected def afterEventPersisted(evt: Event): Unit = {
 
-    eventsSinceLastSnapshot += 1
-
+  private def saveSnapshotIfNeeded(state: Option[Aggregate]): Unit = {
+    // have we crossed the snapshot threshold?
     if (eventsSinceLastSnapshot >= eventsPerSnapshot) {
-      aggregateState match {
+      state match {
         case Some(aggregate) =>
-          log.debug("aggregate '{}' has {} events reached, saving snapshot", identifier, eventsPerSnapshot)
+          log.debug("aggregate '{}' has reached {} events, saving snapshot",
+            identifier,
+            eventsPerSnapshot)
           saveSnapshot(aggregate)
+
         case _ =>
       }
       eventsSinceLastSnapshot = 0
     }
   }
+
 
   /**
     * Internal representation of a completed update command.

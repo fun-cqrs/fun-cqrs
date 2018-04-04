@@ -8,3 +8,4 @@ journal/
 snapshots/
 *.log
 index.html
+local.*
