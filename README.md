@@ -3,7 +3,7 @@
 # Fun.CQRS
 
 
-[![Build Status](https://travis-ci.org/strongtyped/fun-cqrs.svg?branch=develop)](https://travis-ci.org/strongtyped/fun-cqrs) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/strongtyped/fun-cqrs?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
+[![Build Status](https://travis-ci.org/fun-cqrs/fun-cqrs.svg?branch=develop)](https://travis-ci.org/fun-cqrs/fun-cqrs) 
 
 **Fun.CQRS** is a Scala library for building CQRS/ES application. It provides the basic blocks to build event driven aggregates with **Event Sourcing**.
 
@@ -13,15 +13,9 @@ When using the `AkkaBackend`, Aggregates are immutable classes (case class) that
 
 That said, in **Fun.CQRS**, Aggregates are NOT Actors. The **Actor System** is used as a middleware to manage the aggregates, hold them in-memory, store events, recover aggregate state and generate read models through  **Event Projections**
 
-## Roadmap to v1.0.0
-
-**Fun.CQRS** is undergoing a significant refactoring that will culminate with release 1.0.0. 
-
-A roadmap can be found [here](https://github.com/strongtyped/fun-cqrs/blob/develop/roadmap-v1.0.0.md) 
-
 ## Migration Guide to v1.0.0
 
-As we progress with the v1.0.0 we update the [migration guide](https://github.com/strongtyped/fun-cqrs/blob/develop/migration-v1.0.0.md). 
+As we progress with the v1.0.0 we update the [migration guide](https://github.com/fun-cqrs/fun-cqrs/blob/develop/migration-v1.0.0.md). 
 
 Please, make sure you follow all the instructions and broadly test your migrated project before using it with production data.
 
@@ -31,14 +25,14 @@ Please, make sure you follow all the instructions and broadly test your migrated
 The artifacts are published to Sonatype Repository. Simply add the following to your build.sbt.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-akka" % "1.0.0"
+libraryDependencies += "org.funcqrs" %% "fun-cqrs-akka" % "1.0.1"
 ```
 
 If you want to hack **Fun.CQRS** and develop your own backend, you can import only the core module.
 The core module does NOT include the Akka Backend.
 
 ```scala
-libraryDependencies += "io.strongtyped" %% "fun-cqrs-core" % "1.0.0"
+libraryDependencies += "org.funcqrs" %% "fun-cqrs-core" % "1.0.1"
 ```
 
 ## Documentation
