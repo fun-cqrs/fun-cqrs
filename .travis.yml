@@ -13,10 +13,8 @@ after_success:
   - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "develop" && sbt +publishSigned
   - test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && sbt release with-defaults
 before_install:
-  - openssl aes-256-cbc -K $encrypted_579b91bc8669_key -iv $encrypted_579b91bc8669_iv
-    -in secring.gpg.enc -out local.secring.gpg -d
-  - openssl aes-256-cbc -K $encrypted_579b91bc8669_key -iv $encrypted_579b91bc8669_iv
-    -in pubring.gpg.enc -out local.pubring.gpg -d
+  - openssl aes-256-cbc -K $encrypted_579b91bc8669_key -iv $encrypted_579b91bc8669_iv -in secring.gpg.enc -out local.secring.gpg -d || true
+  - openssl aes-256-cbc -K $encrypted_579b91bc8669_key -iv $encrypted_579b91bc8669_iv -in pubring.gpg.enc -out local.pubring.gpg -d || true
 env:
   global:
   - secure: iFeQpjsFfNdNQ6ZDOYO9MsaCPsvl+sZ1i88CfVCloEpF9I8xWJx7GHSuAuFFMw84KfTj8a9NURCObefXW6ZHGFo5EspREjGf8gI2xC+/bj1Xum+LcFv1+znywZGFuD6g4/I70GYv5MWBZXxtUD0BSADTT+C8oIhtAkrmxuwhKmerRKcSoVVLC9zoAzJiMfOi9qSalVMejnptjgDVQhe0IYX8rsC93EKqZkOmbhdPcpgBOp1yaW0lxZuBsGOP7lLs82lyW/oUTMuq/avUCeLxn+aLXiSsnkrhuZHFfz6uC2yZ8hwPkw2NpM/0IGiAXkiasnp8y4YqdJ6LFmsCX++U3buxyCuI0OUr1k+hw91YqlzZZV2UTQ5MZy/xPOSKInBhBRjQ73yjd2D/0I70tZnZcmR+/FAhCmwwpUjW9RLM0viWRZCg4HPm/4HMKo39P7YE/o592zXELoI2+qgwvXAEWLJMz2III+J6DATte78XjXGfRtsaeu9n3vnDnrHl2E88TX39EQIVY9+hfUg6AyRZCq+kETmN+83PhVn3Rn40U1Fp5vYT+aWx0yDv+kK8sgZ6jQ/VUEFtvoRrj8Gzx05O9Na1rVAgQhPHMZYm0dD2TQkfEZIBkl0dwB3dxraVHzO5dUNfls9aIjCrV3TGR4NlaN2OZtRcPce1nn+d0+tqgK4=
