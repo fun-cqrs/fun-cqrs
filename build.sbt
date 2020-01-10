@@ -6,7 +6,7 @@ name := "fun-cqrs"
 organization in ThisBuild := "org.funcqrs"
 scalaVersion in ThisBuild := "2.11.11"
 
-crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3")
+crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3", "2.13.1")
 
 val snapshotSuffix = "-SNAPSHOT"
 isSnapshot := version.value.endsWith(snapshotSuffix)

@@ -2,7 +2,7 @@ language: scala
 sudo: false
 script: sbt -jvm-opts jvmopts.travis +test
 jdk:
-- oraclejdk8
+- openjdk8
 notifications:
   hipchat:
     rooms:
