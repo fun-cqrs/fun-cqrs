@@ -1,14 +1,16 @@
 package io.funcqrs
 
 import io.funcqrs.projections._
-import org.scalatest.concurrent.{ Futures, ScalaFutures }
-import org.scalatest.{ FlatSpec, Matchers, OptionValues }
+import org.scalatest.OptionValues
+import org.scalatest.concurrent.{Futures, ScalaFutures}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Failure
 
-class AndThenProjectionTest extends FlatSpec with Matchers with Futures with ScalaFutures with OptionValues with ProjectionFixture {
+class AndThenProjectionTest extends AnyFlatSpecLike with Matchers with Futures with ScalaFutures with OptionValues with ProjectionFixture {
 
   implicit val patienceConf: PatienceConfig = patienceConfig
 

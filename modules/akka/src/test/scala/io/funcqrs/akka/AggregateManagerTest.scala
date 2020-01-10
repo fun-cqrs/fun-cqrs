@@ -6,13 +6,13 @@ import io.funcqrs.akka.TestModel.{ User, UserId }
 import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.config.api._
 import io.funcqrs.{ MissingCommandHandlerException, _ }
-import org.scalatest._
 import org.scalatest.concurrent.{ Eventually, ScalaFutures }
 import org.scalatest.time.{ Seconds, Span }
-
+import org.scalatest.matchers.should.Matchers
 import scala.concurrent.duration._
+import org.scalatest.flatspec.AnyFlatSpecLike
 
-class AggregateManagerTest extends FlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
+class AggregateManagerTest extends AnyFlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
 
   implicit val timeout = Timeout(500.millis)
 

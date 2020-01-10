@@ -16,8 +16,7 @@ trait InMemoryRepository {
     Success(())
   }
 
-  def deleteById(id: Identifier): Unit =
-    store = store.filterKeys(_ != id)
+  def deleteById(id: Identifier): Unit = store = store - id
 
   def updateById(id: Identifier)(updateFunc: (Model) => Model): Try[Model] =
     find(id).map { model =>

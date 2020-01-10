@@ -3,8 +3,8 @@ package io.funcqrs.akka
 import java.util.UUID
 
 import akka.actor._
-import akka.event.{ ActorEventBus, LookupClassification }
-import akka.pattern.{ Backoff, BackoffSupervisor }
+import akka.event.{ActorEventBus, LookupClassification}
+import akka.pattern.{Backoff, BackoffOpts, BackoffSupervisor}
 import io.funcqrs.CommandId
 import io.funcqrs.akka.EventsMonitorActor.RemoveMe
 import io.funcqrs.akka.ProjectionMonitorActor.CreateProjection
@@ -13,7 +13,7 @@ import io.funcqrs.EventWithCommandId
 import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.projections.OffsetEnvelope
 
-import scala.concurrent.duration.{ FiniteDuration, _ }
+import scala.concurrent.duration.{FiniteDuration, _}
 
 object ProjectionMonitorActor {
 
@@ -80,7 +80,7 @@ class ProjectionMonitorActor extends Actor with ActorLogging {
 
     val supervisorProps =
       BackoffSupervisor.props(
-        Backoff.onStop(
+        BackoffOpts.onStop(
           childProps = props,
           childName  = s"$name-supervised",
           // wait at least 10 seconds to restart

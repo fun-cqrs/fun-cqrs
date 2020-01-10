@@ -7,14 +7,16 @@ import io.funcqrs.akka.backend.AkkaBackend
 import io.funcqrs.behavior._
 import io.funcqrs.behavior.handlers._
 import io.funcqrs.config.Api._
-import org.scalatest._
+import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.time.{ Seconds, Span }
+import org.scalatest.funsuite.AnyFunSuiteLike
+import org.scalatest.time.{Seconds, Span}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import org.scalatest.matchers.should.Matchers
 
-class CommandTimeoutTest extends FunSuite with Matchers with ScalaFutures with AkkaBackendSupport with BeforeAndAfter {
+class CommandTimeoutTest extends AnyFunSuiteLike with Matchers with ScalaFutures with AkkaBackendSupport with BeforeAndAfter {
 
   // very patient
   override implicit def patienceConfig: PatienceConfig =

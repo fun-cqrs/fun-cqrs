@@ -3,9 +3,10 @@ package io.funcqrs.model
 import io.funcqrs.config.Api._
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class TimeTrackerTest extends FlatSpec with Matchers {
+class TimeTrackerTest extends AnyFlatSpecLike with Matchers {
 
   behavior of "TimerTracker"
 

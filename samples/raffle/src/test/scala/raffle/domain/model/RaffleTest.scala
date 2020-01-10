@@ -3,10 +3,12 @@ package raffle.domain.model
 import io.funcqrs.config.Api._
 import io.funcqrs.test.InMemoryTestSupport
 import io.funcqrs.test.backend.InMemoryBackend
-import org.scalatest.{ FunSuite, Matchers, OptionValues, TryValues }
-import raffle.domain.service.{ RaffleViewProjection, RaffleViewRepo }
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.{OptionValues, TryValues}
+import raffle.domain.service.{RaffleViewProjection, RaffleViewRepo}
 
-class RaffleTest extends FunSuite with Matchers with OptionValues with TryValues {
+class RaffleTest extends AnyFunSuite with Matchers with OptionValues with TryValues {
 
   val repo = new RaffleViewRepo
 
