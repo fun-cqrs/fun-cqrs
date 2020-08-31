@@ -49,7 +49,7 @@ class AkkaQueryProjectionTest extends AnyFlatSpecLike with Matchers with ScalaFu
 
   override def configureBackend(backend: AkkaBackend): Unit = {
 
-    implicit val materializer = ActorMaterializer()(actorSys)
+    implicit val system = actorSys
 
     backend
       .configure {

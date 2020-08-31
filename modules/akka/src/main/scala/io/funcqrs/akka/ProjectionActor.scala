@@ -4,19 +4,19 @@ import java.util.concurrent.TimeoutException
 
 import akka.actor._
 import akka.pattern._
-import akka.stream.{ AbruptTerminationException, ActorMaterializer }
-import akka.stream.scaladsl.{ Sink, Source }
+import akka.stream.{AbruptTerminationException, ActorMaterializer, SystemMaterializer}
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
 import io.funcqrs.EventWithCommandId
 import io.funcqrs.akka.ProjectionActor.Start
 import io.funcqrs.akka.util.ConfigReader.projectionConfig
 import io.funcqrs.config.CustomOffsetPersistenceStrategy
-import io.funcqrs.projections.{ Projection, PublisherFactory }
+import io.funcqrs.projections.{Projection, PublisherFactory}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
 object ProjectionActor {
 
@@ -35,7 +35,7 @@ abstract class ProjectionActor[O, E](
     with ActorLogging {
 
   implicit val timeout = Timeout(5 seconds)
-  implicit val mat     = ActorMaterializer()
+  implicit val actorSystem = context.system
 
   import context.dispatcher
 

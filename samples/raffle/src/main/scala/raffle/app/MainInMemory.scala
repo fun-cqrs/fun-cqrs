@@ -1,7 +1,7 @@
 package raffle.app
 
 import raffle.domain.model._
-import raffle.domain.model.{ Raffle$, RaffleId$ }
+import raffle.domain.model.{ Raffle, RaffleId }
 
 import scala.util.{ Failure, Success }
 

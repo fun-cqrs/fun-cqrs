@@ -6,9 +6,9 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
   val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.2"
-  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.1.0" % "test"
+  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.2.0" % "test"
   val logback         = "ch.qos.logback"             % "logback-classic"  % "1.2.3"
-  val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.0"
+  val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.3"
 
   val rxScala               = "io.reactivex" %% "rxscala"                % "0.27.0"
   val reactiveStreamAdapter = "io.reactivex" % "rxjava-reactive-streams" % "1.2.1"
@@ -19,7 +19,7 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
   val akkaDeps = {
-    val akkaVersion = "2.5.27"
+    val akkaVersion = "2.6.8"
 
     Seq(
       "com.typesafe.akka" %% "akka-actor"       % akkaVersion,

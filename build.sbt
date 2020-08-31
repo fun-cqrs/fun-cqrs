@@ -4,24 +4,23 @@ import sbt._
 
 name := "fun-cqrs"
 organization in ThisBuild := "org.funcqrs"
-scalaVersion in ThisBuild := "2.11.11"
+scalaVersion in ThisBuild := "2.13.3"
 
-crossScalaVersions in ThisBuild := Seq("2.11.11", "2.12.3", "2.13.1")
+crossScalaVersions in ThisBuild := Seq("2.12.12", "2.13.3")
 
 val snapshotSuffix = "-SNAPSHOT"
 isSnapshot := version.value.endsWith(snapshotSuffix)
 
-ivyScala := ivyScala.value map {
-  _.copy(overrideScalaVersion = true)
-}
+//ivyScala := ivyScala.value map {
+//  _.copy(overrideScalaVersion = true)
+//}
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-Xlint:-infer-any", "-Xfatal-warnings")
 
 // dependencies
 lazy val root = Project(
   id = "fun-cqrs",
-  base = file("."),
-  settings = Seq(
+  base = file(".")).settings(Seq(
     publishArtifact := false
   )
 ) aggregate(
@@ -35,16 +34,16 @@ lazy val root = Project(
 // Core ==========================================
 lazy val funCqrs = Project(
   id = "fun-cqrs-core",
-  base = file("modules/core"),
-  settings = defaultSettings
+  base = file("modules/core")
+).settings(defaultSettings
 ).settings(libraryDependencies ++= mainDeps)
 //================================================
 
 // Akka integration ==============================
 lazy val funCqrsAkka = Project(
   id = "fun-cqrs-akka",
-  base = file("modules/akka"),
-  settings = defaultSettings
+  base = file("modules/akka")).
+  settings(defaultSettings
 ).settings(libraryDependencies ++= mainDeps ++ akkaDeps)
   .dependsOn(funCqrs % "compile->compile;test->test")
 //================================================
@@ -52,8 +51,7 @@ lazy val funCqrsAkka = Project(
 //Test kit =======================================
 lazy val funCqrsTestKit = Project(
   id = "fun-cqrs-test-kit",
-  base = file("modules/tests"),
-  settings = defaultSettings
+  base = file("modules/tests")).settings(defaultSettings
 ).settings(libraryDependencies ++= mainDeps ++ Seq(rxScala, reactiveStreamAdapter))
   .dependsOn(funCqrs % "compile->compile;test->test")
 //================================================
@@ -63,8 +61,8 @@ lazy val funCqrsTestKit = Project(
 // #####################################################
 lazy val raffleApp = Project(
   id = "sample-raffle",
-  base = file("samples/raffle"),
-  settings = defaultSettings
+  base = file("samples/raffle")
+).settings(defaultSettings
 ).settings(libraryDependencies ++= sampleDeps)
   .settings(publishArtifact := false)
   .dependsOn(funCqrs)
