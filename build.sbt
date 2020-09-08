@@ -106,6 +106,7 @@ lazy val publishingCredentials = (for {
   password <- Option(System.getenv().get("SONATYPE_PASSWORD"))
 } yield Seq(Credentials("Sonatype Nexus Repository Manager", "oss.sonatype.org", username, password))).getOrElse(Seq())
 
+
 lazy val pomInfo = <url>https://github.com/fun-cqrs/fun-cqrs</url>
     <licenses>
       <license>
@@ -114,10 +115,6 @@ lazy val pomInfo = <url>https://github.com/fun-cqrs/fun-cqrs</url>
         <distribution>repo</distribution>
       </license>
     </licenses>
-    <scm>
-      <url>git@github.com:fun-cqrs/fun-cqrs.git</url>
-      <connection>scm:git:git@github.com:fun-cqrs/fun-cqrs.git</connection>
-    </scm>
     <developers>
       <developer>
         <id>rcavalcanti</id>
