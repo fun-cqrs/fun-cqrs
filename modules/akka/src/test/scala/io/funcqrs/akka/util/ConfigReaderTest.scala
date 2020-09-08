@@ -1,8 +1,10 @@
 package io.funcqrs.akka.util
-import scala.concurrent.duration._
-import org.scalatest.{ FlatSpec, FunSuite, Matchers }
+import org.scalatest.flatspec.AsyncFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 
-class ConfigReaderTest extends FlatSpec with Matchers {
+import scala.concurrent.duration._
+
+class ConfigReaderTest extends AsyncFlatSpecLike with Matchers {
 
   behavior of "ConfigReader"
 

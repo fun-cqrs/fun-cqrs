@@ -5,12 +5,12 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.5.0"
-  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.0.0" % "test"
-  val logback         = "ch.qos.logback"             % "logback-classic"  % "1.1.9"
-  val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.0"
+  val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.2"
+  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.2.0" % "test"
+  val logback         = "ch.qos.logback"             % "logback-classic"  % "1.2.3"
+  val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.3"
 
-  val rxScala               = "io.reactivex" %% "rxscala"                % "0.26.5"
+  val rxScala               = "io.reactivex" %% "rxscala"                % "0.27.0"
   val reactiveStreamAdapter = "io.reactivex" % "rxjava-reactive-streams" % "1.2.1"
 
   val mainDeps = Seq(scalaLogging, scalaTest, logback, reactiveStreams)
@@ -19,7 +19,7 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
   val akkaDeps = {
-    val akkaVersion = "2.5.4"
+    val akkaVersion = "2.6.5"
 
     Seq(
       "com.typesafe.akka" %% "akka-actor"       % akkaVersion,
@@ -31,7 +31,7 @@ object Dependencies {
       "com.typesafe.akka" %% "akka-persistence-query" % akkaVersion,
       // test scope
       "com.typesafe.akka"   %% "akka-testkit"              % akkaVersion % "test",
-      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.1.1"  % "test"
+      "com.github.dnvriend" %% "akka-persistence-inmemory" % "2.5.15.2"  % "test"
     )
   }
   //------------------------------------------------------------------------------------------------------------

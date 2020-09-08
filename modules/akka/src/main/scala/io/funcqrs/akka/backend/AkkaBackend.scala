@@ -86,7 +86,7 @@ trait AkkaBackend extends Backend[Future] {
       projectionMonitorActorRef.ask(ProjectionMonitorActor.CreateProjection(projectionProps, config.name))(actorCreationTimeout)
 
     import scala.concurrent.ExecutionContext.Implicits.global
-    created.map(_ => Unit)
+    created.map(_ => ())
 
     this
   }

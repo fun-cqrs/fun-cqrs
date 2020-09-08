@@ -22,7 +22,7 @@ object AppContext {
 
   def akkaBackend(actorSys: ActorSystem) = {
 
-    implicit val materializer = ActorMaterializer()(actorSys)
+    implicit val system = actorSys
 
     val backend = new AkkaBackend {
       val actorSystem: ActorSystem = actorSys

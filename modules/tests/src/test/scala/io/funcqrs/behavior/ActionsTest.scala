@@ -1,11 +1,11 @@
 package io.funcqrs.behavior
 
 import io.funcqrs.behavior.handlers._
-
 import java.time.OffsetDateTime
 
-import io.funcqrs.model.{ CreateTracker, _ }
-import org.scalatest.{ FunSuite, Matchers }
+import io.funcqrs.model.{CreateTracker, _}
+import org.scalatest.funsuite.AnyFunSuiteLike
+import org.scalatest.matchers.should.Matchers
 
 import scala.collection.immutable
 import scala.concurrent.Future
@@ -29,7 +29,7 @@ import scala.util.Try
   * - Try[immutable.Seq[Event]]
   * - Try[List[Event]]
   */
-class ActionsTest extends FunSuite with Matchers {
+class ActionsTest extends AnyFunSuiteLike with Matchers {
 
   test("Actions should accept (compile) all default types supported by Fun.CQRS") {
     TimeTracker.actions

@@ -6,13 +6,14 @@ import io.funcqrs.behavior._
 import io.funcqrs.behavior.handlers._
 import io.funcqrs.interpreters.IdentityInterpreter
 import io.funcqrs.model._
-import org.scalatest.{ FunSuite, Matchers }
+import org.scalatest.funsuite.AnyFunSuiteLike
+import org.scalatest.matchers.should.Matchers
 
 /**
   * The intent of this test is not test a specific Interpreter, but to test the
   * [[io.funcqrs.interpreters.Interpreter]] common behavior
   */
-class InterpreterTest extends FunSuite with Matchers {
+class InterpreterTest extends AnyFunSuiteLike with Matchers {
 
   val initialState: Option[TimeTracker] = None
 

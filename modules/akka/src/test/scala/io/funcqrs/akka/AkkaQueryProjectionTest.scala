@@ -11,14 +11,15 @@ import io.funcqrs.config.AkkaOffsetPersistenceStrategy
 import io.funcqrs.config.api._
 import io.funcqrs.projections.{Projection, PublisherFactory}
 import org.reactivestreams.Publisher
-import org.scalatest._
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.scalatest.flatspec.AnyFlatSpecLike
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Seconds, Span}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-class AkkaQueryProjectionTest extends FlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
+class AkkaQueryProjectionTest extends AnyFlatSpecLike with Matchers with ScalaFutures with AkkaBackendSupport with Eventually {
 
   implicit val timeout = Timeout(500.millis)
 
@@ -48,7 +49,7 @@ class AkkaQueryProjectionTest extends FlatSpecLike with Matchers with ScalaFutur
 
   override def configureBackend(backend: AkkaBackend): Unit = {
 
-    implicit val materializer = ActorMaterializer()(actorSys)
+    implicit val system = actorSys
 
     backend
       .configure {

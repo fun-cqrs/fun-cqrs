@@ -68,7 +68,7 @@ trait InMemoryTestSupport {
     )
 
     // remove if assertion passes
-    receivedEvents.dequeue.asInstanceOf[E]
+    receivedEvents.dequeue().asInstanceOf[E]
   }
 
   /**
@@ -82,7 +82,7 @@ trait InMemoryTestSupport {
     val lastReceived = oldestEvent()
     assert(pf.isDefinedAt(lastReceived), s"PartialFunction is not defined for next buffer event, was: $lastReceived")
     // remove if assertion passes
-    receivedEvents.dequeue
+    receivedEvents.dequeue()
     // apply PF to it
     pf(lastReceived)
   }
