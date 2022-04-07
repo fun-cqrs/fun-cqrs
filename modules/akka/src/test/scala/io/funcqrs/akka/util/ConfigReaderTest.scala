@@ -16,6 +16,9 @@ class ConfigReaderTest extends AsyncFlatSpecLike with Matchers {
 
     val int = reader.getInt("events-per-snapshot", 10)
     int shouldBe 200
+
+    val journalPluginId = reader.getString("journal-plugin-id", "")
+    journalPluginId shouldBe ""
   }
 
   it should "read global properties if can't find specific value" in {
@@ -26,6 +29,7 @@ class ConfigReaderTest extends AsyncFlatSpecLike with Matchers {
 
     val int = reader.getInt("events-per-snapshot", 10)
     int shouldBe 100
+
   }
 
   it should "return default value if it can't find a key" in {
@@ -37,6 +41,12 @@ class ConfigReaderTest extends AsyncFlatSpecLike with Matchers {
 
     val int = reader.getInt("foo", 10)
     int shouldBe 10
+
+    val bool = reader.getBoolean("bool", false)
+    bool shouldBe false
+
+    val txt = reader.getString("str", "")
+    txt shouldBe ""
   }
 
   it should "return default value if it can't find specific or global values" in {
@@ -48,5 +58,12 @@ class ConfigReaderTest extends AsyncFlatSpecLike with Matchers {
 
     val int = reader.getInt("foo", 10)
     int shouldBe 10
+
+    val bool = reader.getBoolean("bool", false)
+    bool shouldBe false
+
+    val txt = reader.getString("str", "")
+    txt shouldBe ""
   }
+
 }

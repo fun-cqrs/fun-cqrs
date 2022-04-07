@@ -9,3 +9,10 @@ snapshots/
 *.log
 index.html
 local.*
+.vscode/
+.metals/
+.bsp/
+.bloop/
+project/project/
+project/.bloop/
+project/metals.sbt

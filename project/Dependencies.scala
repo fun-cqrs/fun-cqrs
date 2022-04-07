@@ -5,9 +5,9 @@ object Dependencies {
 
   //------------------------------------------------------------------------------------------------------------
   // io.strongtyped.funcqrs core
-  val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.2"
-  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.2.0" % "test"
-  val logback         = "ch.qos.logback"             % "logback-classic"  % "1.2.3"
+  val scalaLogging    = "com.typesafe.scala-logging" %% "scala-logging"   % "3.9.4"
+  val scalaTest       = "org.scalatest"              %% "scalatest"       % "3.2.11" % "test"
+  val logback         = "ch.qos.logback"             % "logback-classic"  % "1.2.11"
   val reactiveStreams = "org.reactivestreams"        % "reactive-streams" % "1.0.3"
 
   val rxScala               = "io.reactivex" %% "rxscala"                % "0.27.0"
@@ -19,7 +19,7 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
   // Akka Module
   val akkaDeps = {
-    val akkaVersion = "2.6.5"
+    val akkaVersion = "2.6.19"
 
     Seq(
       "com.typesafe.akka" %% "akka-actor"       % akkaVersion,
@@ -37,7 +37,7 @@ object Dependencies {
   //------------------------------------------------------------------------------------------------------------
 
   //------------------------------------------------------------------------------------------------------------
-  val levelDb    = "org.iq80.leveldb"          % "leveldb"        % "0.7"
+  val levelDb    = "org.iq80.leveldb"          % "leveldb"        % "0.12"
   val levelDbJNI = "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8"
 
   val sampleDeps = Seq(levelDb, levelDbJNI) ++ mainDeps ++ akkaDeps
