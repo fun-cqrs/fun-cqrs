@@ -85,6 +85,8 @@ class AggregateActor[A, C, E, I <: AggregateId](
 
   override def journalPluginId: String = aggregateConfig(aggregateType).getString("journal-plugin-id", "")
 
+  override def snapshotPluginId: String = aggregateConfig(aggregateType).getString("snapshot-plugin-id", "")
+
   /** The aggregate instance wrapped in a Some if initialized, None otherwise */
   private var aggregateState: Option[Aggregate] = None
 
