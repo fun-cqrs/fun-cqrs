@@ -3,10 +3,10 @@ import BuildSettings._
 import sbt._
 
 name := "fun-cqrs"
-organization in ThisBuild := "org.funcqrs"
-scalaVersion in ThisBuild := "2.13.3"
+ThisBuild / organization := "org.funcqrs"
+ThisBuild / scalaVersion := "2.13.8"
 
-crossScalaVersions in ThisBuild := Seq("2.12.12", "2.13.3")
+ThisBuild / crossScalaVersions := Seq("2.12.15", "2.13.8")
 
 val snapshotSuffix = "-SNAPSHOT"
 isSnapshot := version.value.endsWith(snapshotSuffix)
@@ -85,7 +85,7 @@ pomIncludeRepository := { _ =>
 
 credentials ++= publishingCredentials
 
-pomExtra in ThisBuild := pomInfo
+ThisBuild / pomExtra  := pomInfo
 
 pgpPassphrase := Option(System.getenv().get("PGP_PASSPHRASE")).map(_.toCharArray)
 
@@ -93,7 +93,7 @@ pgpSecretRing := file("local.secring.gpg")
 
 pgpPublicRing := file("local.pubring.gpg")
 
-publishTo in ThisBuild := {
+ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value)
     Some("snapshots" at nexus + "content/repositories/snapshots")
